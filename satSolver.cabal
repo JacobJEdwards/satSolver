@@ -1,14 +1,14 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 
 name:           satSolver
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/satSolver#readme>
-homepage:       https://github.com/githubuser/satSolver#readme
-bug-reports:    https://github.com/githubuser/satSolver/issues
+description:    Please see the README on GitHub at <https://github.com/jacobjedwards/satSolver#readme>
+homepage:       https://github.com/jacobjedwards/satSolver#readme
+bug-reports:    https://github.com/jacobjedwards/satSolver/issues
 author:         Author name here
 maintainer:     example@example.com
 copyright:      2024 Author name here
@@ -21,11 +21,20 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/satSolver
+  location: https://github.com/jacobjedwards/satSolver
 
 library
   exposed-modules:
+      Expr
       Lib
+      Parser.DIMACS
+      Parser.Error
+      Parser.Input
+      Parser.Parsec
+      Parser.Parser
+      Parser.Result
+      Parser.Sudoku
+      Sudoku
   other-modules:
       Paths_satSolver
   autogen-modules:
@@ -35,7 +44,9 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , containers
+    , text
   default-language: Haskell2010
 
 executable satSolver-exe
@@ -49,8 +60,11 @@ executable satSolver-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , containers
+    , haskeline
     , satSolver
+    , text
   default-language: Haskell2010
 
 test-suite satSolver-test
@@ -65,6 +79,9 @@ test-suite satSolver-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , containers
+    , haskeline
     , satSolver
+    , text
   default-language: Haskell2010
