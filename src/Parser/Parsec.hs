@@ -13,6 +13,7 @@ module Parser.Parsec
     char,
     digit,
     digits,
+    newline,
     string,
     space,
     spaces,
@@ -37,10 +38,13 @@ module Parser.Parsec
     try,
     spaceNoNewline,
     spacesNoNewline,
+    many,
+    some,
+    optional,
   )
 where
 
-import Control.Applicative (Alternative (..))
+import Control.Applicative (Alternative (..), many, some, optional)
 import Data.Char (isDigit, isLetter, isSpace)
 import Data.String (fromString)
 
@@ -159,7 +163,7 @@ eof = Parser $ \case
      input | Parser.Input.null input -> Result (input, ())
      _ -> Errors [EndOfInput]
 
-lookahead :: (Input i, Token i ~ Char) => Parser i i Char
+lookahead :: (Input i, Token i ~ Char) => Parser i i (Maybe Char)
 lookahead = Parser $ \case
   input | Parser.Input.null input -> Errors [EndOfInput]
         | otherwise -> Result (input, Parser.Input.head input)
@@ -190,3 +194,6 @@ try p = Parser $ \input -> case runParser p input of
 
 someTill :: Parser i e a -> Parser i e b -> Parser i e [a]
 someTill p end = (:) <$> p <*> manyTill p end
+
+newline :: (Input i, Token i ~ Char) => Parser i e Char
+newline = char '\n'

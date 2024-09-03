@@ -1,58 +1,25 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main (main) where
 
-import Lib
-import Control.Monad (unless)
-import System.Environment (getArgs)
-import System.Console.GetOpt
-import System.Exit (exitFailure)
-import System.Console.Haskeline
 import Control.Monad.IO.Class (liftIO)
+import Data.Maybe (fromMaybe)
+import Data.String (fromString)
 import Data.Text (Text)
-import qualified Data.Text as Text
-import Data.String(fromString)
-import qualified Data.List as List
+import qualified Nonogram.Solver as Nonogram
+import Options
 import Parser.Parsec
-import qualified Parser.DIMACS as DIMACS
-import Sudoku
-
-data Flag = Interactive | Demo | RunImmediate Text | File Text | Sudoku Text deriving (Show, Eq)  
-
-newtype Options = Options {
-  optMode :: Flag
-} deriving (Show)
-
-defaultOptions :: Options
-defaultOptions = Options {
-  optMode = Demo
-}
-
-options :: [OptDescr (Options -> Options)]
-options = 
-  [ Option ['i'] ["interactive"]
-    (NoArg (\opts -> opts { optMode = Interactive }))
-    "Run in interactive mode"
-  , Option ['d'] ["demo"]
-    (NoArg (\opts -> opts { optMode = Demo }))
-    "Run in default demo mode (default)"
-  , Option ['r'] ["run"]
-    (ReqArg (\arg opts -> opts { optMode = RunImmediate $ fromString arg }) "EXPR")
-    "Run the given expression immediately"
-  , Option ['f'] ["file"]
-    (ReqArg (\arg opts -> opts { optMode = File $ fromString arg }) "FILE")
-    "Run the given file immediately"
-  , Option ['s'] ["sudoku"]
-    (ReqArg (\arg opts -> opts { optMode = Sudoku $ fromString arg }) "FILE")
-    "Run the sudoku example immediately"
-  ]
-
-parseArgs :: [String] -> IO Options
-parseArgs args = do
-  let (opts, _, errs) = getOpt Permute options args
-  unless (List.null errs) $ do
-    mapM_ putStrLn errs
-    exitFailure
-  return $ foldl (flip id) defaultOptions opts
-  
+import SAT.CNF
+import qualified SAT.DIMACS.CNF as DIMACS
+import qualified SAT.DIMACS.Parser as DIMACS
+import SAT.Expr
+import SAT.Parser
+import SAT.Solver
+import qualified Sudoku.Parser as Sudoku
+import qualified Sudoku.Solver as Sudoku
+import System.Console.Haskeline
+import System.Environment (getArgs)
 
 showResult :: (Show a, Ord a) => Result Text Text (Text, Expr a) -> IO ()
 showResult result = case result of
@@ -75,7 +42,6 @@ showExprInfo expr = do
   let solutions = getSolutions expr
   putStrLn $ "Solutions: " <> show solutions
 
-
 runInteractiveMode :: IO ()
 runInteractiveMode = runInputT defaultSettings loop
   where
@@ -84,49 +50,65 @@ runInteractiveMode = runInputT defaultSettings loop
       outputStrLn ""
       outputStrLn "Enter a logical expression:"
       minput <- getInputLine ">>> "
-      case minput of 
+      case minput of
         Nothing -> return ()
         Just "exit" -> return ()
-        Just input -> do 
-          let result = Lib.parse $ fromString input
+        Just input -> do
+          let result = SAT.Parser.parse $ fromString input
           liftIO $ showResult result
           loop
-
 
 runDemoMode :: IO ()
 runDemoMode = do
   let expr = And (Var 'A') (Or (Var 'B') (Not (Var 'C')))
   putStrLn $ "Demo expression: " <> show expr
   showExprInfo expr
-      
+
+runFile :: Text -> IO ()
+runFile file = do
+  DIMACS.parseFile file >>= \case
+    Just cnf -> do
+      putStrLn $ "Parsed CNF: " <> show cnf
+      showExprInfo $ DIMACS.toExpr $ DIMACS.clauses cnf
+    Nothing -> error "Failed to parse CNF"
+
+runSudoku :: Text -> IO ()
+runSudoku file = do
+  sudokuResult <- Sudoku.parseSudokuFile file
+  
+  let sudoku' = fromMaybe (error "Invalid sudoku") sudokuResult
+  putStrLn "Parsed sudoku:"
+  print sudoku'
+  
+  let solution = Sudoku.solve sudoku'
+  case solution of
+    Just solution' -> do
+      putStrLn "Solution:"
+      print solution'
+    Nothing -> putStrLn "No solution found"
+
+runNonogram :: Text -> IO ()
+runNonogram _ = do
+  let nonogram = Nonogram.exampleNonogram
+  putStrLn "Example nonogram:"
+  print nonogram
+  let solution = Nonogram.solve nonogram
+  case solution of
+    Just solution' -> do
+      print solution'
+    Nothing -> putStrLn "No solution found"
 
 run :: IO ()
-run = do 
+run = do
   args <- getArgs
   mode <- parseArgs args
-  case optMode mode of 
+  case mode of
     Interactive -> runInteractiveMode
     Demo -> runDemoMode
-    RunImmediate expr -> showResult $ Lib.parse expr
-    File file -> do
-      contents <- readFile $ Text.unpack file
-      let cnf = DIMACS.parseCNF $ Text.pack contents
-      putStrLn $ "Parsed CNF: " <> show cnf
-      case cnf of 
-        Result (_, cnf') -> showExprInfo (DIMACS.toExpr (DIMACS.clauses cnf'))
-        Errors errs -> putStrLn $ "Errors: " <> show errs
-    Sudoku _ -> do
-      let cnf = sudokuToCNF sudoku
-      let clauses = DIMACS.clauses cnf
-      let expr = DIMACS.toExpr clauses
-      let solutions = getSolutions expr
-      case solutions of 
-        Solved xs -> do 
-           let decoded = decodeSolution xs
-           prettyPrint decoded
-        No -> putStrLn "No solutions found"
-  
+    RunImmediate expr -> showResult $ SAT.Parser.parse expr
+    File file -> runFile file
+    Options.Sudoku file -> runSudoku file
+    Options.Nonogram file -> runNonogram file
 
 main :: IO ()
 main = run
-  

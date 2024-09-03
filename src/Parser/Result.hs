@@ -10,6 +10,7 @@ import Control.Applicative (Alternative(..))
 data Result i e a = Errors [Error i e] | Result a
 
 instance (Show a, Show e, Show i) => Show (Result i e a) where
+  show :: Result i e a -> String
   show (Result res) = show res
   show (Errors errs) = "Errors: " <> intercalate ", " (show <$> errs)
 

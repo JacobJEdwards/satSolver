@@ -24,6 +24,8 @@ dependencies:
 - containers
 - text
 - bytestring
+- lens >= 5.2.3
+- haskeline
 
 ghc-options:
 - -Wall
@@ -50,6 +52,7 @@ executables:
     dependencies:
     - satSolver
     - haskeline
+    - lens
 
 tests:
   satSolver-test:
@@ -62,3 +65,4 @@ tests:
     dependencies:
     - satSolver
     - haskeline
+    - lens

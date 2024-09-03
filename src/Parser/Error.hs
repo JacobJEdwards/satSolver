@@ -6,6 +6,7 @@ module Parser.Error (Error(..)) where
 data Error i e = EndOfInput | Unexpected i | CustomError e | Empty deriving (Eq)
 
 instance (Show i, Show e) => Show (Error i e) where
+  show :: Error i e -> String
   show = \case
     EndOfInput -> "End of input"
     Unexpected i -> "Unexpected " <> show i

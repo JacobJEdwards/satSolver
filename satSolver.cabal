@@ -25,16 +25,23 @@ source-repository head
 
 library
   exposed-modules:
-      Expr
-      Lib
-      Parser.DIMACS
+      Nonogram.Parser
+      Nonogram.Solver
+      Options
       Parser.Error
       Parser.Input
       Parser.Parsec
-      Parser.Parser
       Parser.Result
-      Parser.Sudoku
-      Sudoku
+      Problem
+      SAT.CNF
+      SAT.DIMACS.CNF
+      SAT.DIMACS.Parser
+      SAT.Expr
+      SAT.Optimisers
+      SAT.Parser
+      SAT.Solver
+      Sudoku.Parser
+      Sudoku.Solver
   other-modules:
       Paths_satSolver
   autogen-modules:
@@ -46,6 +53,8 @@ library
       base >=4.7 && <5
     , bytestring
     , containers
+    , haskeline
+    , lens >=5.2.3
     , text
   default-language: Haskell2010
 
@@ -63,6 +72,7 @@ executable satSolver-exe
     , bytestring
     , containers
     , haskeline
+    , lens
     , satSolver
     , text
   default-language: Haskell2010
@@ -82,6 +92,7 @@ test-suite satSolver-test
     , bytestring
     , containers
     , haskeline
+    , lens
     , satSolver
     , text
   default-language: Haskell2010

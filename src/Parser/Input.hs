@@ -9,11 +9,12 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Text as Text
 import Data.Text (Text)
 import qualified Data.List as List
+import Control.Lens
   
 class (Eq i, Monoid i, IsString i) => Input i where
   type Token i
   uncons :: i -> Maybe (Token i, i)
-  head :: i -> Token i
+  head :: i -> Maybe (Token i)
   null :: i -> Bool
   unpack :: i -> String
 
@@ -23,8 +24,8 @@ instance Input BS.ByteString where
   uncons :: BS.ByteString -> Maybe (Char, BS.ByteString)
   uncons = BS.uncons
   
-  head :: BS.ByteString -> Char
-  head = BS.head
+  head :: BS.ByteString -> Maybe Char
+  head = fmap fst . BS.uncons
   
   null :: BS.ByteString -> Bool
   null = BS.null
@@ -39,8 +40,8 @@ instance Input Text where
   uncons :: Text -> Maybe (Char, Text)
   uncons = Text.uncons
   
-  head :: Text -> Char
-  head = Text.head
+  head :: Text -> Maybe Char
+  head t = t ^? ix 0
   
   null :: Text -> Bool
   null = Text.null
@@ -54,12 +55,11 @@ instance Input String where
   uncons :: String -> Maybe (Char, String)
   uncons = List.uncons
   
-  head :: String -> Char
-  head = List.head
+  head :: String -> Maybe Char
+  head t = t ^? ix 0
   
   null :: String -> Bool
   null = List.null
   
   unpack :: String -> String
   unpack = id
-

@@ -1,24 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Parser.DIMACS (CNF(..), parseCNF, toExpr, Clause, parseDIMACSFile) where
+module SAT.DIMACS.Parser (parseCNF, parseFile) where
 
-import Expr
 import Parser.Parsec
-
-import Control.Applicative (many, some, optional)
+import SAT.DIMACS.CNF
 import Data.Text (Text)
 import qualified Data.Text as Text
+
 import Data.Char (isDigit)
-
-type Clause = [Int]
-
-data CNF = CNF {
-  numVars :: Int,
-  numClauses :: Int,
-  clauses :: [Clause],
-  comments :: [Text]
-} deriving (Eq, Show)
 
 
 parseComment :: Parser Text Text Text
@@ -56,13 +46,6 @@ parseClause = do
 parseClauses :: Parser Text Text [Clause]
 parseClauses = many parseClause
 
-toExpr :: [Clause] -> Expr Int
-toExpr = foldr1 And . map (foldr1 Or . map toLiteral)
-  where
-    toLiteral ::  Int -> Expr Int
-    toLiteral n
-      | n < 0 = Not $ Var $ toEnum $ abs n
-      | otherwise = Var $ toEnum n
 
 parseCNF' :: Parser Text Text CNF
 parseCNF' = do
@@ -74,9 +57,9 @@ parseCNF' = do
 parseCNF :: Text -> Result Text Text (Text, CNF)
 parseCNF = runParser parseCNF'
 
-parseDIMACSFile :: Text -> IO CNF
-parseDIMACSFile filename = do
+parseFile :: Text -> IO (Maybe CNF)
+parseFile filename = do
   contents <- readFile (Text.unpack filename)
   case runParser parseCNF' (Text.pack contents) of
-    Result (_, cnf) -> return cnf
-    Errors errs -> error $ "Errors: " ++ show errs
+    Result (_, cnf) -> return $ Just cnf
+    _ -> return Nothing

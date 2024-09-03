@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parser.Parser (parse) where
-  
-import Parser.Parsec
-import Expr
+module SAT.Parser (parse) where
+
 import Control.Applicative ((<|>))
-import Data.Text (Text)
 import Data.Functor (($>))
+import Data.Text (Text)
+import Parser.Parsec
+import SAT.Expr
 
 parse :: Text -> Result Text Text (Text, Expr Char)
 parse = runParser expr
