@@ -3,10 +3,10 @@
 
 module SAT.DIMACS.Parser (parseCNF, parseFile, parse) where
 
-import Parser.Parsec
+import Parser
 import Data.Text (Text)
 import qualified Data.Text as Text
-import SAT.DIMACS.CNF (CNF(..), Clause)
+import SAT.DIMACS.CNF (CNF(..), Clause, Literal)
 
 import Data.Char (isDigit)
 
@@ -16,7 +16,7 @@ parseComment = symbol "c" *> (Text.pack <$> many (satisfy (/= '\n'))) <* char '\
 parseComments :: Parser Text Text [Text]
 parseComments = many parseComment
 
-parseHeader :: Parser Text Text (Int, Int)
+parseHeader :: Parser Text Text (Integer, Integer)
 parseHeader = do
   _ <- symbol "p"
   _ <- symbol "cnf"
@@ -27,12 +27,12 @@ parseHeader = do
   _ <- char '\n'
   return (vars, clauses')
 
-parseLiteral :: Parser Text Text Int
+parseLiteral :: Parser Text Text Literal
 parseLiteral = do
   _ <- spaces
   negation <- optional $ char '-'
   n <- read <$> some (satisfy (\c -> isDigit c && c /= '0'))
-  let n' = if negation == Just '-' then -n else n
+  let n' = if negation == Just '-' then negate n else n
   _ <- spaces
   return n'
 

@@ -25,21 +25,26 @@ source-repository head
 
 library
   exposed-modules:
+      Nonogram
       Nonogram.Parser
       Nonogram.Solver
       Options
+      Parser
       Parser.Error
       Parser.Input
       Parser.Parsec
       Parser.Result
       Problem
+      SAT
       SAT.CNF
+      SAT.DIMACS
       SAT.DIMACS.CNF
       SAT.DIMACS.Parser
       SAT.Expr
       SAT.Optimisers
       SAT.Parser
       SAT.Solver
+      Sudoku
       Sudoku.Parser
       Sudoku.Solver
   other-modules:
@@ -50,11 +55,13 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base >=4.7 && <5
     , bytestring
     , containers
     , haskeline
     , lens >=5.2.3
+    , mtl
     , text
   default-language: Haskell2010
 
@@ -68,11 +75,13 @@ executable satSolver-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base >=4.7 && <5
     , bytestring
     , containers
     , haskeline
     , lens
+    , mtl
     , satSolver
     , text
   default-language: Haskell2010
@@ -88,11 +97,13 @@ test-suite satSolver-test
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base >=4.7 && <5
     , bytestring
     , containers
     , haskeline
     , lens
+    , mtl
     , satSolver
     , text
   default-language: Haskell2010

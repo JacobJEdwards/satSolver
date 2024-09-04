@@ -21,7 +21,7 @@ literalPolarity c e = case e of
   (And e1 e2) -> literalPolarity c e1 <> literalPolarity c e2
   (Or e1 e2) -> literalPolarity c e1 <> literalPolarity c e2
   (Not e') -> first (fmap flipPolarity) $ literalPolarity c e'
-  (Const _) -> mempty
+  (Val _) -> mempty
   where
     handleVar :: a -> Polarity -> (Maybe Polarity, Set (a, Bool))
     handleVar v polarity
@@ -49,8 +49,8 @@ eliminateLiteral c e p = case e of
 
     handleVar :: a -> Polarity -> (Expr a, Set (a, Bool))
     handleVar v polarity
-      | c == v && polarity == Positive = (Const True, Set.singleton (v, True))
-      | c == v && polarity == Negative = (Const False, Set.singleton (v, False))
+      | c == v && polarity == Positive = (Val True, Set.singleton (v, True))
+      | c == v && polarity == Negative = (Val False, Set.singleton (v, False))
       | otherwise = (e, mempty)
 
 eliminateLiterals :: forall a. (Ord a) => Expr a -> Set a -> Expr a

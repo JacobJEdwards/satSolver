@@ -17,9 +17,8 @@ where
 
 import Control.Lens
 import Data.Maybe (fromMaybe)
-import qualified SAT.DIMACS.CNF as DIMACS
-import SAT.Solver (Solution, checkValue)
-import SAT.Optimisers (uniqueOnly)
+import qualified SAT.DIMACS as DIMACS
+import SAT (Solution, checkValue, uniqueOnly)
 
 type Board = [[Int]]
 
@@ -62,23 +61,21 @@ instance Bounded Size where
   maxBound = SixteenBySixteen
 
 blockSize :: Size -> Int
-blockSize size' = case size' of
-  FourByFour -> 2
-  NineByNine -> 3
-  SixteenBySixteen -> 4
+blockSize FourByFour = 2
+blockSize NineByNine = 3
+blockSize SixteenBySixteen = 4
   
-
-encodeVar :: Sudoku -> Variable -> Int
+encodeVar :: Sudoku -> Variable -> DIMACS.Literal
 encodeVar puzzle (Variable r c n) = (r - 1) * boardSize * boardSize + (c - 1) * boardSize + (n - 1)
   where
     boardSize = fromEnum $ size puzzle
 
 
-decodeSolution :: Sudoku -> Solution Int -> Sudoku
-decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] | r <- [1 .. boardSize]] size'
+decodeSolution :: Sudoku -> Solution DIMACS.Literal -> Sudoku
+decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] | r <- [1 .. boardSize]] $ size puzzle
   where
     boardSize :: Int
-    boardSize = fromEnum size'
+    boardSize = fromEnum $ size puzzle
 
     cellValue :: Int -> Int -> Int
     cellValue r c =
@@ -88,7 +85,7 @@ decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]]
         -- temp fix -> for some reason cell (1, 1) is has the values [1, correct value]
         xs -> if c == 1 && r == 1 then last xs else error $ "Multiple valid numbers for cell (" ++ show r ++ ", " ++ show c ++ ")" ++ show xs
     
-    encodeVar' :: Variable -> Int
+    encodeVar' :: Variable -> DIMACS.Literal
     encodeVar' = encodeVar puzzle
     
     checkValue' :: Int -> Bool
@@ -97,24 +94,20 @@ decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]]
     checkVar :: Variable -> Bool
     checkVar = checkValue' . encodeVar'
     
-    size' :: Size
-    size' = size puzzle
-    
-
 toCNF :: Sudoku -> DIMACS.CNF
-toCNF (Sudoku puzzle size') =
+toCNF puzzle =
   DIMACS.CNF
-    { DIMACS.numVars = boardSize * boardSize * boardSize,
-      DIMACS.numClauses = length clauses,
+    { DIMACS.numVars = fromIntegral $ boardSize * boardSize * boardSize,
+      DIMACS.numClauses = fromIntegral $ length clauses,
       DIMACS.clauses = clauses,
       DIMACS.comments = ["Sudoku"]
     }
   where
     boardSize :: Int
-    boardSize = fromEnum size'
+    boardSize = fromEnum $ size puzzle
     
     blockSize' :: Int
-    blockSize' = blockSize size'
+    blockSize' = blockSize $ size puzzle
 
     clauses :: [DIMACS.Clause]
     clauses =
@@ -153,12 +146,12 @@ toCNF (Sudoku puzzle size') =
       [ [encodeVar' (Variable r c n)]
         | r <- [1 .. boardSize],
           c <- [1 .. boardSize],
-          let n = fromMaybe 0 (puzzle ^? element (r - 1) >>= (^? element (c - 1))),
+          let n = fromMaybe 0 (board puzzle ^? element (r - 1) >>= (^? element (c - 1))),
           n /= 0
       ]
 
-    encodeVar' :: Variable -> Int
-    encodeVar' = encodeVar size'
+    encodeVar' :: Variable -> DIMACS.Literal
+    encodeVar' = encodeVar puzzle
 
 sudokuFour :: Sudoku
 sudokuFour =

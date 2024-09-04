@@ -7,15 +7,13 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import Data.Text (Text)
-import Nonogram.Solver (Nonogram)
+import Nonogram (Nonogram)
 import Options
 import Problem
-import qualified SAT.CNF as SAT
-import qualified SAT.DIMACS.CNF as DIMACS
-import qualified SAT.DIMACS.Parser as DIMACS
-import SAT.Expr
-import SAT.Solver
-import Sudoku.Solver (Sudoku)
+import SAT (Expr(..))
+import qualified SAT
+import qualified SAT.DIMACS as DIMACS
+import Sudoku (Sudoku)
 import System.Console.Haskeline
 import System.Environment (getArgs)
 
@@ -28,13 +26,13 @@ showExprInfo :: (Show a, Ord a) => Expr a -> IO ()
 showExprInfo expr = do
   let cnf = SAT.toCNF expr
   putStrLn $ "CNF: " <> show cnf
-  let simplified = toSimple cnf
+  let simplified = SAT.toSimple cnf
   putStrLn $ "Simplified step 1: " <> show simplified
-  let simplified' = simplify simplified
+  let simplified' = SAT.simplify simplified
   putStrLn $ "Simplified step 2: " <> show simplified'
-  let satisfiable' = satisfiable expr
+  let satisfiable' = SAT.satisfiable expr
   putStrLn $ "Satisfiable: " <> show satisfiable'
-  let solutions = getSolutions expr
+  let solutions = SAT.getSolutions expr
   putStrLn $ "Solutions: " <> show solutions
 
 runInteractiveMode :: IO ()

@@ -1,12 +1,15 @@
-module SAT.CNF (toCNF) where
+module SAT.CNF (toCNF, toNNF) where
   
 import SAT.Expr
 
+-- https://en.wikipedia.org/wiki/Tseytin_transformation -> look into this
+
+-- https://hackage.haskell.org/package/picologic-0.3.0/docs/src/Picologic-Tseitin.html
 deMorgansLaws :: Expr a -> Expr a
 deMorgansLaws (Not (Not e)) = deMorgansLaws e
 deMorgansLaws (Not (And e1 e2)) = Or (deMorgansLaws $ Not e1) (deMorgansLaws $ Not e2)
 deMorgansLaws (Not (Or e1 e2)) = And (deMorgansLaws $ Not e1) (deMorgansLaws $ Not e2)
-deMorgansLaws (Not (Const b)) = Const $ not b
+deMorgansLaws (Not (Val b)) = Val $ not b
 deMorgansLaws (And e1 e2) = And (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Or e1 e2) = Or (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Not e) = Not $ deMorgansLaws e
@@ -26,3 +29,13 @@ toCNF expr
   | otherwise = toCNF expr'
   where
     expr' = distributiveLaws $ deMorgansLaws expr
+
+toNNF :: Expr a -> Expr a
+toNNF (Not (Not e)) = toNNF e
+toNNF (Not (And e1 e2)) = Or (toNNF $ Not e1) (toNNF $ Not e2)
+toNNF (Not (Or e1 e2)) = And (toNNF $ Not e1) (toNNF $ Not e2)
+toNNF (Not (Val b)) = Val $ not b
+toNNF (And e1 e2) = And (toNNF e1) (toNNF e2)
+toNNF (Or e1 e2) = Or (toNNF e1) (toNNF e2)
+toNNF (Not e) = Not $ toNNF e
+toNNF e = e

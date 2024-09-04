@@ -6,11 +6,8 @@ module Nonogram.Solver (exampleNonogram, Nonogram(..), Variable(..), Cell(..), C
 
 import Control.Lens
 import Data.Maybe (fromMaybe)
-import qualified SAT.CNF as CNF
-import qualified SAT.DIMACS.CNF as DIMACS
-import qualified SAT.Expr as Expr
-import SAT.Solver (Solution, checkValue)
-import SAT.Optimisers (uniqueOnly)
+import qualified SAT.DIMACS as DIMACS
+import qualified SAT
 import Data.List (transpose)
 
 data Cell = Filled | Unfilled | Unknown
@@ -89,13 +86,13 @@ data Variable = Variable
   }
   deriving (Eq, Show)
 
-encodeVar :: Nonogram -> Variable -> Int
+encodeVar :: Nonogram -> Variable -> DIMACS.Literal
 encodeVar (Nonogram rs cs _) (Variable r c f) = (r - 1) * boardWidth * 2 + (c - 1) * 2 + (if f == Filled then 2 else 1)
   where
     boardWidth :: Int
     boardWidth = max (length cs) (length rs)
 
-decodeSolution :: Nonogram -> Solution Int -> Nonogram
+decodeSolution :: Nonogram -> SAT.Solution DIMACS.Literal -> Nonogram
 decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' [[cellValue r c | c <- [1 .. length cols']] | r <- [1 .. length rows']]
   where
     cellValue :: Int -> Int -> Cell
@@ -105,9 +102,9 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
         xs -> error $ "Invalid values for cell (" ++ show r ++ ", " ++ show c ++ ")" ++ show xs
 
     checkValue' :: Int -> Bool
-    checkValue' = checkValue solution'
+    checkValue' = SAT.checkValue solution'
 
-    encodeVar' :: Variable -> Int
+    encodeVar' :: Variable -> DIMACS.Literal
     encodeVar' = encodeVar puzzle
     
     checkVar :: Variable -> Bool
@@ -116,13 +113,13 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
 toCNF :: Nonogram -> DIMACS.CNF
 toCNF puzzle =
   DIMACS.CNF
-    { DIMACS.numVars = rowSize * colSize * 2,
-      DIMACS.numClauses = length clauses,
+    { DIMACS.numVars = fromIntegral $ rowSize * colSize * 2,
+      DIMACS.numClauses = fromIntegral $ length clauses,
       DIMACS.clauses = clauses,
       DIMACS.comments = ["Nonogram"]
     }
   where
-    clauses = uniqueOnly $ concat [rowClauses, colClauses, cellClauses, cellUniqueClauses] -- ++ solutionClauses
+    clauses = SAT.uniqueOnly $ concat [rowClauses, colClauses, cellClauses, cellUniqueClauses] -- ++ solutionClauses
     
     cellClauses :: [DIMACS.Clause]
     cellClauses = 
@@ -146,7 +143,7 @@ toCNF puzzle =
 --          f /= Unknown
 --      ]
 
-    encodeVar' :: Variable -> Int
+    encodeVar' :: Variable -> DIMACS.Literal
     encodeVar' = encodeVar puzzle
 
     colSize :: Size
@@ -166,13 +163,13 @@ toCNF puzzle =
 -- [0, 0, 1, 0, 1]
 
 
-encodeRowConstraints :: (Variable -> Int) -> Size -> [Constraint] -> [DIMACS.Clause]
+encodeRowConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> [DIMACS.Clause]
 encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
   where
     encodeRow :: Int -> Constraint -> [DIMACS.Clause]
     encodeRow rowIndex = generatePossibleSolutions (encodeCell rowIndex) size
 
-    encodeCell :: Int -> Mask -> Int -> Int
+    encodeCell :: Int -> Mask -> Int -> DIMACS.Literal
     encodeCell rowIndex mask colIndex =
       let cell = fromMaybe (-1) (mask ^? element colIndex) -- potentially gives incorrect results
           row' = rowIndex
@@ -180,13 +177,13 @@ encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
        in encodeVar' (Variable (row' + 1) (col' + 1) (if cell >= 1 then Filled else Unfilled))
 
 -- issue here was i was finding the index with equality, whereas i had to pass it in as i needed referential in case two
-encodeColConstraints :: (Variable -> Int) -> Size -> [Constraint] -> [DIMACS.Clause]
+encodeColConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> [DIMACS.Clause]
 encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
   where
     encodeCol :: Int -> Constraint -> [DIMACS.Clause]
     encodeCol colIndex = generatePossibleSolutions (encodeCell colIndex) size
 
-    encodeCell :: Int -> Mask -> Int -> Int
+    encodeCell :: Int -> Mask -> Int -> DIMACS.Literal
     encodeCell colIndex mask rowIndex =
       let cell = fromMaybe (-1) (mask ^? element rowIndex) -- potentially gives incorrect results
           row' = rowIndex
@@ -195,10 +192,10 @@ encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
 
 -- columns had the same number of filled cells
 ---- https://www.kbyte.io/projects/201908_nonogram/
-generatePossibleSolutions :: (Mask -> Int -> Int) -> Size -> Constraint -> [DIMACS.Clause]
+generatePossibleSolutions :: (Mask -> Int -> DIMACS.Literal) -> Size -> Constraint -> [DIMACS.Clause]
 generatePossibleSolutions encodeCell size combinations =
   --- returns a list of AND clauses that need to be ORed together
-  let generate :: Constraint -> Int -> Int -> Mask -> [[Int]]
+  let generate :: Constraint -> Int -> Int -> Mask -> [[DIMACS.Literal]]
       generate [] _ _ mask = [map (encodeCell mask) [0 .. length mask - 1]]
       generate _ _ limit mask | limit >= length mask = []
       generate (c : cs) mark limit mask =
@@ -211,21 +208,16 @@ generatePossibleSolutions encodeCell size combinations =
 
       fillMask :: Mask -> Int -> Int -> Int -> Mask
       fillMask mask mark startPosition c = take startPosition mask ++ replicate c mark ++ drop (startPosition + c) mask
-   in DIMACS.clauses $ DIMACS.fromExpr $ convertToCnf $ generate combinations 1 0 (replicate size 0)
+   in toCNF' $ generate combinations 1 0 $ replicate size 0
   where
-    convertToOrExpr :: [[Int]] -> Expr.Expr Int
-    convertToOrExpr = foldr1 Expr.Or . map convertToAndExpr
+    convertToOrExpr :: [[DIMACS.Literal]] -> SAT.Expr DIMACS.Literal
+    convertToOrExpr = SAT.ors . map convertToAndExpr
 
-    convertToAndExpr :: [Int] -> Expr.Expr Int
-    convertToAndExpr = foldr1 Expr.And . map toExpr'
+    convertToAndExpr :: [DIMACS.Literal] -> SAT.Expr DIMACS.Literal
+    convertToAndExpr = SAT.ands . map SAT.toVar
 
-    toExpr' :: Int -> Expr.Expr Int
-    toExpr' n
-      | n < 0 = Expr.Not (Expr.Var (abs n))
-      | otherwise = Expr.Var n
-
-    convertToCnf :: [[Int]] -> Expr.Expr Int
-    convertToCnf = CNF.toCNF . convertToOrExpr
+    toCNF' :: [[DIMACS.Literal]] -> [DIMACS.Clause]
+    toCNF' = DIMACS.clauses . DIMACS.fromExpr . SAT.toCNF . convertToOrExpr
 
 exampleNonogram :: Nonogram
 exampleNonogram =

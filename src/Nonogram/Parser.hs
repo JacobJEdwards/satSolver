@@ -4,11 +4,11 @@ import Data.Text (Text)
 import Parser.Parsec
 import Nonogram.Solver (Nonogram(..))
 
-parseSudoku :: Parser Text Text Nonogram
-parseSudoku = undefined
+parseNonogram :: Parser Text Text Nonogram
+parseNonogram = undefined
 
 parse :: Text -> Maybe Nonogram
-parse input = case runParser parseSudoku input of
-  Result (_, sudoku) -> Just sudoku
+parse input = case runParser parseNonogram input of
+  Result (_, nonogram) -> Just nonogram
   Errors _ -> Nothing
   

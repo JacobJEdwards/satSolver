@@ -5,8 +5,8 @@ module SAT.Parser (parse) where
 import Control.Applicative ((<|>))
 import Data.Functor (($>))
 import Data.Text (Text)
-import Parser.Parsec
-import SAT.Expr
+import Parser
+import SAT.Expr (Expr(..))
 
 parse :: Text -> Maybe (Expr Int)
 parse input = case parseExpr input of
@@ -38,7 +38,7 @@ orOp :: Parser Text Text (Expr a -> Expr a -> Expr a)
 orOp = anySymbol ["∨", "or"] $> Or
 
 literal :: Parser Text Text (Expr a)
-literal = Const <$> (true <|> false)
+literal = Val <$> (true <|> false)
   where
     true = anySymbol ["true", "1"] $> True
     false = anySymbol ["false", "0"] $> False

@@ -23,46 +23,46 @@ type Solution a = [(a, Bool)]
 -- findFreeVariable (Not e) = findFreeVariable e
 -- findFreeVariable (And e1 e2) = findFreeVariable e1 <|> findFreeVariable e2
 -- findFreeVariable (Or e1 e2) = findFreeVariable e1 <|> findFreeVariable e2
--- findFreeVariable (Const _) = Nothing
+-- findFreeVariable (Val _) = Nothing
 
+-- due to haskell's laziness, this function will return the first free variable it finds
 findFreeVariable :: Expr a -> Maybe a
 findFreeVariable = listToMaybe . collectLiterals
 
+--substitute :: (Eq a) => a -> Bool -> Expr a -> Expr a
+--substitute var val expr = case expr of
+--  Var c
+--    | c == var -> Val val
+--    | otherwise -> Var c
+--  Not e' -> Not $ substitute var val e'
+--  And e1 e2 -> And (substitute var val e1) (substitute var val e2)
+--  Or e1 e2 -> Or (substitute var val e1) (substitute var val e2)
+--  Val b -> Val b
 substitute :: (Eq a) => a -> Bool -> Expr a -> Expr a
-substitute var val expr = case expr of
-  Var c
-    | c == var -> Const val
-    | otherwise -> Var c
-  Not e' -> Not $ substitute var val e'
-  And e1 e2 -> And (substitute var val e1) (substitute var val e2)
-  Or e1 e2 -> Or (substitute var val e1) (substitute var val e2)
-  Const b -> Const b
+substitute var val expr = expr >>= \c -> if c == var then Val val else Var c
   
 simplify :: Expr a -> Expr a
 simplify (Var c) = Var c
 simplify (Not e) = case simplify e of
-  Const b -> Const $ not b
+  Val b -> Val $ not b
   e' -> Not e'
 simplify (Or e1 e2) = case (simplify e1, simplify e2) of
-  (Const False, e') -> e'
-  (e', Const False) -> e'
-  (_, Const True) -> Const True
-  (Const True, _) -> Const True
+  (Val False, e') -> e'
+  (e', Val False) -> e'
+  (_, Val True) -> Val True
+  (Val True, _) -> Val True
   (e1', e2') -> Or e1' e2'
 simplify (And e1 e2) = case (simplify e1, simplify e2) of
-  (Const True, e') -> e'
-  (e', Const True) -> e'
-  (Const False, _) -> Const False
-  (_, Const False) -> Const False
+  (Val True, e') -> e'
+  (e', Val True) -> e'
+  (Val False, _) -> Val False
+  (_, Val False) -> Val False
   (e1', e2') -> And e1' e2'
-simplify (Const b) = Const b
+simplify (Val b) = Val b
 
-unConst :: Expr a -> Bool
-unConst (Const b) = b
-unConst _ = error "Not a constant"
 
 simplifyAndCheck :: Expr a -> Bool
-simplifyAndCheck = unConst . simplify
+simplifyAndCheck = unVal . simplify
 
 toSimple :: (Ord a) => Expr a -> Expr a
 toSimple = literalElimination . toCNF . fst . unitPropagate

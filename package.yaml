@@ -26,6 +26,8 @@ dependencies:
 - bytestring
 - lens >= 5.2.3
 - haskeline
+- mtl
+- QuickCheck
 
 ghc-options:
 - -Wall

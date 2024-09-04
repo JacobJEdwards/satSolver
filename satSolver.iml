@@ -67,5 +67,8 @@
     <orderEntry type="library" name="vector-stream-0.1.0.1" level="project" />
     <orderEntry type="library" name="semigroups-0.20" level="project" />
     <orderEntry type="library" name="void-0.7.3" level="project" />
+    <orderEntry type="library" name="QuickCheck-2.14.3" level="project" />
+    <orderEntry type="library" name="random-1.2.1.2" level="project" />
+    <orderEntry type="library" name="splitmix-0.1.0.5" level="project" />
   </component>
 </module>
