@@ -5,37 +5,53 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="79aeb709-7bf3-4f3e-a522-7d4e492baf9d" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/examples/sudoku" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/sudoku2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/sudoku3" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/sudoku4" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/sudoku5" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/Nonogram/Parser.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/Nonogram/Solver.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/Options.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/Problem.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/SAT/CNF.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/SAT/DIMACS/CNF.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/SAT/DIMACS/Parser.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/SAT/Optimisers.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/SAT/Parser.hs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/OneTuple_0_4_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/StateVar_1_2_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/adjunctions_4_4_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/assoc_1_1_1.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/base_orphans_0_9_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/bifunctors_5_6_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/call_stack_0_4_0.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/comonad_5_0_8.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/contravariant_1_5_5.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/distributive_0_6_2_1.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/free_5_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/hashable_1_4_4_0.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/indexed_traversable_0_1_4.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/indexed_traversable_instances_0_1_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/invariant_0_6_3.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/kan_extensions_5_2_6.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/lens_5_2_3.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/os_string_2_0_3.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/parallel_3_2_2_0.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/primitive_0_8_0_0.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/profunctors_5_6_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/reflection_2_1_8.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/semigroupoids_6_0_1.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/semigroups_0_20.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/strict_0_5.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/tagged_0_8_8.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/th_abstraction_0_5_0_0.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/these_1_2_1.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/transformers_base_0_4_6.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/transformers_compat_0_7_2.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/unordered_containers_0_2_20.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/vector_0_13_1_0.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/vector_stream_0_1_0_1.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/void_0_7_3.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/Main.hs" beforeDir="false" afterPath="$PROJECT_DIR$/app/Main.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/package.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/satSolver.cabal" beforeDir="false" afterPath="$PROJECT_DIR$/satSolver.cabal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/satSolver.iml" beforeDir="false" afterPath="$PROJECT_DIR$/satSolver.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Expr.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Expr.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Lib.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Solver.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Parser/DIMACS.hs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Parser/Error.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser/Error.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Parser/Input.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser/Input.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Parser/Parsec.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser/Parsec.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Parser/Parser.hs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Parser/Result.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser/Result.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Parser/Sudoku.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sudoku/Parser.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Sudoku.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sudoku/Solver.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sudoku" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test1" beforeDir="false" afterPath="$PROJECT_DIR$/examples/dimacs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Nonogram/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Nonogram/Parser.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Nonogram/Solver.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Nonogram/Solver.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Problem.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Problem.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SAT/DIMACS/CNF.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/DIMACS/CNF.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SAT/DIMACS/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/DIMACS/Parser.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SAT/Expr.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Expr.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SAT/Optimisers.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Optimisers.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SAT/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Parser.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SAT/Solver.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Solver.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Sudoku/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sudoku/Parser.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Sudoku/Solver.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sudoku/Solver.hs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -82,7 +98,7 @@
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -117,7 +133,10 @@
       <workItem from="1725190033063" duration="1750000" />
       <workItem from="1725221358061" duration="7030000" />
       <workItem from="1725270674319" duration="10719000" />
-      <workItem from="1725294803681" duration="39254000" />
+      <workItem from="1725294803681" duration="41064000" />
+      <workItem from="1725439479455" duration="2455000" />
+      <workItem from="1725441939511" duration="126000" />
+      <workItem from="1725442076077" duration="3661000" />
     </task>
     <servers />
   </component>

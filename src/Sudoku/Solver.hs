@@ -1,30 +1,45 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Sudoku.Solver
   ( sudokuFour,
     sudokuNine,
-    Sudoku.Solver.solve,
     Sudoku (..),
     Size (..),
     Variable (..),
+    toCNF,
+    decodeSolution,
+    encodeVar,
+    Board
   )
 where
 
 import Control.Lens
 import Data.Maybe (fromMaybe)
-import Problem
 import qualified SAT.DIMACS.CNF as DIMACS
-import SAT.Solver (Solution, getSolutions, checkValue)
+import SAT.Solver (Solution, checkValue)
 import SAT.Optimisers (uniqueOnly)
 
-instance Problem Sudoku where
-  solve :: Sudoku -> Maybe Sudoku
-  solve = Sudoku.Solver.solve
+type Board = [[Int]]
 
-  example :: Sudoku
-  example = sudokuFour
+data Sudoku = Sudoku
+  { board :: Board,
+    size :: Size
+  }
+  deriving (Eq)
 
+instance Show Sudoku where
+  show :: Sudoku -> String
+  show (Sudoku board' _) = unlines $ map (unwords . map show) board'
+
+data Variable = Variable
+  { row :: Int,
+    col :: Int,
+    num :: Int
+  }
+  deriving (Eq, Show)
+  
 data Size = FourByFour | NineByNine | SixteenBySixteen deriving (Eq, Show, Ord)
 
 instance Enum Size where
@@ -52,32 +67,15 @@ blockSize size' = case size' of
   NineByNine -> 3
   SixteenBySixteen -> 4
   
-type Board = [[Int]]
 
-data Sudoku = Sudoku
-  { board :: Board,
-    size :: Size
-  }
-  deriving (Eq)
-
-instance Show Sudoku where
-  show :: Sudoku -> String
-  show (Sudoku board' _) = unlines $ map (unwords . map show) board'
-
-data Variable = Variable
-  { row :: Int,
-    col :: Int,
-    num :: Int
-  }
-  deriving (Eq, Show)
-
-encodeVar :: Size -> Variable -> Int
-encodeVar s (Variable r c n) = (r - 1) * boardSize * boardSize + (c - 1) * boardSize + (n - 1)
+encodeVar :: Sudoku -> Variable -> Int
+encodeVar puzzle (Variable r c n) = (r - 1) * boardSize * boardSize + (c - 1) * boardSize + (n - 1)
   where
-    boardSize = fromEnum s
+    boardSize = fromEnum $ size puzzle
 
-decodeSolution :: Size -> Solution Int -> Sudoku
-decodeSolution size' solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] | r <- [1 .. boardSize]] size'
+
+decodeSolution :: Sudoku -> Solution Int -> Sudoku
+decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] | r <- [1 .. boardSize]] size'
   where
     boardSize :: Int
     boardSize = fromEnum size'
@@ -91,13 +89,16 @@ decodeSolution size' solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] 
         xs -> if c == 1 && r == 1 then last xs else error $ "Multiple valid numbers for cell (" ++ show r ++ ", " ++ show c ++ ")" ++ show xs
     
     encodeVar' :: Variable -> Int
-    encodeVar' = encodeVar size'
+    encodeVar' = encodeVar puzzle
     
     checkValue' :: Int -> Bool
     checkValue' = checkValue solution
     
     checkVar :: Variable -> Bool
     checkVar = checkValue' . encodeVar'
+    
+    size' :: Size
+    size' = size puzzle
     
 
 toCNF :: Sudoku -> DIMACS.CNF
@@ -187,6 +188,3 @@ sudokuNine =
         ],
       size = NineByNine
     }
-
-solve :: Sudoku -> Maybe Sudoku
-solve puzzle = decodeSolution (size puzzle) <$> getSolutions (DIMACS.toExpr $ DIMACS.clauses $ toCNF puzzle)

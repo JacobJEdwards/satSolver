@@ -53,10 +53,10 @@ eliminateLiteral c e p = case e of
       | c == v && polarity == Negative = (Const False, Set.singleton (v, False))
       | otherwise = (e, mempty)
 
-eliminateLiterals :: (Ord a) => Expr a -> Set a -> Expr a
+eliminateLiterals :: forall a. (Ord a) => Expr a -> Set a -> Expr a
 eliminateLiterals = foldr eliminate
   where
-    eliminate :: (Ord a) => a -> Expr a -> Expr a
+    eliminate :: a -> Expr a -> Expr a
     eliminate c e' = fst . eliminateLiteral c e' $ fromMaybe (error "Literal not found") (fst $ literalPolarity c e')
 
 literalElimination :: (Ord a) => Expr a -> Expr a
@@ -74,10 +74,10 @@ clauses e = [e]
 allUnitClauses :: Expr a -> [(a, Bool)]
 allUnitClauses = mapMaybe unitClause . clauses
 
-unitPropagate :: (Ord a) => Expr a -> (Expr a, Set (a, Bool))
+unitPropagate :: forall a. (Ord a) => Expr a -> (Expr a, Set (a, Bool))
 unitPropagate e = unitPropagate' e mempty
   where
-    unitPropagate' :: (Ord a) => Expr a -> Set (a, Bool) -> (Expr a, Set (a, Bool))
+    unitPropagate' :: Expr a -> Set (a, Bool) -> (Expr a, Set (a, Bool))
     unitPropagate' e' xs = case allUnitClauses e' of
       [] -> (e', xs)
       (c', b') : _ ->
@@ -86,10 +86,10 @@ unitPropagate e = unitPropagate' e mempty
          in unitPropagate' newExpr newSet
 
 -- https://buffered.io/posts/a-better-nub/
-uniqueOnly :: (Ord a) => [a] -> [a]
+uniqueOnly :: forall a. (Ord a) => [a] -> [a]
 uniqueOnly = go mempty
   where
-    go :: (Ord a) => Set a -> [a] -> [a]
+    go :: Set a -> [a] -> [a]
     go _ [] = []
     go s (x : xs)
       | x `Set.member` s = go s xs

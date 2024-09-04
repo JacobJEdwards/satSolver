@@ -7,31 +7,26 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import Data.Text (Text)
-import qualified Nonogram.Solver as Nonogram
+import Nonogram.Solver (Nonogram)
 import Options
-import Parser.Parsec
-import SAT.CNF
+import Problem
+import qualified SAT.CNF as SAT
 import qualified SAT.DIMACS.CNF as DIMACS
 import qualified SAT.DIMACS.Parser as DIMACS
 import SAT.Expr
-import SAT.Parser
 import SAT.Solver
-import qualified Sudoku.Parser as Sudoku
-import qualified Sudoku.Solver as Sudoku
+import Sudoku.Solver (Sudoku)
 import System.Console.Haskeline
 import System.Environment (getArgs)
 
-showResult :: (Show a, Ord a) => Result Text Text (Text, Expr a) -> IO ()
-showResult result = case result of
-  Result (_, expr) -> do
-    putStrLn $ "Parsed: " <> show expr
-    showExprInfo expr
-  Errors errs -> do
-    putStrLn $ "Errors: " <> show errs
+showResult :: (Show a, Ord a) =>  Maybe (Expr a) -> IO ()
+showResult = \case
+  Just expr -> showExprInfo expr
+  Nothing -> putStrLn "Failed to parse expression"
 
 showExprInfo :: (Show a, Ord a) => Expr a -> IO ()
 showExprInfo expr = do
-  let cnf = toCNF expr
+  let cnf = SAT.toCNF expr
   putStrLn $ "CNF: " <> show cnf
   let simplified = toSimple cnf
   putStrLn $ "Simplified step 1: " <> show simplified
@@ -54,7 +49,7 @@ runInteractiveMode = runInputT defaultSettings loop
         Nothing -> return ()
         Just "exit" -> return ()
         Just input -> do
-          let result = SAT.Parser.parse $ fromString input
+          let result = parse $ fromString input :: Maybe (Expr Int)
           liftIO $ showResult result
           loop
 
@@ -74,13 +69,13 @@ runFile file = do
 
 runSudoku :: Text -> IO ()
 runSudoku file = do
-  sudokuResult <- Sudoku.parseSudokuFile file
-  
+  sudokuResult <- parseFile file :: IO (Maybe Sudoku)
+
   let sudoku' = fromMaybe (error "Invalid sudoku") sudokuResult
   putStrLn "Parsed sudoku:"
   print sudoku'
-  
-  let solution = Sudoku.solve sudoku'
+
+  let solution = solve sudoku'
   case solution of
     Just solution' -> do
       putStrLn "Solution:"
@@ -89,10 +84,10 @@ runSudoku file = do
 
 runNonogram :: Text -> IO ()
 runNonogram _ = do
-  let nonogram = Nonogram.exampleNonogram
+  let nonogram = example :: Nonogram
   putStrLn "Example nonogram:"
   print nonogram
-  let solution = Nonogram.solve nonogram
+  let solution = solve nonogram
   case solution of
     Just solution' -> do
       print solution'
@@ -105,7 +100,7 @@ run = do
   case mode of
     Interactive -> runInteractiveMode
     Demo -> runDemoMode
-    RunImmediate expr -> showResult $ SAT.Parser.parse expr
+    RunImmediate expr -> showResult (parse expr :: Maybe (Expr Int))
     File file -> runFile file
     Options.Sudoku file -> runSudoku file
     Options.Nonogram file -> runNonogram file

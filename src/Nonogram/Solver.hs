@@ -1,28 +1,17 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 
-module Nonogram.Solver (Nonogram.Solver.solve, Nonogram (..), Variable (..), exampleNonogram, toCNF, generatePossibleSolutions) where
+module Nonogram.Solver (exampleNonogram, Nonogram(..), Variable(..), Cell(..), Constraint, Size, Mask, encodeVar, decodeSolution, toCNF) where
 
 import Control.Lens
-import Data.List (transpose)
 import Data.Maybe (fromMaybe)
-import Problem
 import qualified SAT.CNF as CNF
 import qualified SAT.DIMACS.CNF as DIMACS
 import qualified SAT.Expr as Expr
-import SAT.Solver (Solution, getSolutions, checkValue)
+import SAT.Solver (Solution, checkValue)
 import SAT.Optimisers (uniqueOnly)
-
-type Constraint = [Int]
-
-type Size = Int
-
-instance Problem Nonogram where
-  solve :: Nonogram -> Maybe Nonogram
-  solve = Nonogram.Solver.solve
-
-  example :: Nonogram
-  example = exampleNonogram
+import Data.List (transpose)
 
 data Cell = Filled | Unfilled | Unknown
   deriving (Eq)
@@ -48,9 +37,15 @@ instance Enum Cell where
 instance Bounded Cell where
   minBound :: Cell
   minBound = Unknown
-  
+
   maxBound :: Cell
   maxBound = Filled
+
+type Constraint = [Int]
+
+type Size = Int
+
+type Mask = [Int]
 
 data Nonogram = Nonogram
   { rows :: [Constraint],
@@ -170,7 +165,6 @@ toCNF puzzle =
 -- [0, 1, 0, 0, 1]
 -- [0, 0, 1, 0, 1]
 
-type Mask = [Int]
 
 encodeRowConstraints :: (Variable -> Int) -> Size -> [Constraint] -> [DIMACS.Clause]
 encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
@@ -217,16 +211,16 @@ generatePossibleSolutions encodeCell size combinations =
 
       fillMask :: Mask -> Int -> Int -> Int -> Mask
       fillMask mask mark startPosition c = take startPosition mask ++ replicate c mark ++ drop (startPosition + c) mask
-   in DIMACS.fromExpr $ convertToCnf $ generate combinations 1 0 (replicate size 0)
+   in DIMACS.clauses $ DIMACS.fromExpr $ convertToCnf $ generate combinations 1 0 (replicate size 0)
   where
     convertToOrExpr :: [[Int]] -> Expr.Expr Int
     convertToOrExpr = foldr1 Expr.Or . map convertToAndExpr
 
     convertToAndExpr :: [Int] -> Expr.Expr Int
-    convertToAndExpr = foldr1 Expr.And . map toExpr
+    convertToAndExpr = foldr1 Expr.And . map toExpr'
 
-    toExpr :: Int -> Expr.Expr Int
-    toExpr n
+    toExpr' :: Int -> Expr.Expr Int
+    toExpr' n
       | n < 0 = Expr.Not (Expr.Var (abs n))
       | otherwise = Expr.Var n
 
@@ -317,6 +311,3 @@ exampleNonogram =
 --    cols = [[1]],
 --    solution = [[Unknown]]
 --  }
-
-solve :: Nonogram -> Maybe Nonogram
-solve puzzle = decodeSolution puzzle <$> getSolutions (DIMACS.toExpr $ DIMACS.clauses $ toCNF puzzle)

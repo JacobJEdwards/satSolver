@@ -8,22 +8,27 @@ import Data.Text (Text)
 import Parser.Parsec
 import SAT.Expr
 
-parse :: Text -> Result Text Text (Text, Expr Char)
-parse = runParser expr
+parse :: Text -> Maybe (Expr Int)
+parse input = case parseExpr input of
+  Result (_, expr') -> Just expr'
+  Errors _ -> Nothing
 
-expr :: Parser Text Text (Expr Char)
+parseExpr :: Text -> Result Text Text (Text, Expr Int)
+parseExpr = runParser expr
+
+expr :: Parser Text Text (Expr Int)
 expr = chainl1 term orOp
 
-term :: Parser Text Text (Expr Char)
+term :: Parser Text Text (Expr Int)
 term = chainl1 factor andOp
 
-factor :: Parser Text Text (Expr Char)
+factor :: Parser Text Text (Expr Int)
 factor = parens expr <|> notOp <|> literal <|> var
 
-var :: Parser Text Text (Expr Char)
-var = Var <$> letter
+var :: Parser Text Text (Expr Int)
+var = Var <$> (read <$> some digit)
 
-notOp :: Parser Text Text (Expr Char)
+notOp :: Parser Text Text (Expr Int)
 notOp = Not <$> (anySymbol ["¬", "not"] *> factor)
 
 andOp :: Parser Text Text (Expr a -> Expr a -> Expr a)

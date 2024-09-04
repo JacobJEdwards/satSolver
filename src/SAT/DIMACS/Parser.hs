@@ -1,15 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module SAT.DIMACS.Parser (parseCNF, parseFile) where
+module SAT.DIMACS.Parser (parseCNF, parseFile, parse) where
 
 import Parser.Parsec
-import SAT.DIMACS.CNF
 import Data.Text (Text)
 import qualified Data.Text as Text
+import SAT.DIMACS.CNF (CNF(..), Clause)
 
 import Data.Char (isDigit)
-
 
 parseComment :: Parser Text Text Text
 parseComment = symbol "c" *> (Text.pack <$> many (satisfy (/= '\n'))) <* char '\n'
@@ -46,7 +45,6 @@ parseClause = do
 parseClauses :: Parser Text Text [Clause]
 parseClauses = many parseClause
 
-
 parseCNF' :: Parser Text Text CNF
 parseCNF' = do
   comments' <- parseComments
@@ -56,6 +54,12 @@ parseCNF' = do
   
 parseCNF :: Text -> Result Text Text (Text, CNF)
 parseCNF = runParser parseCNF'
+
+parse :: Text -> Maybe CNF
+parse input = case parseCNF input of
+  Result (_, cnf) -> Just cnf
+  _ -> Nothing
+
 
 parseFile :: Text -> IO (Maybe CNF)
 parseFile filename = do

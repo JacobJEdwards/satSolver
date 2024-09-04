@@ -1,3 +1,5 @@
+{-#LANGUAGE ScopedTypeVariables#-}
+
 module SAT.Solver
   ( satisfiable,
     simplify,
@@ -35,7 +37,7 @@ substitute var val expr = case expr of
   And e1 e2 -> And (substitute var val e1) (substitute var val e2)
   Or e1 e2 -> Or (substitute var val e1) (substitute var val e2)
   Const b -> Const b
-
+  
 simplify :: Expr a -> Expr a
 simplify (Var c) = Var c
 simplify (Not e) = case simplify e of
@@ -66,9 +68,7 @@ toSimple :: (Ord a) => Expr a -> Expr a
 toSimple = literalElimination . toCNF . fst . unitPropagate
 
 getSolutions :: (Ord a, Show a) => Expr a -> Maybe (Solution a)
-getSolutions expr = case getSolutions' expr' (Set.toList xs) of
-  Just xs' -> Just $ reverse xs'
-  Nothing -> Nothing
+getSolutions expr = getSolutions' expr' $ Set.toList xs
   where
     (expr', xs) = unitPropagate expr
 
@@ -85,7 +85,7 @@ getSolutions expr = case getSolutions' expr' (Set.toList xs) of
               (_, Just sol) -> Just sol
               _ -> Nothing
 
-checkValue :: (Eq a) => [(a, Bool)] -> a -> Bool
+checkValue :: (Eq a) => Solution a -> a -> Bool
 checkValue solution value = (value, True) `elem` solution
 
 satisfiable :: (Ord a, Show a) => Expr a -> Bool

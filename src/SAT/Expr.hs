@@ -15,7 +15,7 @@ where
 
 import Control.Applicative (Alternative(..))
 
-data Expr a where 
+data Expr a where
   Var :: a -> Expr a
   Not :: Expr a -> Expr a
   And :: Expr a -> Expr a -> Expr a
@@ -24,7 +24,7 @@ data Expr a where
 
 deriving instance Eq a => Eq (Expr a)
 deriving instance Ord a => Ord (Expr a)
-  
+
 infixr 3 .||.
 
 (.||.) :: Expr a -> Expr a -> Expr a
@@ -42,10 +42,10 @@ infixr 3 .!.
 
 showDuo :: (Show a) => String -> Expr a -> Expr a -> String
 showDuo op e1 e2 = "(" ++ show e1 ++ " " ++ op ++ " " ++ show e2 ++ ")"
-     
+
 showAnd :: (Show a) => Expr a -> Expr a -> String
 showAnd = showDuo "∧"
-      
+
 showOr :: (Show a) => Expr a -> Expr a -> String
 showOr = showDuo "∨"
 
@@ -56,7 +56,7 @@ instance (Show a) => Show (Expr a) where
   show (And e1 e2) = showAnd e1 e2
   show (Or e1 e2) = showOr e1 e2
   show (Const b) = show b
-  
+
 data Polarity = Positive | Negative | Mixed deriving (Eq, Ord, Show)
 
 instance Semigroup Polarity where
@@ -76,7 +76,7 @@ instance Semigroup (Expr a) where
 instance Monoid (Expr a) where
   mempty :: Expr a
   mempty = Const False
-  
+
 instance Functor Expr where
   fmap :: (a -> b) -> Expr a -> Expr b
   fmap f (Var v) = Var $ f v

@@ -1,9 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Sudoku.Parser (parseSudoku, parseSudokuFile, parse) where
+module Sudoku.Parser (parse) where
 
 import Data.Text (Text)
-import qualified Data.Text as Text
 import Parser.Parsec
 import Sudoku.Solver (Sudoku(..))
 
@@ -23,8 +22,4 @@ parse :: Text -> Maybe Sudoku
 parse input = case runParser parseSudoku input of
   Result (_, sudoku) -> Just sudoku
   Errors _ -> Nothing
-
-parseSudokuFile :: Text -> IO (Maybe Sudoku)
-parseSudokuFile filename = do
-  contents <- readFile (Text.unpack filename)
-  return $ parse (Text.pack contents)
+  
