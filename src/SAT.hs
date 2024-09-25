@@ -1,14 +1,16 @@
-module SAT (
-  module SAT.Expr,
-  module SAT.Solver,
-  module SAT.Parser,
-  module SAT.CNF,
-  module SAT.Optimisers
-)where
+{-# LANGUAGE Safe #-}
 
-import SAT.Expr
-import SAT.Solver
-import SAT.Parser
+module SAT
+  ( module SAT.Expr,
+    module SAT.Solver,
+    module SAT.Parser,
+    module SAT.CNF,
+    module SAT.Optimisers,
+  )
+where
+
 import SAT.CNF
+import SAT.Expr
 import SAT.Optimisers
-
+import SAT.Parser
+import SAT.Solver

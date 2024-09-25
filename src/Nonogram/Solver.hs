@@ -1,17 +1,34 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Safe #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Nonogram.Solver (exampleNonogram, Nonogram(..), Variable(..), Cell(..), Constraint, Size, Mask, encodeVar, decodeSolution, toCNF) where
+module Nonogram.Solver
+  ( exampleNonogram,
+    type Nonogram (..),
+    type Variable (..),
+    type Cell (..),
+    type Constraint,
+    type Size,
+    type Mask,
+    encodeVar,
+    decodeSolution,
+    Nonogram.Solver.toCNF,
+  )
+where
 
-import Control.Lens
+import Control.Lens (element, imap, (^?))
+import Data.Kind (type Type)
 import Data.Maybe (fromMaybe)
-import qualified SAT.DIMACS as DIMACS
-import qualified SAT
-import Data.List (transpose)
+import SAT (ands, checkValue, ors, toCNF, toVar, uniqueOnly, type Expr, type SolutionMap)
+import SAT.DIMACS qualified as DIMACS
 
+type Cell :: Type
 data Cell = Filled | Unfilled | Unknown
-  deriving (Eq)
+  deriving stock (Eq)
 
 instance Show Cell where
   show :: Cell -> String
@@ -38,61 +55,42 @@ instance Bounded Cell where
   maxBound :: Cell
   maxBound = Filled
 
+type Constraint :: Type
 type Constraint = [Int]
 
+type Size :: Type
 type Size = Int
 
+type Mask :: Type
 type Mask = [Int]
 
+type Nonogram :: Type
 data Nonogram = Nonogram
   { rows :: [Constraint],
     cols :: [Constraint],
     solution :: [[Cell]]
   }
-  deriving (Eq)
+  deriving stock (Eq)
 
 instance Show Nonogram where
   show :: Nonogram -> String
   show (Nonogram rows' cols' solution') = "cols: " ++ show cols' ++ "\n" ++ "rows: " ++ show rows' ++ "\n" ++ "solution: \n" ++ unlines (map (unwords . map show) solution')
 
--- instance Show Nonogram where
---  show :: Nonogram -> String
---  show (Nonogram rows' cols' solution') =
---    unlines $ formatColumns cols' ++ formatGrid rows' solution'
-
-formatColumns :: [Constraint] -> [String]
-formatColumns cols' =
-  let maxLength = maximum (map length cols')
-      formattedCols = map (padLeft maxLength . map show) cols'
-      transposedCols = transpose formattedCols
-   in map unwords transposedCols
-
-formatGrid :: [Constraint] -> [[Cell]] -> [String]
-formatGrid = zipWith formatRow
-
-formatRow :: Constraint -> [Cell] -> String
-formatRow row' solution' =
-  let rowStr = unwords $ map show row'
-      solutionStr = unwords $ map show solution'
-   in rowStr ++ " " ++ solutionStr
-
-padLeft :: Int -> [String] -> [String]
-padLeft n strs = replicate (n - length strs) " " ++ strs
-
+type Variable :: Type
 data Variable = Variable
   { row :: Int,
     col :: Int,
     filled :: Cell
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 encodeVar :: Nonogram -> Variable -> DIMACS.Literal
-encodeVar (Nonogram rs cs _) (Variable r c f) = (r - 1) * boardWidth * 2 + (c - 1) * 2 + (if f == Filled then 2 else 1)
+encodeVar (Nonogram rs cs _) (Variable r c f) = (r - 1) * boardWidth * 2 + (c - 1) * 2 + fromEnum f
   where
     boardWidth :: Int
     boardWidth = max (length cs) (length rs)
 
-decodeSolution :: Nonogram -> SAT.Solution DIMACS.Literal -> Nonogram
+decodeSolution :: Nonogram -> SolutionMap DIMACS.Literal -> Nonogram
 decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' [[cellValue r c | c <- [1 .. length cols']] | r <- [1 .. length rows']]
   where
     cellValue :: Int -> Int -> Cell
@@ -106,7 +104,7 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
 
     encodeVar' :: Variable -> DIMACS.Literal
     encodeVar' = encodeVar puzzle
-    
+
     checkVar :: Variable -> Bool
     checkVar = checkValue' . encodeVar'
 
@@ -120,13 +118,12 @@ toCNF puzzle =
     }
   where
     clauses = SAT.uniqueOnly $ concat [rowClauses, colClauses, cellClauses, cellUniqueClauses] -- ++ solutionClauses
-    
     cellClauses :: [DIMACS.Clause]
-    cellClauses = 
+    cellClauses =
       [[encodeVar' (Variable r c Filled), encodeVar' (Variable r c Unfilled)] | r <- [1 .. rowSize], c <- [1 .. colSize]]
-    
+
     cellUniqueClauses :: [DIMACS.Clause]
-    cellUniqueClauses =  [[-encodeVar' (Variable r c Filled), -encodeVar' (Variable r c Unfilled)] | r <- [1 .. rowSize], c <- [1 .. colSize]]
+    cellUniqueClauses = [[-encodeVar' (Variable r c Filled), -encodeVar' (Variable r c Unfilled)] | r <- [1 .. rowSize], c <- [1 .. colSize]]
 
     rowClauses :: [DIMACS.Clause]
     rowClauses = encodeRowConstraints encodeVar' rowSize $ rows puzzle
@@ -134,14 +131,14 @@ toCNF puzzle =
     colClauses :: [DIMACS.Clause]
     colClauses = encodeColConstraints encodeVar' colSize $ cols puzzle
 
---    solutionClauses :: [DIMACS.Clause]
---    solutionClauses =
---      [ [encodeVar' (Variable r c f)]
---        | r <- [1 .. rowSize],
---          c <- [1 .. colSize],
---          let f = fromMaybe Unknown (solution' ^? ix (c - 1) >>= (^? element (r - 1))),
---          f /= Unknown
---      ]
+    --    solutionClauses :: [DIMACS.Clause]
+    --    solutionClauses =
+    --      [ [encodeVar' (Variable r c f)]
+    --        | r <- [1 .. rowSize],
+    --          c <- [1 .. colSize],
+    --          let f = fromMaybe Unknown (solution' ^? ix (c - 1) >>= (^? element (r - 1))),
+    --          f /= Unknown
+    --      ]
 
     encodeVar' :: Variable -> DIMACS.Literal
     encodeVar' = encodeVar puzzle
@@ -161,7 +158,6 @@ toCNF puzzle =
 -- [0, 1, 0, 1, 0]
 -- [0, 1, 0, 0, 1]
 -- [0, 0, 1, 0, 1]
-
 
 encodeRowConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> [DIMACS.Clause]
 encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
@@ -210,11 +206,11 @@ generatePossibleSolutions encodeCell size combinations =
       fillMask mask mark startPosition c = take startPosition mask ++ replicate c mark ++ drop (startPosition + c) mask
    in toCNF' $ generate combinations 1 0 $ replicate size 0
   where
-    convertToOrExpr :: [[DIMACS.Literal]] -> SAT.Expr DIMACS.Literal
-    convertToOrExpr = SAT.ors . map convertToAndExpr
+    convertToOrExpr :: [[DIMACS.Literal]] -> Expr DIMACS.Literal
+    convertToOrExpr = ors . map convertToAndExpr
 
-    convertToAndExpr :: [DIMACS.Literal] -> SAT.Expr DIMACS.Literal
-    convertToAndExpr = SAT.ands . map SAT.toVar
+    convertToAndExpr :: [DIMACS.Literal] -> Expr DIMACS.Literal
+    convertToAndExpr = ands . map toVar
 
     toCNF' :: [[DIMACS.Literal]] -> [DIMACS.Clause]
     toCNF' = DIMACS.clauses . DIMACS.fromExpr . SAT.toCNF . convertToOrExpr

@@ -1,14 +1,16 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Safe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Parser.Parsec
-  ( Parser (..),
+  ( type Parser (..),
     satisfy,
     char,
     digit,
@@ -29,9 +31,9 @@ module Parser.Parsec
     letters,
     eof,
     lookahead,
-    Result (..),
-    Error (..),
-    Input (..),
+    type Result (..),
+    type Error (..),
+    type Input (..),
     chainl1,
     manyTill,
     someTill,
@@ -44,15 +46,15 @@ module Parser.Parsec
   )
 where
 
-import Control.Applicative (Alternative (..), many, some, optional)
+import Control.Applicative (many, optional, some, type Alternative (empty, (<|>)))
 import Data.Char (isDigit, isLetter, isSpace)
+import Data.Kind (type Type)
 import Data.String (fromString)
+import Parser.Error (type Error (type EndOfInput, type Unexpected))
+import Parser.Input (type Input (head, null, uncons, unpack, type Token))
+import Parser.Result (type Result (type Errors, type Result))
 
-import Parser.Input
-import Parser.Error
-import Parser.Result
-
-
+type Parser :: Type -> Type -> Type -> Type
 newtype Parser i e o = Parser {runParser :: i -> Result i e (i, o)}
 
 instance Functor (Parser i e) where
@@ -96,78 +98,98 @@ instance (Semigroup a) => Semigroup (Parser i e a) where
 instance (Semigroup a) => Monoid (Parser i e a) where
   mempty :: Parser i e a
   mempty = empty
-  
-  
+
 satisfy :: (Input i, Token i ~ a) => (a -> Bool) -> Parser i e a
 satisfy predicate = Parser $ \input -> case uncons input of
   Just (x, xs) | predicate x -> Result (xs, x)
   Just _ -> Errors [Unexpected input]
   Nothing -> Errors [EndOfInput]
+{-# INLINEABLE satisfy #-}
 
 char :: (Input i, Token i ~ Char) => Char -> Parser i e Char
 char = satisfy . (==)
+{-# INLINEABLE char #-}
 
 digit :: (Input i, Token i ~ Char) => Parser i e Char
 digit = satisfy isDigit
+{-# INLINEABLE digit #-}
 
 digits :: (Input i, Token i ~ Char) => Parser i e i
 digits = fromString <$> some digit
+{-# INLINEABLE digits #-}
 
 string :: (Input i, Token i ~ Char) => i -> Parser i e i
 string t = fromString <$> traverse char (unpack t)
+{-# INLINEABLE string #-}
 
 spaceNoNewline :: (Input i, Token i ~ Char) => Parser i e Char
 spaceNoNewline = satisfy $ \c -> isSpace c && c /= '\n'
+{-# INLINEABLE spaceNoNewline #-}
 
 spacesNoNewline :: (Input i, Token i ~ Char) => Parser i e i
 spacesNoNewline = fromString <$> many spaceNoNewline
+{-# INLINEABLE spacesNoNewline #-}
 
-space ::(Input i, Token i ~ Char) => Parser i e Char
+space :: (Input i, Token i ~ Char) => Parser i e Char
 space = satisfy isSpace
+{-# INLINEABLE space #-}
 
-spaces ::(Input i, Token i ~ Char) => Parser i e i
+spaces :: (Input i, Token i ~ Char) => Parser i e i
 spaces = fromString <$> many space
+{-# INLINEABLE spaces #-}
 
-letter ::(Input i, Token i ~ Char) => Parser i e Char
+letter :: (Input i, Token i ~ Char) => Parser i e Char
 letter = satisfy isLetter
+{-# INLINEABLE letter #-}
 
-letters ::(Input i, Token i ~ Char) => Parser i e i
+letters :: (Input i, Token i ~ Char) => Parser i e i
 letters = fromString <$> some letter
+{-# INLINEABLE letters #-}
 
-symbol ::(Input i, Token i ~ Char) => i -> Parser i e i
+symbol :: (Input i, Token i ~ Char) => i -> Parser i e i
 symbol = ignoreSpaces . string
+{-# INLINEABLE symbol #-}
 
 anySymbol :: (Input i, Token i ~ Char) => [i] -> Parser i e i
 anySymbol = foldr1 (<|>) . fmap symbol
+{-# INLINEABLE anySymbol #-}
 
 between :: Parser i e o -> Parser i e o' -> Parser i e o'' -> Parser i e o''
 between open close p = open *> p <* close
+{-# INLINEABLE between #-}
 
 betweenSymbols :: (Input i, Token i ~ Char) => i -> i -> Parser i e a -> Parser i e a
 betweenSymbols open close = between (symbol open) (symbol close)
+{-# INLINEABLE betweenSymbols #-}
 
-brackets ::(Input i, Token i ~ Char)=> Parser i e a -> Parser i e a
+brackets :: (Input i, Token i ~ Char) => Parser i e a -> Parser i e a
 brackets = betweenSymbols "[" "]"
+{-# INLINEABLE brackets #-}
 
 braces :: (Input i, Token i ~ Char) => Parser i e a -> Parser i e a
 braces = betweenSymbols "{" "}"
+{-# INLINEABLE braces #-}
 
 parens :: (Input i, Token i ~ Char) => Parser i e a -> Parser i e a
 parens = betweenSymbols "(" ")"
+{-# INLINEABLE parens #-}
 
 ignoreSpaces :: (Input i, Token i ~ Char) => Parser i e a -> Parser i e a
 ignoreSpaces = between spaces spaces
+{-# INLINEABLE ignoreSpaces #-}
 
 eof :: (Input i) => Parser i e ()
 eof = Parser $ \case
-     input | Parser.Input.null input -> Result (input, ())
-     _ -> Errors [EndOfInput]
+  input | Parser.Input.null input -> Result (input, ())
+  _ -> Errors [EndOfInput]
+{-# INLINEABLE eof #-}
 
 lookahead :: (Input i, Token i ~ Char) => Parser i i (Maybe Char)
 lookahead = Parser $ \case
-  input | Parser.Input.null input -> Errors [EndOfInput]
-        | otherwise -> Result (input, Parser.Input.head input)
-
+  input
+    | Parser.Input.null input -> Errors [EndOfInput]
+    | otherwise -> Result (input, Parser.Input.head input)
+{-# INLINEABLE lookahead #-}
 
 chainl1 :: Parser i e a -> Parser i e (a -> a -> a) -> Parser i e a
 chainl1 p op = Parser $ \input ->
@@ -194,6 +216,8 @@ try p = Parser $ \input -> case runParser p input of
 
 someTill :: Parser i e a -> Parser i e b -> Parser i e [a]
 someTill p end = (:) <$> p <*> manyTill p end
+{-# INLINEABLE someTill #-}
 
 newline :: (Input i, Token i ~ Char) => Parser i e Char
 newline = char '\n'
+{-# INLINEABLE newline #-}

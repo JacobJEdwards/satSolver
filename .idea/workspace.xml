@@ -5,28 +5,73 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="79aeb709-7bf3-4f3e-a522-7d4e492baf9d" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/Nonogram.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/Parser.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/SAT.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/SAT/DIMACS.hs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/Sudoku.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/OneTuple_0_4_2.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/directory_1_3_8_5.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/QuickCheck_2_14_3.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/ghc_boot_th_9_6_6.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/StateVar_1_2_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/adjunctions_4_4_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/assoc_1_1_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/base_orphans_0_9_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/bifunctors_5_6_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/call_stack_0_4_0.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/comonad_5_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/contravariant_1_5_5.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/directory_1_3_8_4.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/distributive_0_6_2_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/free_5_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/ghc_boot_th_9_6_5.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/hashable_1_4_4_0.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/indexed_traversable_0_1_4.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/indexed_traversable_instances_0_1_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/invariant_0_6_3.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/kan_extensions_5_2_6.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/lens_5_2_3.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/os_string_2_0_3.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/primitive_0_8_0_0.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/profunctors_5_6_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/random_1_2_1_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/reflection_2_1_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/semigroupoids_6_0_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/semigroups_0_20.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/splitmix_0_1_0_5.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/strict_0_5.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/tagged_0_8_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/th_abstraction_0_5_0_0.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/these_1_2_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/transformers_base_0_4_6.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/transformers_compat_0_7_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/unordered_containers_0_2_20.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/vector_0_13_1_0.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/vector_stream_0_1_0_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/void_0_7_3.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/Main.hs" beforeDir="false" afterPath="$PROJECT_DIR$/app/Main.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/package.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/satSolver.cabal" beforeDir="false" afterPath="$PROJECT_DIR$/satSolver.cabal" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/satSolver.iml" beforeDir="false" afterPath="$PROJECT_DIR$/satSolver.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Nonogram.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Nonogram.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Nonogram/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Nonogram/Parser.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Nonogram/Solver.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Nonogram/Solver.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Options.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Options.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Parser/Error.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser/Error.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Parser/Input.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser/Input.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Parser/Parsec.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser/Parsec.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Parser/Result.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Parser/Result.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Problem.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Problem.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SAT.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/SAT/CNF.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/CNF.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SAT/DIMACS.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/DIMACS.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/SAT/DIMACS/CNF.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/DIMACS/CNF.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/SAT/DIMACS/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/DIMACS/Parser.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/SAT/Expr.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Expr.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/SAT/Optimisers.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Optimisers.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/SAT/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Parser.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/SAT/Solver.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/SAT/Solver.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Sudoku.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sudoku.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Sudoku/Parser.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sudoku/Parser.hs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Sudoku/Solver.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sudoku/Solver.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/stack.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/stack.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/stack.yaml.lock" beforeDir="false" afterPath="$PROJECT_DIR$/stack.yaml.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test/Spec.hs" beforeDir="false" afterPath="$PROJECT_DIR$/test/Spec.hs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -90,8 +135,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-9823dce3aa75-b114ca120d71-intellij.indexing.shared.core-IU-242.21829.142" />
-        <option value="bundled-js-predefined-d6986cc7102b-7c0b70fcd90d-JavaScript-IU-242.21829.142" />
+        <option value="bundled-jdk-9823dce3aa75-28b599e66164-intellij.indexing.shared.core-IU-242.22855.74" />
+        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-IU-242.22855.74" />
       </set>
     </attachedChunks>
   </component>
@@ -113,7 +158,12 @@
       <workItem from="1725439479455" duration="2455000" />
       <workItem from="1725441939511" duration="126000" />
       <workItem from="1725442076077" duration="3661000" />
-      <workItem from="1725486787263" duration="1263000" />
+      <workItem from="1725486787263" duration="10824000" />
+      <workItem from="1725546225518" duration="4182000" />
+      <workItem from="1725574485888" duration="1347000" />
+      <workItem from="1725701118286" duration="7000" />
+      <workItem from="1726067260232" duration="10703000" />
+      <workItem from="1727094619496" duration="2207000" />
     </task>
     <servers />
   </component>

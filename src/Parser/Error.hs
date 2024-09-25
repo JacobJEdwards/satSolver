@@ -1,9 +1,25 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE Safe #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 
-module Parser.Error (Error(..)) where
+module Parser.Error (type Error(..)) where
   
-data Error i e = EndOfInput | Unexpected i | CustomError e | Empty deriving (Eq)
+import Data.Kind (Type)
+  
+type Error :: Type -> Type -> Type
+data Error :: Type -> Type -> Type where
+  EndOfInput :: Error i e
+  Unexpected :: i -> Error i e
+  CustomError :: e -> Error i e
+  Empty :: Error i e
+
+deriving stock instance (Eq i, Eq e) => Eq (Error i e)
 
 instance (Show i, Show e) => Show (Error i e) where
   show :: Error i e -> String

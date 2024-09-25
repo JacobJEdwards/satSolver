@@ -1,22 +1,24 @@
-{-#LANGUAGE ScopedTypeVariables#-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE Safe #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module SAT.Solver
   ( satisfiable,
-    simplify,
+    propagateValue,
     toSimple,
     getSolutions,
-    Solution,
+    type SolutionMap,
     checkValue,
   )
 where
 
+import Data.Map.Strict qualified as Map
 import Data.Maybe (listToMaybe)
-import qualified Data.Set as Set
-import SAT.CNF
-import SAT.Expr
-import SAT.Optimisers
-
-type Solution a = [(a, Bool)]
+import SAT.CNF (toCNF)
+import SAT.Expr (unVal, type Expr (And, Not, Or, Val, Var), type SolutionMap)
+import SAT.Optimisers (collectLiterals, literalElimination, unitPropagate)
 
 -- findFreeVariable :: Expr a -> Maybe a
 -- findFreeVariable (Var c) = Just c
@@ -25,75 +27,76 @@ type Solution a = [(a, Bool)]
 -- findFreeVariable (Or e1 e2) = findFreeVariable e1 <|> findFreeVariable e2
 -- findFreeVariable (Val _) = Nothing
 
--- due to haskell's laziness, this function will return the first free variable it finds
+-- due to haskell's laziness, this function will return the first free variable it finds (but check this is the case)
+-- big o notation: O(n)
 findFreeVariable :: Expr a -> Maybe a
 findFreeVariable = listToMaybe . collectLiterals
 
---substitute :: (Eq a) => a -> Bool -> Expr a -> Expr a
---substitute var val expr = case expr of
---  Var c
---    | c == var -> Val val
---    | otherwise -> Var c
---  Not e' -> Not $ substitute var val e'
---  And e1 e2 -> And (substitute var val e1) (substitute var val e2)
---  Or e1 e2 -> Or (substitute var val e1) (substitute var val e2)
---  Val b -> Val b
-substitute :: (Eq a) => a -> Bool -> Expr a -> Expr a
-substitute var val expr = expr >>= \c -> if c == var then Val val else Var c
-  
-simplify :: Expr a -> Expr a
-simplify (Var c) = Var c
-simplify (Not e) = case simplify e of
+-- most expensive operation of course (90 somethings % during profiling)
+substitute :: forall a. (Eq a) => a -> Bool -> Expr a -> Expr a
+substitute var val expr = expr >>= replace
+  where
+    replace :: a -> Expr a
+    replace c
+      | c == var = Val val
+      | otherwise = Var c
+{-# INLINEABLE substitute #-}
+
+-- propagate all of the values upwards (is there a type class for this?)
+propagateValue :: Expr a -> Expr a
+propagateValue (Var c) = Var c
+propagateValue (Not e) = case propagateValue e of
   Val b -> Val $ not b
   e' -> Not e'
-simplify (Or e1 e2) = case (simplify e1, simplify e2) of
+propagateValue (Or e1 e2) = case (propagateValue e1, propagateValue e2) of
   (Val False, e') -> e'
   (e', Val False) -> e'
   (_, Val True) -> Val True
   (Val True, _) -> Val True
   (e1', e2') -> Or e1' e2'
-simplify (And e1 e2) = case (simplify e1, simplify e2) of
+propagateValue (And e1 e2) = case (propagateValue e1, propagateValue e2) of
   (Val True, e') -> e'
   (e', Val True) -> e'
   (Val False, _) -> Val False
   (_, Val False) -> Val False
   (e1', e2') -> And e1' e2'
-simplify (Val b) = Val b
+propagateValue (Val b) = Val b
 
-
-simplifyAndCheck :: Expr a -> Bool
-simplifyAndCheck = unVal . simplify
+propagateAndCheck :: Expr a -> Bool
+propagateAndCheck = unVal . propagateValue
 
 toSimple :: (Ord a) => Expr a -> Expr a
 toSimple = literalElimination . toCNF . fst . unitPropagate
+{-# INLINEABLE toSimple #-}
 
-getSolutions :: (Ord a, Show a) => Expr a -> Maybe (Solution a)
-getSolutions expr = getSolutions' expr' $ Set.toList xs
+getSolutions :: forall a. (Ord a) => Expr a -> Maybe (SolutionMap a)
+getSolutions = uncurry go . unitPropagate
   where
-    (expr', xs) = unitPropagate expr
-
-    getSolutions' :: (Ord a, Show a) => Expr a -> Solution a -> Maybe (Solution a)
-    getSolutions' expr'' xs' = case findFreeVariable expr'' of
-      Nothing -> if simplifyAndCheck expr'' then Just xs' else Nothing
+    go :: Expr a -> SolutionMap a -> Maybe (SolutionMap a)
+    go expr'' m' = case findFreeVariable expr'' of
+      Nothing -> if propagateAndCheck expr'' then Just m' else Nothing
       Just c ->
-        let trueGuess = simplify $ substitute c True expr''
-            falseGuess = simplify $ substitute c False expr''
-            trueSolution = getSolutions' trueGuess ((c, True) : xs')
-            falseSolution = getSolutions' falseGuess ((c, False) : xs')
+        let trueGuess = propagateValue $ substitute c True expr''
+            falseGuess = propagateValue $ substitute c False expr''
+            trueSolution = go trueGuess $ Map.insert c True m'
+            falseSolution = go falseGuess $ Map.insert c False m'
          in case (trueSolution, falseSolution) of
               (Just sol, _) -> Just sol
               (_, Just sol) -> Just sol
               _ -> Nothing
+{-# INLINEABLE getSolutions #-}
 
-checkValue :: (Eq a) => Solution a -> a -> Bool
-checkValue solution value = (value, True) `elem` solution
+checkValue :: (Ord a) => SolutionMap a -> a -> Bool
+checkValue = flip $ Map.findWithDefault False
 
+-- test effect of strictness at some point
 satisfiable :: (Ord a, Show a) => Expr a -> Bool
-satisfiable expr = case findFreeVariable expr' of
-  Nothing -> simplifyAndCheck expr'
+satisfiable !expr = case findFreeVariable expr' of
+  Nothing -> propagateAndCheck expr'
   Just c ->
-    let trueGuess = simplify $ substitute c True expr'
-        falseGuess = simplify $ substitute c False expr'
+    let trueGuess = propagateValue $ substitute c True expr'
+        falseGuess = propagateValue $ substitute c False expr'
      in satisfiable trueGuess || satisfiable falseGuess
   where
-    expr' = toSimple expr
+    !expr' = toSimple expr
+{-# INLINEABLE satisfiable #-}

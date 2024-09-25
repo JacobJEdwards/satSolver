@@ -1,3 +1,5 @@
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -6,21 +8,19 @@ module Main (main) where
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromMaybe)
 import Data.String (fromString)
-import Data.Text (Text)
-import Nonogram (Nonogram)
-import Options
-import Problem
-import SAT (Expr(..))
-import qualified SAT
-import qualified SAT.DIMACS as DIMACS
-import Sudoku (Sudoku)
-import System.Console.Haskeline
+import Data.Text (type Text)
+import Nonogram (type Nonogram)
+import Options (parseArgs, type Flag (Demo, File, Interactive, Nonogram, RunImmediate, Sudoku))
+import Problem (example, parse, parseFile, solve, toCNF)
+import SAT (type Expr (And, Not, Or, Var))
+import SAT qualified
+import SAT.DIMACS qualified as DIMACS
+import Sudoku (type Sudoku)
+import System.Console.Haskeline (defaultSettings, getInputLine, outputStrLn, runInputT, type InputT)
 import System.Environment (getArgs)
 
-showResult :: (Show a, Ord a) =>  Maybe (Expr a) -> IO ()
-showResult = \case
-  Just expr -> showExprInfo expr
-  Nothing -> putStrLn "Failed to parse expression"
+showResult :: (Show a, Ord a) => Maybe (Expr a) -> IO ()
+showResult = maybe (putStrLn "Failed to parse expression") showExprInfo
 
 showExprInfo :: (Show a, Ord a) => Expr a -> IO ()
 showExprInfo expr = do
@@ -28,8 +28,8 @@ showExprInfo expr = do
   putStrLn $ "CNF: " <> show cnf
   let simplified = SAT.toSimple cnf
   putStrLn $ "Simplified step 1: " <> show simplified
-  let simplified' = SAT.simplify simplified
-  putStrLn $ "Simplified step 2: " <> show simplified'
+  let simplified' = SAT.propagateValue simplified
+  putStrLn $ "Propagated: " <> show simplified'
   let satisfiable' = SAT.satisfiable expr
   putStrLn $ "Satisfiable: " <> show satisfiable'
   let solutions = SAT.getSolutions expr
@@ -65,32 +65,29 @@ runFile file = do
       showExprInfo $ DIMACS.toExpr $ DIMACS.clauses cnf
     Nothing -> error "Failed to parse CNF"
 
-runSudoku :: Text -> IO ()
+runSudoku :: Maybe Text -> IO ()
 runSudoku file = do
-  sudokuResult <- parseFile file :: IO (Maybe Sudoku)
+  sudokuResult <- case file of
+    Just file' -> parseFile file' :: IO (Maybe Sudoku)
+    Nothing -> do
+      putStrLn "No file provided, using default sudoku"
+      return $ pure example
 
   let sudoku' = fromMaybe (error "Invalid sudoku") sudokuResult
   putStrLn "Parsed sudoku:"
   print sudoku'
-
+  
   let solution = solve sudoku'
-  case solution of
-    Just solution' -> do
-      putStrLn "Solution:"
-      print solution'
-    Nothing -> putStrLn "No solution found"
+  maybe (putStrLn "No solution found") print solution
 
-runNonogram :: Text -> IO ()
+runNonogram :: Maybe Text -> IO ()
 runNonogram _ = do
   let nonogram = example :: Nonogram
   putStrLn "Example nonogram:"
   print nonogram
   let solution = solve nonogram
-  case solution of
-    Just solution' -> do
-      print solution'
-    Nothing -> putStrLn "No solution found"
-
+  maybe (putStrLn "No solution found") print solution
+  
 run :: IO ()
 run = do
   args <- getArgs

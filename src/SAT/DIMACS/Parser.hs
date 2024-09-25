@@ -1,14 +1,16 @@
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Safe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module SAT.DIMACS.Parser (parseCNF, parseFile, parse) where
 
-import Parser
-import Data.Text (Text)
-import qualified Data.Text as Text
-import SAT.DIMACS.CNF (CNF(..), Clause, Literal)
-
 import Data.Char (isDigit)
+import Data.Text (type Text)
+import Data.Text qualified as Text
+import Parser (char, digit, many, optional, runParser, satisfy, some, spaces, symbol, type Parser, type Result (Result))
+import SAT.DIMACS.CNF (type CNF (CNF, clauses, comments, numClauses, numVars), type Clause, type Literal)
 
 parseComment :: Parser Text Text Text
 parseComment = symbol "c" *> (Text.pack <$> many (satisfy (/= '\n'))) <* char '\n'
@@ -37,7 +39,7 @@ parseLiteral = do
   return n'
 
 parseClause :: Parser Text Text Clause
-parseClause = do 
+parseClause = do
   parsedClause <- some (parseLiteral <* spaces)
   _ <- char '0'
   return parsedClause
@@ -50,8 +52,14 @@ parseCNF' = do
   comments' <- parseComments
   (vars, clauses') <- parseHeader
   parsedClauses <- parseClauses
-  return $ CNF vars clauses' parsedClauses comments'
-  
+  return $
+    CNF
+      { numVars = vars,
+        numClauses = clauses',
+        clauses = parsedClauses,
+        comments = comments'
+      }
+
 parseCNF :: Text -> Result Text Text (Text, CNF)
 parseCNF = runParser parseCNF'
 
@@ -59,7 +67,6 @@ parse :: Text -> Maybe CNF
 parse input = case parseCNF input of
   Result (_, cnf) -> Just cnf
   _ -> Nothing
-
 
 parseFile :: Text -> IO (Maybe CNF)
 parseFile filename = do

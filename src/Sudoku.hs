@@ -1,8 +1,10 @@
-module Sudoku (
-  module Sudoku.Solver,
-  module Sudoku.Parser
-) where
-  
-import Sudoku.Solver
-import Sudoku.Parser
+{-# LANGUAGE Safe #-}
 
+module Sudoku
+  ( module Sudoku.Solver,
+    module Sudoku.Parser,
+  )
+where
+
+import Sudoku.Parser
+import Sudoku.Solver

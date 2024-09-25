@@ -1,12 +1,20 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE Safe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 
-module Parser.Result (Result(..)) where
-  
-import Parser.Error
+module Parser.Result (type Result (..)) where
+
+import Control.Applicative (type Alternative (empty, (<|>)))
+import Data.Kind (type Type)
 import Data.List (intercalate)
-import Control.Applicative (Alternative(..))
-  
+import Parser.Error (type Error (type Empty))
+
+type Result :: Type -> Type -> Type -> Type
 data Result i e a = Errors [Error i e] | Result a
 
 instance (Show a, Show e, Show i) => Show (Result i e a) where
@@ -32,7 +40,7 @@ instance Alternative (Result i e) where
   empty :: Result i e a
   empty = Errors [Empty]
 
-  (<|>) :: Result i e a -> Result i e a ->Result i e a
+  (<|>) :: Result i e a -> Result i e a -> Result i e a
   (<|>) (Errors errs) (Errors errs') = Errors $ errs <> errs'
   (<|>) l@(Result _) _ = l
   (<|>) _ r@(Result _) = r
@@ -55,4 +63,3 @@ instance Monad (Result i e) where
   (>>=) :: Result i e a -> (a -> Result i e b) -> Result i e b
   (>>=) (Errors errs) _ = Errors errs
   (>>=) (Result res) f = f res
-

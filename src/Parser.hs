@@ -1,11 +1,14 @@
-module Parser (
-  module Parser.Parsec,
-  module Parser.Error,
-  module Parser.Result,
-  module Parser.Input
-) where
+{-# LANGUAGE Safe #-}
 
-import Parser.Parsec
+module Parser
+  ( module Parser.Parsec,
+    module Parser.Error,
+    module Parser.Result,
+    module Parser.Input,
+  )
+where
+
 import Parser.Error
-import Parser.Result
 import Parser.Input
+import Parser.Parsec
+import Parser.Result

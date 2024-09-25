@@ -1,6 +1,9 @@
+{-# LANGUAGE Safe #-}
+{-# LANGUAGE ExplicitNamespaces #-}
+
 module SAT.CNF (toCNF, toNNF) where
-  
-import SAT.Expr
+
+import SAT.Expr (type Expr(Not, And, Or, Val))
 
 -- https://en.wikipedia.org/wiki/Tseytin_transformation -> look into this
 
@@ -29,6 +32,7 @@ toCNF expr
   | otherwise = toCNF expr'
   where
     expr' = distributiveLaws $ deMorgansLaws expr
+{-# INLINEABLE toCNF #-}
 
 toNNF :: Expr a -> Expr a
 toNNF (Not (Not e)) = toNNF e

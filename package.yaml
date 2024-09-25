@@ -22,12 +22,14 @@ description:         Please see the README on GitHub at <https://github.com/jaco
 dependencies:
 - base >= 4.7 && < 5
 - containers
+- vector
 - text
 - bytestring
 - lens >= 5.2.3
 - haskeline
 - mtl
 - QuickCheck
+- parallel
 
 ghc-options:
 - -Wall
@@ -38,7 +40,9 @@ ghc-options:
 - -Wmissing-export-lists
 - -Wmissing-home-modules
 - -Wpartial-fields
+- -Wmissing-import-lists
 - -Wredundant-constraints
+- -Wnoncanonical-monad-instances
 
 library:
   source-dirs: src
