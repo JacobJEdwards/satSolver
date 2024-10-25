@@ -2,7 +2,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Safe #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -12,7 +11,7 @@ module Sudoku.Solver
     type Sudoku (..),
     type Size (..),
     type Variable (..),
-    toCNF,
+    toDIMACS,
     decodeSolution,
     encodeVar,
     type Board,
@@ -22,8 +21,9 @@ where
 import Control.Lens (element, (^?))
 import Data.Kind (type Type)
 import Data.Maybe (fromMaybe)
-import SAT (checkValue, uniqueOnly, type SolutionMap)
+import SAT (checkValue, uniqueOnly, type Solutions)
 import SAT.DIMACS qualified as DIMACS
+import Debug.Trace (trace)
 
 type Board :: Type
 type Board = [[Int]]
@@ -79,7 +79,7 @@ encodeVar puzzle (Variable r c n) = (r - 1) * boardSize * boardSize + (c - 1) * 
   where
     boardSize = fromEnum $ size puzzle
 
-decodeSolution :: Sudoku -> SolutionMap DIMACS.Literal -> Sudoku
+decodeSolution :: Sudoku -> Solutions DIMACS.Literal -> Sudoku
 decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] | r <- [1 .. boardSize]] $ size puzzle
   where
     boardSize :: Int
@@ -102,9 +102,9 @@ decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]]
     checkVar :: Variable -> Bool
     checkVar = checkValue' . encodeVar'
 
-toCNF :: Sudoku -> DIMACS.CNF
-toCNF puzzle =
-  DIMACS.CNF
+toDIMACS :: Sudoku -> DIMACS.DIMACS
+toDIMACS puzzle =
+  DIMACS.DIMACS
     { DIMACS.numVars = fromIntegral $ boardSize * boardSize * boardSize,
       DIMACS.numClauses = fromIntegral $ length clauses,
       DIMACS.clauses = clauses,

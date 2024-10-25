@@ -1,5 +1,4 @@
 {-# LANGUAGE ExplicitNamespaces #-}
-{-# LANGUAGE Safe #-}
 
 module Nonogram.Parser (parse) where
 

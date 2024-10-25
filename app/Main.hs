@@ -11,9 +11,10 @@ import Data.String (fromString)
 import Data.Text (type Text)
 import Nonogram (type Nonogram)
 import Options (parseArgs, type Flag (Demo, File, Interactive, Nonogram, RunImmediate, Sudoku))
-import Problem (example, parse, parseFile, solve, toCNF)
+import Problem (example, parse, parseFile, solve, isSatisfiable)
 import SAT (type Expr (And, Not, Or, Var))
 import SAT qualified
+import SAT.CNF qualified
 import SAT.DIMACS qualified as DIMACS
 import Sudoku (type Sudoku)
 import System.Console.Haskeline (defaultSettings, getInputLine, outputStrLn, runInputT, type InputT)
@@ -22,17 +23,15 @@ import System.Environment (getArgs)
 showResult :: (Show a, Ord a) => Maybe (Expr a) -> IO ()
 showResult = maybe (putStrLn "Failed to parse expression") showExprInfo
 
-showExprInfo :: (Show a, Ord a) => Expr a -> IO ()
+showExprInfo :: (Show a, Ord a, Eq a) => Expr a -> IO ()
 showExprInfo expr = do
-  let cnf = SAT.toCNF expr
+  let cnf = SAT.CNF.toCNF expr
   putStrLn $ "CNF: " <> show cnf
-  let simplified = SAT.toSimple cnf
-  putStrLn $ "Simplified step 1: " <> show simplified
-  let simplified' = SAT.propagateValue simplified
-  putStrLn $ "Propagated: " <> show simplified'
-  let satisfiable' = SAT.satisfiable expr
+  let freeVar = SAT.findFreeVariable cnf
+  putStrLn $ "Free variable: " <> show freeVar
+  let satisfiable' = SAT.satisfiable cnf
   putStrLn $ "Satisfiable: " <> show satisfiable'
-  let solutions = SAT.getSolutions expr
+  let solutions = SAT.getSolutions cnf
   putStrLn $ "Solutions: " <> show solutions
 
 runInteractiveMode :: IO ()
@@ -53,7 +52,26 @@ runInteractiveMode = runInputT defaultSettings loop
 
 runDemoMode :: IO ()
 runDemoMode = do
-  let expr = And (Var 'A') (Or (Var 'B') (Not (Var 'C')))
+  let expr = And 
+              (Or 
+                  (And (Var 'A') (Not (Var 'B'))) 
+                  (Or (Var 'C') (And (Var 'D') (Var 'E')))
+              ) 
+              (Or 
+                  (Not 
+                      (And 
+                          (Or (Var 'F') (Not (Var 'G'))) 
+                          (And (Var 'H') (Not (Var 'I')))
+                      )
+                  ) 
+                  (And 
+                      (Or (Var 'J') (Var 'K')) 
+                      (Not 
+                          (And (Var 'L') (Or (Var 'M') (Not (Var 'N'))))
+                      )
+                  )
+              )
+
   putStrLn $ "Demo expression: " <> show expr
   showExprInfo expr
 
@@ -76,7 +94,6 @@ runSudoku file = do
   let sudoku' = fromMaybe (error "Invalid sudoku") sudokuResult
   putStrLn "Parsed sudoku:"
   print sudoku'
-  
   let solution = solve sudoku'
   maybe (putStrLn "No solution found") print solution
 

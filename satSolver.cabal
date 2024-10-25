@@ -41,8 +41,11 @@ library
       SAT.DIMACS.CNF
       SAT.DIMACS.Parser
       SAT.Expr
+      SAT.Old.Optimisers
+      SAT.Old.Solver
       SAT.Optimisers
       SAT.Parser
+      SAT.Polarity
       SAT.Solver
       Sudoku
       Sudoku.Parser

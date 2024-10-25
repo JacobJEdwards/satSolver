@@ -1,9 +1,27 @@
-{-# LANGUAGE Safe #-}
-{-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveTraversable #-}
 
-module SAT.CNF (toCNF, toNNF) where
+module SAT.CNF (applyLaws, toCNF, CNF(CNF), Clause, Literal(Pos, Neg, Const)) where
 
-import SAT.Expr (type Expr(Not, And, Or, Val))
+import SAT.Expr (type Expr(Not, And, Or, Val, Var))
+import Data.Kind (Type)
+
+-- data cnf is list of clauses
+
+-- consider moving these into vector or seq
+type CNF :: Type -> Type
+newtype CNF a = CNF [Clause a]
+  deriving stock (Eq, Show, Ord, Functor, Foldable, Traversable)
+
+type Clause a = [Literal a] 
+
+type Literal :: Type -> Type
+data Literal a = Pos a | Neg a | Const Bool
+  deriving stock (Eq, Show, Ord, Functor, Foldable, Traversable)
 
 -- https://en.wikipedia.org/wiki/Tseytin_transformation -> look into this
 
@@ -26,20 +44,31 @@ distributiveLaws (And e1 e2) = And (distributiveLaws e1) (distributiveLaws e2)
 distributiveLaws (Not e) = Not $ distributiveLaws e
 distributiveLaws e = e
 
-toCNF :: (Eq a) => Expr a -> Expr a
-toCNF expr
+applyLaws :: (Eq a) => Expr a -> Expr a
+applyLaws expr
   | expr == expr' = expr
-  | otherwise = toCNF expr'
+  | otherwise = applyLaws expr'
   where
     expr' = distributiveLaws $ deMorgansLaws expr
-{-# INLINEABLE toCNF #-}
+{-# INLINEABLE applyLaws #-}
 
-toNNF :: Expr a -> Expr a
-toNNF (Not (Not e)) = toNNF e
-toNNF (Not (And e1 e2)) = Or (toNNF $ Not e1) (toNNF $ Not e2)
-toNNF (Not (Or e1 e2)) = And (toNNF $ Not e1) (toNNF $ Not e2)
-toNNF (Not (Val b)) = Val $ not b
-toNNF (And e1 e2) = And (toNNF e1) (toNNF e2)
-toNNF (Or e1 e2) = Or (toNNF e1) (toNNF e2)
-toNNF (Not e) = Not $ toNNF e
-toNNF e = e
+
+toCNF :: forall a. (Eq a, Show a) => Expr a -> CNF a
+toCNF expr = CNF $ toClauses cnf
+  where 
+    cnf :: Expr a
+    cnf = applyLaws expr
+    
+    toClauses :: Expr a -> [Clause a]
+    toClauses (And e1 e2) = toClauses e1 <> toClauses e2
+    toClauses e = [toClause e]
+    
+    toClause :: Expr a -> Clause a
+    toClause (Or e1 e2) = toClause e1 <> toClause e2
+    toClause e = [toLiteral e]
+    
+    toLiteral :: Expr a -> Literal a
+    toLiteral (Not (Var n)) = Neg n
+    toLiteral (Var n) = Pos n
+    toLiteral l = error $ "Invalid literal" ++ show l
+{-# INLINEABLE toCNF #-}

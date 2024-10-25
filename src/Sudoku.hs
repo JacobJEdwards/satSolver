@@ -1,4 +1,3 @@
-{-# LANGUAGE Safe #-}
 
 module Sudoku
   ( module Sudoku.Solver,

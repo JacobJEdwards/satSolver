@@ -1,4 +1,3 @@
-{-# LANGUAGE Safe #-}
 
 module Nonogram
   ( module Nonogram.Solver,

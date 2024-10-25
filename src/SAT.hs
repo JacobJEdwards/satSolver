@@ -1,5 +1,3 @@
-{-# LANGUAGE Safe #-}
-
 module SAT
   ( module SAT.Expr,
     module SAT.Solver,

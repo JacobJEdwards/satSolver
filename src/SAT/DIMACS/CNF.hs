@@ -7,12 +7,16 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
-module SAT.DIMACS.CNF (toExpr, fromExpr, type Clause, type CNF (..), exampleCNF, type Literal) where
+module SAT.DIMACS.CNF (toExpr, fromExpr, type Clause, type DIMACS (..), exampleDIMACS, type Literal, toCNF, fromCNF) where
 
 import Data.Kind (type Type)
 import Data.Text (type Text)
 import SAT.Expr (type Expr (And, Not, Or, Var))
+import SAT.CNF (type CNF(CNF))
+import SAT.CNF qualified as CNF
+import Data.Set qualified as Set
 
 type Literal :: Type
 type Literal = Int
@@ -20,8 +24,8 @@ type Literal = Int
 type Clause :: Type
 type Clause = [Literal]
 
-type CNF :: Type
-data CNF = CNF
+type DIMACS :: Type
+data DIMACS = DIMACS
   { numVars :: Integer,
     numClauses :: Integer,
     clauses :: [Clause],
@@ -40,10 +44,10 @@ toExpr = foldr1 And . map toOr
       | n < 0 = Not $ Var $ abs n
       | otherwise = Var n
 
-fromExpr :: Expr Literal -> CNF
+fromExpr :: Expr Literal -> DIMACS
 fromExpr expr =
-  CNF
-    { numVars = -1, -- fix
+  DIMACS
+    { numVars = numVars',
       numClauses = fromIntegral $ length clauseList,
       clauses = clauseList,
       comments = ["This is a CNF formula generated from an expression."]
@@ -64,6 +68,46 @@ fromExpr expr =
     fromLiteral (Not (Var n)) = negate n
     fromLiteral (Var n) = n
     fromLiteral _ = error "Invalid literal"
+    
+    numVars' :: Integer
+    numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList
+    
+toCNF :: DIMACS -> CNF Literal
+toCNF = CNF . toCNF' . clauses
+  where
+    toCNF' :: [Clause] -> [CNF.Clause Literal]
+    toCNF' = map toClause
+    
+    toClause :: Clause -> CNF.Clause Literal
+    toClause = map toLiteral
+    
+    toLiteral :: Literal -> CNF.Literal Literal
+    toLiteral n
+      | n < 0 = CNF.Neg $ abs n
+      | otherwise = CNF.Pos n
 
-exampleCNF :: CNF
-exampleCNF = CNF 3 2 [[1, 2], [-1, 3]] ["This is an example CNF formula."]
+fromCNF :: CNF Literal -> DIMACS
+fromCNF (CNF clauses') =
+  DIMACS
+    { numVars = numVars',
+      numClauses = fromIntegral $ length clauses',
+      clauses = clauseList,
+      comments = ["This is a CNF formula generated from a CNF formula."]
+    }
+  where
+    clauseList :: [Clause]
+    clauseList = map fromClause clauses'
+
+    fromClause :: CNF.Clause Literal -> Clause
+    fromClause = map fromLiteral
+
+    fromLiteral :: CNF.Literal Literal -> Literal
+    fromLiteral (CNF.Neg n) = negate n
+    fromLiteral (CNF.Pos n) = n
+    fromLiteral (CNF.Const _) = error "Invalid literal"
+
+    numVars' :: Integer
+    numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList
+
+exampleDIMACS :: DIMACS
+exampleDIMACS = DIMACS 3 2 [[1, 2], [-1, 3]] ["This is an example CNF formula."]

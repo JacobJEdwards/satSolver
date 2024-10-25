@@ -2,7 +2,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Safe #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -16,14 +15,14 @@ module Nonogram.Solver
     type Mask,
     encodeVar,
     decodeSolution,
-    Nonogram.Solver.toCNF,
+    Nonogram.Solver.toDIMACS,
   )
 where
 
 import Control.Lens (element, imap, (^?))
 import Data.Kind (type Type)
 import Data.Maybe (fromMaybe)
-import SAT (ands, checkValue, ors, toCNF, toVar, uniqueOnly, type Expr, type SolutionMap)
+import SAT (ands, checkValue, ors, applyLaws, toVar, uniqueOnly, type Expr, type Solutions)
 import SAT.DIMACS qualified as DIMACS
 
 type Cell :: Type
@@ -90,7 +89,7 @@ encodeVar (Nonogram rs cs _) (Variable r c f) = (r - 1) * boardWidth * 2 + (c - 
     boardWidth :: Int
     boardWidth = max (length cs) (length rs)
 
-decodeSolution :: Nonogram -> SolutionMap DIMACS.Literal -> Nonogram
+decodeSolution :: Nonogram -> Solutions DIMACS.Literal -> Nonogram
 decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' [[cellValue r c | c <- [1 .. length cols']] | r <- [1 .. length rows']]
   where
     cellValue :: Int -> Int -> Cell
@@ -108,9 +107,9 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
     checkVar :: Variable -> Bool
     checkVar = checkValue' . encodeVar'
 
-toCNF :: Nonogram -> DIMACS.CNF
-toCNF puzzle =
-  DIMACS.CNF
+toDIMACS :: Nonogram -> DIMACS.DIMACS
+toDIMACS puzzle =
+  DIMACS.DIMACS
     { DIMACS.numVars = fromIntegral $ rowSize * colSize * 2,
       DIMACS.numClauses = fromIntegral $ length clauses,
       DIMACS.clauses = clauses,
@@ -204,7 +203,7 @@ generatePossibleSolutions encodeCell size combinations =
 
       fillMask :: Mask -> Int -> Int -> Int -> Mask
       fillMask mask mark startPosition c = take startPosition mask ++ replicate c mark ++ drop (startPosition + c) mask
-   in toCNF' $ generate combinations 1 0 $ replicate size 0
+   in toCNF $ generate combinations 1 0 $ replicate size 0
   where
     convertToOrExpr :: [[DIMACS.Literal]] -> Expr DIMACS.Literal
     convertToOrExpr = ors . map convertToAndExpr
@@ -212,8 +211,8 @@ generatePossibleSolutions encodeCell size combinations =
     convertToAndExpr :: [DIMACS.Literal] -> Expr DIMACS.Literal
     convertToAndExpr = ands . map toVar
 
-    toCNF' :: [[DIMACS.Literal]] -> [DIMACS.Clause]
-    toCNF' = DIMACS.clauses . DIMACS.fromExpr . SAT.toCNF . convertToOrExpr
+    toCNF :: [[DIMACS.Literal]] -> [DIMACS.Clause]
+    toCNF = DIMACS.clauses . DIMACS.fromExpr . applyLaws . convertToOrExpr
 
 exampleNonogram :: Nonogram
 exampleNonogram =

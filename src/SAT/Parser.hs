@@ -43,7 +43,7 @@ literal :: Parser Text Text (Expr a)
 literal = Val <$> (true <|> false)
   where
     true :: Parser Text Text Bool
-    true = anySymbol ["true", "1"] $> True
+    true = anySymbol ["true"] $> True
 
     false :: Parser Text Text Bool
-    false = anySymbol ["false", "0"] $> False
+    false = anySymbol ["false"] $> False

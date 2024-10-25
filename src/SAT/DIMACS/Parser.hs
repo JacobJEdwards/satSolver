@@ -10,7 +10,7 @@ import Data.Char (isDigit)
 import Data.Text (type Text)
 import Data.Text qualified as Text
 import Parser (char, digit, many, optional, runParser, satisfy, some, spaces, symbol, type Parser, type Result (Result))
-import SAT.DIMACS.CNF (type CNF (CNF, clauses, comments, numClauses, numVars), type Clause, type Literal)
+import SAT.DIMACS.CNF (type DIMACS (DIMACS, clauses, comments, numClauses, numVars), type Clause, type Literal)
 
 parseComment :: Parser Text Text Text
 parseComment = symbol "c" *> (Text.pack <$> many (satisfy (/= '\n'))) <* char '\n'
@@ -47,28 +47,28 @@ parseClause = do
 parseClauses :: Parser Text Text [Clause]
 parseClauses = many parseClause
 
-parseCNF' :: Parser Text Text CNF
+parseCNF' :: Parser Text Text DIMACS
 parseCNF' = do
   comments' <- parseComments
   (vars, clauses') <- parseHeader
   parsedClauses <- parseClauses
   return $
-    CNF
+    DIMACS
       { numVars = vars,
         numClauses = clauses',
         clauses = parsedClauses,
         comments = comments'
       }
 
-parseCNF :: Text -> Result Text Text (Text, CNF)
+parseCNF :: Text -> Result Text Text (Text, DIMACS)
 parseCNF = runParser parseCNF'
 
-parse :: Text -> Maybe CNF
+parse :: Text -> Maybe DIMACS
 parse input = case parseCNF input of
   Result (_, cnf) -> Just cnf
   _ -> Nothing
 
-parseFile :: Text -> IO (Maybe CNF)
+parseFile :: Text -> IO (Maybe DIMACS)
 parseFile filename = do
   contents <- readFile (Text.unpack filename)
   case runParser parseCNF' (Text.pack contents) of

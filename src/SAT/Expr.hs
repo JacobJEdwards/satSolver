@@ -11,8 +11,6 @@
 
 module SAT.Expr
   ( type Expr (..),
-    type Polarity (..),
-    flipPolarity,
     (.||.),
     (.&&.),
     (.!.),
@@ -21,17 +19,17 @@ module SAT.Expr
     ors,
     ands,
     toVar,
-    type SolutionMap,
+    type Solutions,
   )
 where
 
 
 import Data.Data (type Data)
 import Data.Kind (type Type)
-import Data.Map.Strict (type Map)
+import Data.Set (type Set)
 
-type SolutionMap :: Type -> Type
-type SolutionMap a = Map a Bool
+type Solutions :: Type -> Type
+type Solutions a = Set a
 
 type Expr :: Type -> Type
 data Expr (a :: Type) where
@@ -151,25 +149,6 @@ instance Monad Expr where
   (>>=) (Or e1 e2) f = Or (e1 >>= f) (e2 >>= f)
   (>>=) (Val b) _ = Val b
 
-type Polarity :: Type
-data Polarity = Positive | Negative | Mixed deriving stock (Eq, Ord, Show)
-
-instance Semigroup Polarity where
-  (<>) :: Polarity -> Polarity -> Polarity
-  (<>) Positive Positive = Positive
-  (<>) Negative Negative = Negative
-  (<>) _ _ = Mixed
-
--- does this make sense ? check laws
-instance Monoid Polarity where
-  mempty :: Polarity
-  mempty = Positive
-
-flipPolarity :: Polarity -> Polarity
-flipPolarity Positive = Negative
-flipPolarity Negative = Positive
-flipPolarity Mixed = Mixed
-{-# INLINEABLE flipPolarity #-}
 
 -- propagate error to caller with maybe or leave as is ?
 unVal :: Expr a -> Bool
