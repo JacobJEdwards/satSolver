@@ -23,7 +23,10 @@ import Control.Lens (element, imap, (^?))
 import Data.Kind (type Type)
 import Data.Maybe (fromMaybe)
 import SAT (ands, checkValue, ors, applyLaws, toVar, uniqueOnly, type Expr, type Solutions)
+import SAT.CNF (CNF(CNF), Clause, Literal(Pos, Neg, Const))
 import SAT.DIMACS qualified as DIMACS
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 type Cell :: Type
 data Cell = Filled | Unfilled | Unknown
@@ -107,6 +110,11 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
     checkVar :: Variable -> Bool
     checkVar = checkValue' . encodeVar'
 
+--toCNF :: Nonogram -> CNF Int
+--toCNF puzzle = CNF(clauses)
+--  where 
+    
+    
 toDIMACS :: Nonogram -> DIMACS.DIMACS
 toDIMACS puzzle =
   DIMACS.DIMACS
@@ -252,8 +260,8 @@ exampleNonogram =
 --        ]
 --    }
 
--- exampleNonogram :: Nonogram
--- exampleNonogram =
+--exampleNonogram :: Nonogram
+--exampleNonogram =
 --  Nonogram {
 --    rows = [
 --      [3], [2, 1], [3,2], [2,2], [6], [1,5], [6], [1], [2]

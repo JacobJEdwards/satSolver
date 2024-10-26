@@ -28,7 +28,6 @@ import Data.Data (type Data)
 import Data.Kind (type Type)
 import Data.Set (type Set)
 
-type Solutions :: Type -> Type
 type Solutions a = Set a
 
 type Expr :: Type -> Type

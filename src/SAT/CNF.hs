@@ -6,7 +6,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 
-module SAT.CNF (applyLaws, toCNF, CNF(CNF), Clause, Literal(Pos, Neg, Const)) where
+module SAT.CNF (applyLaws, toCNF, CNF(CNF), Clause, Literal(Pos, Neg, Const), toExpr) where
 
 import SAT.Expr (type Expr(Not, And, Or, Val, Var))
 import Data.Kind (Type)
@@ -75,3 +75,15 @@ toCNF expr = CNF $ toClauses cnf
     toLiteral (Var n) = Pos n
     toLiteral l = error $ "Invalid literal" ++ show l
 {-# INLINEABLE toCNF #-}
+
+toExpr :: forall a. CNF a -> Expr a
+toExpr (CNF clauses) = foldr1 And $ V.toList $ V.map toClause clauses
+  where
+    toClause :: Clause a -> Expr a
+    toClause literals = foldr1 Or $ V.toList $ V.map toLiteral literals
+    
+    toLiteral :: Literal a -> Expr a
+    toLiteral (Pos n) = Var n
+    toLiteral (Neg n) = Not $ Var n
+    toLiteral (Const b) = Val b
+{-# INLINEABLE toExpr #-}

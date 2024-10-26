@@ -34,8 +34,8 @@ data DIMACS = DIMACS
   }
   deriving stock (Eq, Show)
 
-toExpr :: [Clause] -> Expr Literal
-toExpr = foldr1 And . map toOr
+toExpr :: DIMACS -> Expr Literal
+toExpr dim = foldr1 And . map toOr $ clauses dim
   where
     toOr :: Clause -> Expr Literal
     toOr = foldr1 Or . map toLiteral

@@ -5,7 +5,6 @@
 
 module SAT.Optimisers (unitPropagate, literalElimination, collectLiterals, collectLiteralsToSet, uniqueOnly, eliminateLiterals) where
 
-import Data.Maybe (mapMaybe)
 import Data.Set (type Set)
 import Data.Set qualified as Set
 import SAT.Expr (type Solutions)
@@ -34,8 +33,8 @@ collectLiteralsToSet = Set.fromList . collectLiterals
 {-# INLINEABLE collectLiteralsToSet #-}
 
 
-literalPolarities :: forall a. (Ord a) => CNF a -> [(a, Polarity)]
-literalPolarities (CNF clauses') = Map.toList $ V.foldl' updatePolarity Map.empty clausePolarities
+literalPolarities :: forall a. (Ord a) => CNF a -> Vector (a, Polarity)
+literalPolarities (CNF clauses') = V.fromList $ Map.toList $ V.foldl' updatePolarity Map.empty clausePolarities
   where
     clausePolarities = V.concatMap getClausePolarities clauses'
     
@@ -52,18 +51,18 @@ literalPolarities (CNF clauses') = Map.toList $ V.foldl' updatePolarity Map.empt
 {-# INLINEABLE literalPolarities #-}
 
 eliminateLiterals :: forall a. (Ord a) => CNF a -> (CNF a, Solutions a)
-eliminateLiterals (CNF clauses) = (clauses', mconcat solutions)
+eliminateLiterals (CNF clauses) = (clauses', Set.unions solutions)
   where 
-    literals :: [(a, Polarity)]
+    literals :: Vector (a, Polarity)
     literals = literalPolarities (CNF clauses)
     
-    solutions = mapMaybe (\(v, p) -> if p == Positive then Just (Set.singleton v) else Nothing) literals
+    solutions :: Vector (Solutions a)
+    solutions = V.mapMaybe (\(v, p) -> if p == Positive then Just (Set.singleton v) else Nothing) literals
     
     clauses' = getClauses literals (CNF clauses)
     
-    getClauses :: [(a, Polarity)] -> CNF a -> CNF a
-    getClauses [] acc = acc
-    getClauses ((c, p) : xs) acc = getClauses xs (eliminateLiteral c acc p)
+    getClauses :: Vector (a, Polarity) -> CNF a -> CNF a
+    getClauses pols acc = V.foldl' (\acc' (c, p) -> eliminateLiteral c acc' p) acc pols
 {-# INLINEABLE eliminateLiterals #-}
 
 eliminateLiteral :: forall a. (Ord a) => a -> CNF a -> Polarity -> CNF a
@@ -95,20 +94,22 @@ unitClause clause
   | otherwise = Nothing
 {-# INLINEABLE unitClause #-}
 
-allUnitClauses :: CNF a -> [(a, Polarity)]
-allUnitClauses (CNF clauses') = V.toList $ V.mapMaybe unitClause clauses'
+allUnitClauses :: CNF a -> Vector (a, Polarity)
+allUnitClauses (CNF clauses') = V.mapMaybe unitClause clauses'
 {-# INLINEABLE allUnitClauses #-}
 
 unitPropagate :: forall a. (Ord a) => CNF a -> (CNF a, Solutions a)
 unitPropagate = go mempty
   where
     go :: Solutions a -> CNF a -> (CNF a, Solutions a)
-    go m e = case allUnitClauses e of
-      [] -> (e, m)
-      (c, p) : _ ->
-        let newExpr = eliminateLiteral c e p
-            newSol = if p == Positive then Set.insert c m else m
-         in go newSol newExpr
+    go m e 
+      | V.null clauses = (e, m)
+      | otherwise = let (c, p) = V.head clauses 
+                        newExpr = eliminateLiteral c e p
+                        newSol = if p == Positive then Set.insert c m else m
+                     in go newSol newExpr
+      where 
+        clauses = allUnitClauses e
 {-# INLINEABLE unitPropagate #-}
 
 -- https://buffered.io/posts/a-better-nub/

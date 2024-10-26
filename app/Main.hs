@@ -80,7 +80,7 @@ runFile file = do
   DIMACS.parseFile file >>= \case
     Just cnf -> do
       putStrLn $ "Parsed CNF: " <> show cnf
-      showExprInfo $ DIMACS.toExpr $ DIMACS.clauses cnf
+      showExprInfo $ DIMACS.toExpr cnf
     Nothing -> error "Failed to parse CNF"
 
 runSudoku :: Maybe Text -> IO ()

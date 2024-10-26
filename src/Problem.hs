@@ -31,6 +31,10 @@ class Problem (a :: Type) where
 
 instance Problem Sudoku where
   type Variable Sudoku = Sudoku.Variable
+  
+--  toCNF :: Sudoku -> CNF Int
+--  toCNF = Sudoku.toCNF
+--  {-# INLINEABLE toCNF #-}
 
   toDIMACS :: Sudoku -> DIMACS.DIMACS
   toDIMACS = Sudoku.toDIMACS
@@ -54,6 +58,10 @@ instance Problem Sudoku where
 
 instance Problem Nonogram where
   type Variable Nonogram = Nonogram.Variable
+  
+--  toCNF :: Nonogram -> CNF Int
+--  toCNF = Nonogram.toCNF
+--  {-# INLINEABLE toCNF #-}
 
   toDIMACS :: Nonogram -> DIMACS.DIMACS
   toDIMACS = Nonogram.toDIMACS
@@ -77,6 +85,10 @@ instance Problem Nonogram where
 
 instance Problem DIMACS.DIMACS where
   type Variable DIMACS.DIMACS = Int
+  
+--  toCNF :: DIMACS.DIMACS -> CNF Int
+--  toCNF = DIMACS.toCNF
+--  {-# INLINEABLE toCNF #-}
 
   toDIMACS :: DIMACS.DIMACS -> DIMACS.DIMACS
   toDIMACS = id
@@ -100,6 +112,10 @@ instance Problem DIMACS.DIMACS where
 
 instance Problem (Expr Int) where
   type Variable (Expr Int) = Int
+  
+--  toCNF :: Expr Int -> CNF Int
+--  toCNF = SAT.toCNF
+--  {-# INLINEABLE toCNF #-}
 
   toDIMACS :: Expr Int -> DIMACS.DIMACS
   toDIMACS = DIMACS.fromExpr . SAT.applyLaws
@@ -123,6 +139,10 @@ instance Problem (Expr Int) where
 
 instance Problem (CNF Int) where
   type Variable (CNF Int) = Int
+  
+--  toCNF :: CNF Int -> CNF Int
+--  toCNF = id
+--  {-# INLINEABLE toCNF #-}
 
   toDIMACS :: CNF Int -> DIMACS.DIMACS
   toDIMACS = DIMACS.fromCNF
@@ -159,9 +179,9 @@ isSatisfiable = SAT.satisfiable . toCNF
 {-# INLINEABLE isSatisfiable #-}
 
 toExpr :: (Problem a) => a -> Expr Int
-toExpr = DIMACS.toExpr . DIMACS.clauses . toDIMACS
+toExpr = DIMACS.toExpr . toDIMACS
 {-# INLINEABLE toExpr #-}
 
 toCNF :: (Problem a) => a -> CNF Int
-toCNF = SAT.toCNF . toExpr
+toCNF = DIMACS.toCNF . toDIMACS
 {-# INLINEABLE toCNF #-}

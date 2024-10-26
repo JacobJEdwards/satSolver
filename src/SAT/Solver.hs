@@ -85,8 +85,7 @@ toSimple :: (Ord a) => CNF a -> CNF a
 toSimple = fst . unitPropagate
 
 getSolutions :: forall a. (Ord a) => CNF a -> Maybe (Solutions a)
-getSolutions cnf = go mempty cnf
-  -- let (cnf'', m) = eliminateLiterals cnf in go m $ propagateValue cnf''
+getSolutions cnf = let (cnf'', m) = eliminateLiterals cnf in go m cnf''
   where 
     go :: Solutions a -> CNF a -> Maybe (Solutions a)
     go m cnf' = case findFreeVariable cnf'' of
