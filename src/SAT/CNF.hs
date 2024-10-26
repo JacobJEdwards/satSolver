@@ -4,20 +4,23 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 module SAT.CNF (applyLaws, toCNF, CNF(CNF), Clause, Literal(Pos, Neg, Const)) where
 
 import SAT.Expr (type Expr(Not, And, Or, Val, Var))
 import Data.Kind (Type)
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 -- data cnf is list of clauses
 
 -- consider moving these into vector or seq
 type CNF :: Type -> Type
-newtype CNF a = CNF [Clause a]
+newtype CNF a = CNF (Vector (Clause a))
   deriving stock (Eq, Show, Ord, Functor, Foldable, Traversable)
 
-type Clause a = [Literal a] 
+type Clause a = Vector (Literal a)
 
 type Literal :: Type -> Type
 data Literal a = Pos a | Neg a | Const Bool
@@ -59,13 +62,13 @@ toCNF expr = CNF $ toClauses cnf
     cnf :: Expr a
     cnf = applyLaws expr
     
-    toClauses :: Expr a -> [Clause a]
+    toClauses :: Expr a -> Vector (Clause a)
     toClauses (And e1 e2) = toClauses e1 <> toClauses e2
-    toClauses e = [toClause e]
+    toClauses e = V.singleton $ toClause e
     
     toClause :: Expr a -> Clause a
     toClause (Or e1 e2) = toClause e1 <> toClause e2
-    toClause e = [toLiteral e]
+    toClause e = V.singleton $ toLiteral e
     
     toLiteral :: Expr a -> Literal a
     toLiteral (Not (Var n)) = Neg n

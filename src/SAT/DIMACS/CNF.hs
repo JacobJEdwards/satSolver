@@ -3,7 +3,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Safe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -17,6 +16,8 @@ import SAT.Expr (type Expr (And, Not, Or, Var))
 import SAT.CNF (type CNF(CNF))
 import SAT.CNF qualified as CNF
 import Data.Set qualified as Set
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 type Literal :: Type
 type Literal = Int
@@ -75,11 +76,11 @@ fromExpr expr =
 toCNF :: DIMACS -> CNF Literal
 toCNF = CNF . toCNF' . clauses
   where
-    toCNF' :: [Clause] -> [CNF.Clause Literal]
-    toCNF' = map toClause
+    toCNF' :: [Clause] -> Vector (CNF.Clause Literal)
+    toCNF' = V.fromList . map toClause
     
     toClause :: Clause -> CNF.Clause Literal
-    toClause = map toLiteral
+    toClause = V.fromList . map toLiteral
     
     toLiteral :: Literal -> CNF.Literal Literal
     toLiteral n
@@ -96,10 +97,10 @@ fromCNF (CNF clauses') =
     }
   where
     clauseList :: [Clause]
-    clauseList = map fromClause clauses'
+    clauseList = V.toList $ V.map fromClause clauses'
 
     fromClause :: CNF.Clause Literal -> Clause
-    fromClause = map fromLiteral
+    fromClause = V.toList . V.map fromLiteral
 
     fromLiteral :: CNF.Literal Literal -> Literal
     fromLiteral (CNF.Neg n) = negate n

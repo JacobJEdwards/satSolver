@@ -1,6 +1,7 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BlockArguments #-}
 
 module SAT.Optimisers (unitPropagate, literalElimination, collectLiterals, collectLiteralsToSet, uniqueOnly, eliminateLiterals) where
 
@@ -10,7 +11,9 @@ import Data.Set qualified as Set
 import SAT.Expr (type Solutions)
 import SAT.CNF (CNF(CNF), Clause, Literal (Const, Neg, Pos))
 import SAT.Polarity (type Polarity (Negative, Positive, Mixed))
-import qualified Data.Map as Map
+import Data.Map qualified as Map
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 -- large optimisation would be using int map or int set when expr a a is int. is this possible ?
 
@@ -32,21 +35,17 @@ collectLiteralsToSet = Set.fromList . collectLiterals
 
 
 literalPolarities :: forall a. (Ord a) => CNF a -> [(a, Polarity)]
-literalPolarities (CNF clauses') = Map.toList $ foldl updatePolarity Map.empty (concatMap clausePolarities clauses')
+literalPolarities (CNF clauses') = Map.toList $ V.foldl' updatePolarity Map.empty clausePolarities
   where
-    clausePolarities clause = [(unLit lit, literalPolarity lit) | lit <- clause, notConst lit]
+    clausePolarities = V.concatMap getClausePolarities clauses'
     
-    notConst (Const _) = False
-    notConst _ = True
+    getClausePolarities :: Clause a -> Vector (a, Polarity)
+    getClausePolarities = V.mapMaybe getLitPolarity
     
-    unLit :: Literal a -> a
-    unLit (Pos a) = a
-    unLit (Neg a) = a
-    unLit (Const _) = error "Const literal in clause"
-
-    literalPolarity (Pos _) = Positive
-    literalPolarity (Neg _) = Negative
-    literalPolarity (Const _) = Positive
+    getLitPolarity :: Literal a -> Maybe (a, Polarity)
+    getLitPolarity (Pos a) = Just (a, Positive)
+    getLitPolarity (Neg a) = Just (a, Negative)
+    getLitPolarity (Const _) = Nothing
     
     updatePolarity acc (lit, pol) = Map.insertWith (<>) lit pol acc
     
@@ -71,10 +70,10 @@ eliminateLiteral :: forall a. (Ord a) => a -> CNF a -> Polarity -> CNF a
 eliminateLiteral = go
   where 
     go ::  a -> CNF a -> Polarity -> CNF a
-    go c (CNF clauses') p = if p == Mixed then CNF clauses' else CNF $ map (eliminateClause c p) clauses'
+    go c (CNF clauses') p = if p == Mixed then CNF clauses' else CNF $ V.map (eliminateClause c p) clauses'
     
     eliminateClause :: a -> Polarity -> Clause a -> Clause a
-    eliminateClause c p = map (eliminateLiteral' c p) 
+    eliminateClause c p = V.map (eliminateLiteral' c p) 
     
     eliminateLiteral' :: a -> Polarity -> Literal a -> Literal a
     eliminateLiteral' c p l = case l of
@@ -88,17 +87,16 @@ literalElimination = eliminateLiterals
 {-# INLINEABLE literalElimination #-}
 
 unitClause :: Clause a -> Maybe (a, Polarity)
-unitClause clause = case clause of
-  [] -> Nothing
-  [literal] -> case literal of
+unitClause clause 
+  | V.length clause == 1 = case V.head clause of
     Pos c -> Just (c, Positive)
     Neg c -> Just (c, Negative)
-    _ -> Nothing
-  _ -> Nothing
+    _ -> Nothing 
+  | otherwise = Nothing
 {-# INLINEABLE unitClause #-}
 
 allUnitClauses :: CNF a -> [(a, Polarity)]
-allUnitClauses (CNF clauses') = mapMaybe unitClause clauses'
+allUnitClauses (CNF clauses') = V.toList $ V.mapMaybe unitClause clauses'
 {-# INLINEABLE allUnitClauses #-}
 
 unitPropagate :: forall a. (Ord a) => CNF a -> (CNF a, Solutions a)

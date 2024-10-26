@@ -1,5 +1,3 @@
-{-# LANGUAGE Safe #-}
-
 module SAT.DIMACS
   ( module SAT.DIMACS.CNF,
     module SAT.DIMACS.Parser,

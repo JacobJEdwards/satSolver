@@ -11,7 +11,7 @@ import Data.String (fromString)
 import Data.Text (type Text)
 import Nonogram (type Nonogram)
 import Options (parseArgs, type Flag (Demo, File, Interactive, Nonogram, RunImmediate, Sudoku))
-import Problem (example, parse, parseFile, solve, isSatisfiable)
+import Problem (example, parse, parseFile, solve)
 import SAT (type Expr (And, Not, Or, Var))
 import SAT qualified
 import SAT.CNF qualified
@@ -23,7 +23,7 @@ import System.Environment (getArgs)
 showResult :: (Show a, Ord a) => Maybe (Expr a) -> IO ()
 showResult = maybe (putStrLn "Failed to parse expression") showExprInfo
 
-showExprInfo :: (Show a, Ord a, Eq a) => Expr a -> IO ()
+showExprInfo :: (Show a, Ord a) => Expr a -> IO ()
 showExprInfo expr = do
   let cnf = SAT.CNF.toCNF expr
   putStrLn $ "CNF: " <> show cnf
