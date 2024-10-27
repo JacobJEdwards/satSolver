@@ -24,7 +24,7 @@ class Problem (a :: Type) where
   type Variable a
 
   toDIMACS :: a -> DIMACS.DIMACS
-  decode :: a -> Solutions Int -> a
+  decode :: a -> Solutions -> a
   encodeVar :: a -> Variable a -> Int
   example :: a
   parse :: Text -> Maybe a
@@ -36,7 +36,7 @@ instance Problem Sudoku where
   toDIMACS = Sudoku.toDIMACS
   {-# INLINEABLE toDIMACS #-}
 
-  decode :: Sudoku -> Solutions Int -> Sudoku
+  decode :: Sudoku -> Solutions -> Sudoku
   decode = Sudoku.decodeSolution
   {-# INLINEABLE decode #-}
 
@@ -59,7 +59,7 @@ instance Problem Nonogram where
   toDIMACS = Nonogram.toDIMACS
   {-# INLINEABLE toDIMACS #-}
 
-  decode :: Nonogram -> Solutions Int -> Nonogram
+  decode :: Nonogram -> Solutions -> Nonogram
   decode = Nonogram.decodeSolution
   {-# INLINEABLE decode #-}
 
@@ -82,7 +82,7 @@ instance Problem DIMACS.DIMACS where
   toDIMACS = id
   {-# INLINEABLE toDIMACS #-}
 
-  decode :: DIMACS.DIMACS -> Solutions Int -> DIMACS.DIMACS
+  decode :: DIMACS.DIMACS -> Solutions -> DIMACS.DIMACS
   decode = const
   {-# INLINEABLE decode #-}
 
@@ -105,7 +105,7 @@ instance Problem (Expr Int) where
   toDIMACS = DIMACS.fromExpr . SAT.applyLaws
   {-# INLINEABLE toDIMACS #-}
 
-  decode :: Expr Int -> Solutions Int -> Expr Int
+  decode :: Expr Int -> Solutions -> Expr Int
   decode = const
   {-# INLINEABLE decode #-}
 
@@ -121,26 +121,26 @@ instance Problem (Expr Int) where
   example = undefined
   {-# INLINEABLE example #-}
 
-instance Problem (CNF Int) where
-  type Variable (CNF Int) = Int
+instance Problem CNF where
+  type Variable CNF = Int
 
-  toDIMACS :: CNF Int -> DIMACS.DIMACS
+  toDIMACS :: CNF -> DIMACS.DIMACS
   toDIMACS = DIMACS.fromCNF
   {-# INLINEABLE toDIMACS #-}
 
-  decode :: CNF Int -> Solutions Int -> CNF Int
+  decode :: CNF -> Solutions -> CNF
   decode = const
   {-# INLINEABLE decode #-}
 
-  encodeVar :: CNF Int -> Int -> Int
+  encodeVar :: CNF -> Int -> Int
   encodeVar = const id
   {-# INLINEABLE encodeVar #-}
 
-  parse :: Text -> Maybe (CNF Int)
+  parse :: Text -> Maybe CNF
   parse = undefined
   {-# INLINEABLE parse #-}
 
-  example :: CNF Int
+  example :: CNF 
   example = undefined
   {-# INLINEABLE example #-}
 
@@ -162,6 +162,6 @@ toExpr :: (Problem a) => a -> Expr Int
 toExpr = DIMACS.toExpr . DIMACS.clauses . toDIMACS
 {-# INLINEABLE toExpr #-}
 
-toCNF :: (Problem a) => a -> CNF Int
+toCNF :: (Problem a) => a -> CNF
 toCNF = SAT.toCNF . toExpr
 {-# INLINEABLE toCNF #-}

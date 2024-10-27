@@ -89,7 +89,7 @@ encodeVar (Nonogram rs cs _) (Variable r c f) = (r - 1) * boardWidth * 2 + (c - 
     boardWidth :: Int
     boardWidth = max (length cs) (length rs)
 
-decodeSolution :: Nonogram -> Solutions DIMACS.Literal -> Nonogram
+decodeSolution :: Nonogram -> Solutions -> Nonogram
 decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' [[cellValue r c | c <- [1 .. length cols']] | r <- [1 .. length rows']]
   where
     cellValue :: Int -> Int -> Cell

@@ -79,7 +79,7 @@ encodeVar puzzle (Variable r c n) = (r - 1) * boardSize * boardSize + (c - 1) * 
   where
     boardSize = fromEnum $ size puzzle
 
-decodeSolution :: Sudoku -> Solutions DIMACS.Literal -> Sudoku
+decodeSolution :: Sudoku -> Solutions -> Sudoku
 decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] | r <- [1 .. boardSize]] $ size puzzle
   where
     boardSize :: Int

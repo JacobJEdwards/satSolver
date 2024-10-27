@@ -1,12 +1,10 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module SAT.Solver
   ( satisfiable,
-    propagateValue,
-    toSimple,
     getSolutions,
     type Solutions,
     checkValue,
@@ -14,107 +12,73 @@ module SAT.Solver
   )
 where
 
-import Data.Maybe (listToMaybe)
-import SAT.CNF (type CNF(CNF), Clause, Literal(Pos, Neg, Const))
-import SAT.Expr (type Solutions)
-import SAT.Optimisers (literalElimination, unitPropagate, eliminateLiterals, collectLiterals, collectLiteralsToSet)
 import Control.Applicative ((<|>))
-import Data.Set qualified as Set
+import Data.Maybe (listToMaybe)
+import Data.IntSet qualified as IntSet
+import SAT.CNF (type Clause, type Literal, type CNF (CNF))
+import SAT.Expr (type Solutions)
+import SAT.Optimisers (collectLiterals, eliminateLiterals, unitPropagate)
+import Debug.Trace (trace)
 
-findFreeVariable :: forall a. (Ord a, Show a) => CNF a -> Maybe a
-findFreeVariable =  listToMaybe . collectLiterals
+findFreeVariable ::  CNF -> Maybe Int
+findFreeVariable = listToMaybe . collectLiterals
 {-# INLINEABLE findFreeVariable #-}
 
-substitute :: forall a. (Eq a) => a -> Bool -> CNF a -> CNF a
-substitute var val (CNF clauses) = CNF $ map substituteClause clauses
+substitute :: Int -> Bool -> CNF -> CNF
+substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter (not . clauseIsTrue var val) clauses
   where
-    substituteClause :: Clause a -> Clause a
-    substituteClause = map substituteLiteral
+    clauseIsTrue :: Literal -> Bool -> Clause -> Bool
+    clauseIsTrue c p = any (literalIsTrue c p)
     
-    substituteLiteral :: Literal a -> Literal a
-    substituteLiteral (Pos a) 
-      | a == var && val = Const True
-      | a == var && not val = Const False
-      | otherwise = Pos a
-    substituteLiteral (Neg a) 
-      | a == var && val = Const False
-      | a == var && not val = Const True
-      | otherwise = Neg a
-    substituteLiteral (Const b) = Const b
+    literalIsTrue :: Literal -> Bool -> Literal -> Bool
+    literalIsTrue c p l = case l of
+      v | abs c == abs v && v > 0 -> p
+      v | abs c == abs v && v < 0 -> not p
+      _ -> False
+      
+    literalIsFalse :: Literal -> Bool -> Literal -> Bool
+    literalIsFalse c p l = case l of
+      v | abs c == abs v && v > 0 -> not p
+      v | abs c == abs v && v < 0 -> p
+      _ -> False
+    
+    eliminateClause :: Literal -> Bool -> Clause -> Clause
+    eliminateClause c p = filter (not . literalIsFalse c p)
 {-# INLINEABLE substitute #-}
 
-propagateValue :: CNF a -> CNF a
-propagateValue (CNF clauses) = CNF $ propagateClauses $ filter (not . isTriviallyTrue) clauses
-  where
-    propagateClauses :: [Clause a] -> [Clause a]
-    propagateClauses clauses'
-      | any isTriviallyFalse clauses = [[Const False]]
-      | otherwise = map propagateClause clauses'
-    
-    propagateClause :: Clause a -> Clause a
-    propagateClause = filter (not . isFalse)
-    
-    isTrue :: Literal a -> Bool
-    isTrue (Const True) = True
-    isTrue _ = False
-    
-    isFalse :: Literal a -> Bool
-    isFalse (Const False) = True
-    isFalse _ = False
-    
-    isTriviallyTrue :: Clause a -> Bool
-    isTriviallyTrue = any isTrue 
-    
-    isTriviallyFalse :: Clause a -> Bool
-    isTriviallyFalse = all isFalse
-{-# INLINEABLE propagateValue #-}
-
-propagateAndCheck :: CNF a -> Bool
-propagateAndCheck = check . propagateValue
-  where
-    check :: CNF a -> Bool
-    check (CNF clauses) = null clauses
-    
-    isTrue :: Clause a -> Bool
-    isTrue = any $ \case
-      Const True -> True
-      _ -> False
-{-# INLINEABLE propagateAndCheck #-}
-
-checkValue :: (Ord a) => Solutions a -> a -> Bool
-checkValue = flip Set.member
+checkValue ::  Solutions -> Int -> Bool
+checkValue = flip IntSet.member
 {-# INLINEABLE checkValue #-}
 
-toSimple :: (Ord a) => CNF a -> CNF a
-toSimple = fst . unitPropagate
+getSolutions :: CNF -> Maybe Solutions
+getSolutions = go IntSet.empty
+  where
+    go :: Solutions -> CNF -> Maybe Solutions
+    go m1 cnf@(CNF clauses')
+      | any null clauses' = Nothing
+      | null clauses' = trace ("Found solution: " <> show m) $ Just m
+      | otherwise =
+          case findFreeVariable cnf' of
+            Nothing -> trace ("Found solution: " <> show m) $ Just m
+            Just c ->
+              tryAssign c True <|> tryAssign c False
+      where
+        tryAssign c v
+          | v = go (IntSet.insert c m) $ substitute c True cnf'
+          | otherwise = go m $ substitute c False cnf'
 
-getSolutions :: forall a. (Ord a, Show a) => CNF a -> Maybe (Solutions a)
-getSolutions cnf = let (cnf'', m) = eliminateLiterals cnf in go m $ propagateValue cnf''
-  where 
-    go :: Solutions a -> CNF a -> Maybe (Solutions a)
-    go m cnf' = case findFreeVariable cnf'' of
-      Nothing -> if propagateAndCheck cnf'' then Just m'' else Nothing
-      Just c ->
-        let trueGuess = propagateValue $ substitute c True cnf''
-            falseGuess = propagateValue $ substitute c False cnf''
-            
-            trueSolution = go (Set.insert c m'') trueGuess
-            falseSolution = go m'' falseGuess
-          in trueSolution <|> falseSolution
-      where 
-        (cnf'', m') = unitPropagate cnf'
-        
-        m'' :: Solutions a
-        m'' = m <> m'
-{-# INLINEABLE getSolutions #-}
+        (cnf', m2) = unitPropagate cnf
 
-satisfiable :: (Ord a, Show a) => CNF a -> Bool
-satisfiable cnf = case findFreeVariable cnf' of
-  Nothing -> propagateAndCheck cnf'
+        m :: Solutions
+        m = IntSet.union m1 m2
+
+satisfiable :: CNF -> Bool
+satisfiable cnf@(CNF clauses) = case findFreeVariable cnf' of
+  Nothing -> null clauses
   Just c ->
-    let trueGuess = propagateValue $ substitute c True cnf'
-        falseGuess = propagateValue $ substitute c False cnf'
+    let trueGuess = substitute c True cnf'
+        falseGuess = substitute c False cnf'
      in satisfiable trueGuess || satisfiable falseGuess
   where
-    cnf' = toSimple cnf
+    cnf' = cnf
 {-# INLINEABLE satisfiable #-}

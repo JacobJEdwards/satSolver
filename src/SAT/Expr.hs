@@ -26,10 +26,9 @@ where
 
 import Data.Data (type Data)
 import Data.Kind (type Type)
-import Data.Set (type Set)
+import Data.IntSet (type IntSet)
 
-type Solutions :: Type -> Type
-type Solutions a = Set a
+type Solutions = IntSet
 
 type Expr :: Type -> Type
 data Expr (a :: Type) where

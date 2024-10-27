@@ -72,21 +72,19 @@ fromExpr expr =
     numVars' :: Integer
     numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList
     
-toCNF :: DIMACS -> CNF Literal
+toCNF :: DIMACS -> CNF
 toCNF = CNF . toCNF' . clauses
   where
-    toCNF' :: [Clause] -> [CNF.Clause Literal]
+    toCNF' :: [Clause] -> [CNF.Clause]
     toCNF' = map toClause
     
-    toClause :: Clause -> CNF.Clause Literal
+    toClause :: Clause -> CNF.Clause
     toClause = map toLiteral
     
-    toLiteral :: Literal -> CNF.Literal Literal
-    toLiteral n
-      | n < 0 = CNF.Neg $ abs n
-      | otherwise = CNF.Pos n
+    toLiteral :: Literal -> CNF.Literal
+    toLiteral = id
 
-fromCNF :: CNF Literal -> DIMACS
+fromCNF :: CNF -> DIMACS
 fromCNF (CNF clauses') =
   DIMACS
     { numVars = numVars',
@@ -98,13 +96,11 @@ fromCNF (CNF clauses') =
     clauseList :: [Clause]
     clauseList = map fromClause clauses'
 
-    fromClause :: CNF.Clause Literal -> Clause
+    fromClause :: CNF.Clause -> Clause
     fromClause = map fromLiteral
 
-    fromLiteral :: CNF.Literal Literal -> Literal
-    fromLiteral (CNF.Neg n) = negate n
-    fromLiteral (CNF.Pos n) = n
-    fromLiteral (CNF.Const _) = error "Invalid literal"
+    fromLiteral :: CNF.Literal -> Literal
+    fromLiteral = id
 
     numVars' :: Integer
     numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList

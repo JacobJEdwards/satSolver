@@ -20,10 +20,10 @@ import Sudoku (type Sudoku)
 import System.Console.Haskeline (defaultSettings, getInputLine, outputStrLn, runInputT, type InputT)
 import System.Environment (getArgs)
 
-showResult :: (Show a, Ord a) => Maybe (Expr a) -> IO ()
+showResult :: Maybe (Expr Int) -> IO ()
 showResult = maybe (putStrLn "Failed to parse expression") showExprInfo
 
-showExprInfo :: (Show a, Ord a, Eq a) => Expr a -> IO ()
+showExprInfo :: Expr Int -> IO ()
 showExprInfo expr = do
   let cnf = SAT.CNF.toCNF expr
   putStrLn $ "CNF: " <> show cnf
@@ -52,25 +52,7 @@ runInteractiveMode = runInputT defaultSettings loop
 
 runDemoMode :: IO ()
 runDemoMode = do
-  let expr = And 
-              (Or 
-                  (And (Var 'A') (Not (Var 'B'))) 
-                  (Or (Var 'C') (And (Var 'D') (Var 'E')))
-              ) 
-              (Or 
-                  (Not 
-                      (And 
-                          (Or (Var 'F') (Not (Var 'G'))) 
-                          (And (Var 'H') (Not (Var 'I')))
-                      )
-                  ) 
-                  (And 
-                      (Or (Var 'J') (Var 'K')) 
-                      (Not 
-                          (And (Var 'L') (Or (Var 'M') (Not (Var 'N'))))
-                      )
-                  )
-              )
+  let expr = And (Or (Var 1) (Var 2)) (Not (Var 3))
 
   putStrLn $ "Demo expression: " <> show expr
   showExprInfo expr

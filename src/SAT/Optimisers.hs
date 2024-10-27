@@ -2,114 +2,115 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module SAT.Optimisers (unitPropagate, literalElimination, collectLiterals, collectLiteralsToSet, uniqueOnly, eliminateLiterals) where
+module SAT.Optimisers (unitPropagate, literalElimination, substitute, collectLiterals, collectLiteralsToSet, uniqueOnly, eliminateLiterals) where
 
 import Data.Maybe (mapMaybe)
+import Data.IntSet (type IntSet)
+import Data.IntSet qualified as IntSet
 import Data.Set (type Set)
 import Data.Set qualified as Set
 import SAT.Expr (type Solutions)
-import SAT.CNF (CNF(CNF), Clause, Literal (Const, Neg, Pos))
+import SAT.CNF (CNF(CNF), Clause, type Literal)
 import SAT.Polarity (type Polarity (Negative, Positive, Mixed))
 import qualified Data.Map as Map
+import Debug.Trace (trace)
 
 -- large optimisation would be using int map or int set when expr a a is int. is this possible ?
 
-collectLiterals :: CNF a -> [a]
+collectLiterals :: CNF -> [Int]
 collectLiterals (CNF clauses') = concatMap getVars clauses'
   where
-    getVars :: Clause a -> [a]
-    getVars = concatMap getLit
-
-    getLit :: Literal a -> [a]
-    getLit (Pos a) = [a]
-    getLit (Neg a) = [a]
-    getLit (Const _) = []
+    getVars :: Clause -> [Int]
+    getVars = map abs
 {-# INLINEABLE collectLiterals #-}
 
-collectLiteralsToSet :: (Ord a) => CNF a -> Set a
-collectLiteralsToSet = Set.fromList . collectLiterals
+collectLiteralsToSet :: CNF -> IntSet
+collectLiteralsToSet = IntSet.fromList . collectLiterals
 {-# INLINEABLE collectLiteralsToSet #-}
 
 
-literalPolarities :: forall a. (Ord a) => CNF a -> [(a, Polarity)]
+literalPolarities :: CNF -> [(Int, Polarity)]
 literalPolarities (CNF clauses') = Map.toList $ foldl updatePolarity Map.empty (concatMap clausePolarities clauses')
   where
-    clausePolarities clause = [(unLit lit, literalPolarity lit) | lit <- clause, notConst lit]
+    clausePolarities clause = [(unLit lit, literalPolarity lit) | lit <- clause]
     
-    notConst (Const _) = False
-    notConst _ = True
+    unLit :: Literal -> Int
+    unLit = abs
     
-    unLit :: Literal a -> a
-    unLit (Pos a) = a
-    unLit (Neg a) = a
-    unLit (Const _) = error "Const literal in clause"
-
-    literalPolarity (Pos _) = Positive
-    literalPolarity (Neg _) = Negative
-    literalPolarity (Const _) = Positive
+    literalPolarity :: Literal -> Polarity
+    literalPolarity p
+      | p < 0 = Negative
+      | p > 0 = Positive
+      | otherwise = Mixed
     
     updatePolarity acc (lit, pol) = Map.insertWith (<>) lit pol acc
     
 {-# INLINEABLE literalPolarities #-}
 
-eliminateLiterals :: forall a. (Ord a) => CNF a -> (CNF a, Solutions a)
+eliminateLiterals :: CNF -> (CNF, Solutions)
 eliminateLiterals (CNF clauses) = (clauses', mconcat solutions)
   where 
-    literals :: [(a, Polarity)]
-    literals = literalPolarities (CNF clauses)
+    literals :: [(Int, Polarity)]
+    literals = filter (\(_, p) -> p /= Mixed) $ literalPolarities (CNF clauses)
     
-    solutions = mapMaybe (\(v, p) -> if p == Positive then Just (Set.singleton v) else Nothing) literals
+    
+    solutions = mapMaybe (\(v, p) -> if p == Positive then Just (IntSet.singleton v) else Nothing) literals
     
     clauses' = getClauses literals (CNF clauses)
     
-    getClauses :: [(a, Polarity)] -> CNF a -> CNF a
+    getClauses :: [(Int, Polarity)] -> CNF -> CNF
     getClauses [] acc = acc
-    getClauses ((c, p) : xs) acc = getClauses xs (eliminateLiteral c acc p)
-{-# INLINEABLE eliminateLiterals #-}
+    getClauses ((c, p) : xs) acc = getClauses xs (substitute c (p == Positive) acc)
+{-# INLINEABLE eliminateLiterals #-} -- wrong i think
 
-eliminateLiteral :: forall a. (Ord a) => a -> CNF a -> Polarity -> CNF a
-eliminateLiteral = go
-  where 
-    go ::  a -> CNF a -> Polarity -> CNF a
-    go c (CNF clauses') p = if p == Mixed then CNF clauses' else CNF $ map (eliminateClause c p) clauses'
+substitute :: Int -> Bool -> CNF -> CNF
+substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter (not . clauseIsTrue var val) clauses
+  where
+    clauseIsTrue :: Literal -> Bool -> Clause -> Bool
+    clauseIsTrue c p = any (literalIsTrue c p)
     
-    eliminateClause :: a -> Polarity -> Clause a -> Clause a
-    eliminateClause c p = map (eliminateLiteral' c p) 
+    literalIsTrue :: Literal -> Bool -> Literal -> Bool
+    literalIsTrue c p l = case l of
+      v | abs c == abs v && v > 0 -> p
+      v | abs c == abs v && v < 0 -> not p
+      _ -> False
+      
+    literalIsFalse :: Literal -> Bool -> Literal -> Bool
+    literalIsFalse c p l = case l of
+      v | abs c == abs v && v > 0 -> not p
+      v | abs c == abs v && v < 0 -> p
+      _ -> False
     
-    eliminateLiteral' :: a -> Polarity -> Literal a -> Literal a
-    eliminateLiteral' c p l = case l of
-      Pos v | c == v -> Const (p == Positive)
-      Neg v | c == v -> Const (p == Negative)
-      _ -> l
-{-# INLINEABLE eliminateLiteral #-}
+    eliminateClause :: Literal -> Bool -> Clause -> Clause
+    eliminateClause c p = filter (not . literalIsFalse c p)
+{-# INLINEABLE substitute #-}
 
-literalElimination :: (Ord a) => CNF a -> (CNF a, Solutions a)
+literalElimination :: CNF -> (CNF, Solutions)
 literalElimination = eliminateLiterals
 {-# INLINEABLE literalElimination #-}
 
-unitClause :: Clause a -> Maybe (a, Polarity)
+unitClause :: Clause -> Maybe (Int, Bool)
 unitClause clause = case clause of
-  [] -> Nothing
   [literal] -> case literal of
-    Pos c -> Just (c, Positive)
-    Neg c -> Just (c, Negative)
+    c | c > 0 -> Just (abs c, True)
+    c | c < 0 -> Just (abs c, False)
     _ -> Nothing
   _ -> Nothing
 {-# INLINEABLE unitClause #-}
 
-allUnitClauses :: CNF a -> [(a, Polarity)]
+allUnitClauses :: CNF -> [(Int, Bool)]
 allUnitClauses (CNF clauses') = mapMaybe unitClause clauses'
 {-# INLINEABLE allUnitClauses #-}
 
-unitPropagate :: forall a. (Ord a) => CNF a -> (CNF a, Solutions a)
+unitPropagate :: CNF -> (CNF, Solutions)
 unitPropagate = go mempty
   where
-    go :: Solutions a -> CNF a -> (CNF a, Solutions a)
+    go :: Solutions -> CNF -> (CNF, Solutions)
     go m e = case allUnitClauses e of
       [] -> (e, m)
       (c, p) : _ ->
-        let newExpr = eliminateLiteral c e p
-            newSol = if p == Positive then Set.insert c m else m
+        let newExpr = substitute c p e
+            newSol = if p then IntSet.insert c m else m
          in go newSol newExpr
 {-# INLINEABLE unitPropagate #-}
 

@@ -1,27 +1,21 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DeriveTraversable #-}
 
-module SAT.CNF (applyLaws, toCNF, CNF(CNF), Clause, Literal(Pos, Neg, Const)) where
+module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal) where
 
 import SAT.Expr (type Expr(Not, And, Or, Val, Var))
-import Data.Kind (Type)
 
 -- data cnf is list of clauses
 
 -- consider moving these into vector or seq
-type CNF :: Type -> Type
-newtype CNF a = CNF [Clause a]
-  deriving stock (Eq, Show, Ord, Functor, Foldable, Traversable)
+newtype CNF = CNF [Clause]
+  deriving stock (Eq, Show, Ord)
 
-type Clause a = [Literal a] 
+type Clause = [Literal] 
 
-type Literal :: Type -> Type
-data Literal a = Pos a | Neg a | Const Bool
-  deriving stock (Eq, Show, Ord, Functor, Foldable, Traversable)
+type Literal = Int
 
 -- https://en.wikipedia.org/wiki/Tseytin_transformation -> look into this
 
@@ -53,22 +47,22 @@ applyLaws expr
 {-# INLINEABLE applyLaws #-}
 
 
-toCNF :: forall a. (Eq a, Show a) => Expr a -> CNF a
+toCNF :: Expr Int -> CNF
 toCNF expr = CNF $ toClauses cnf
   where 
-    cnf :: Expr a
+    cnf :: Expr Int
     cnf = applyLaws expr
     
-    toClauses :: Expr a -> [Clause a]
+    toClauses :: Expr Int -> [Clause]
     toClauses (And e1 e2) = toClauses e1 <> toClauses e2
     toClauses e = [toClause e]
     
-    toClause :: Expr a -> Clause a
+    toClause :: Expr Int -> Clause
     toClause (Or e1 e2) = toClause e1 <> toClause e2
     toClause e = [toLiteral e]
     
-    toLiteral :: Expr a -> Literal a
-    toLiteral (Not (Var n)) = Neg n
-    toLiteral (Var n) = Pos n
+    toLiteral :: Expr Int -> Literal
+    toLiteral (Not (Var n)) = negate n
+    toLiteral (Var n) = n
     toLiteral l = error $ "Invalid literal" ++ show l
 {-# INLINEABLE toCNF #-}
