@@ -20,6 +20,12 @@ import SAT.Expr (type Solutions)
 import SAT.Optimisers (collectLiterals, eliminateLiterals, unitPropagate)
 import Debug.Trace (trace)
 
+type DecisionLevel = Int
+type Decision = (Literal, Bool)
+type Trail = [Decision]
+
+type LearnedClauses = [Clause]
+
 findFreeVariable ::  CNF -> Maybe Int
 findFreeVariable = listToMaybe . collectLiterals
 {-# INLINEABLE findFreeVariable #-}
@@ -51,8 +57,9 @@ checkValue = flip IntSet.member
 {-# INLINEABLE checkValue #-}
 
 getSolutions :: CNF -> Maybe Solutions
-getSolutions = go IntSet.empty
+getSolutions init' = let (cnf, sol) = eliminateLiterals init' in go sol cnf
   where
+    
     go :: Solutions -> CNF -> Maybe Solutions
     go m1 cnf
       | isUnsat cnf = Nothing

@@ -4,7 +4,7 @@
 
 module SAT.Optimisers (unitPropagate, literalElimination, substitute, collectLiterals, collectLiteralsToSet, uniqueOnly, eliminateLiterals) where
 
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, catMaybes)
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Set (type Set)
@@ -39,7 +39,7 @@ literalPolarities (CNF clauses') = Map.toList $ foldl updatePolarity Map.empty (
     
     literalPolarity :: Literal -> Polarity
     literalPolarity p
-      | p < 0 = Negative
+      | p < 0 = Negative 
       | p > 0 = Positive
       | otherwise = Mixed
     
@@ -62,6 +62,8 @@ eliminateLiterals (CNF clauses) = (clauses', mconcat solutions)
     getClauses [] acc = acc
     getClauses ((c, p) : xs) acc = getClauses xs (substitute c (p == Positive) acc)
 {-# INLINEABLE eliminateLiterals #-} -- wrong i think
+
+
 
 substitute :: Int -> Bool -> CNF -> CNF
 substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter (not . clauseIsTrue var val) clauses

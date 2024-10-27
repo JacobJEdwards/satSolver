@@ -75,9 +75,12 @@ blockSize NineByNine = 3
 blockSize SixteenBySixteen = 4
 
 encodeVar :: Sudoku -> Variable -> DIMACS.Literal
-encodeVar puzzle (Variable r c n) = (r - 1) * boardSize * boardSize + (c - 1) * boardSize + (n - 1)
+encodeVar puzzle (Variable r c n) = var
   where
     boardSize = fromEnum $ size puzzle
+    
+    var :: Int
+    var = ((r - 1) * boardSize * boardSize + (c - 1) * boardSize + (n - 1)) + 1
 
 decodeSolution :: Sudoku -> Solutions -> Sudoku
 decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] | r <- [1 .. boardSize]] $ size puzzle
