@@ -54,12 +54,12 @@ getSolutions :: CNF -> Maybe Solutions
 getSolutions = go IntSet.empty
   where
     go :: Solutions -> CNF -> Maybe Solutions
-    go m1 cnf@(CNF clauses')
-      | any null clauses' = Nothing
-      | null clauses' = trace ("Found solution: " <> show m) $ Just m
+    go m1 cnf
+      | isUnsat cnf = Nothing
+      | isSat cnf = Just m1
       | otherwise =
           case findFreeVariable cnf' of
-            Nothing -> trace ("Found solution: " <> show m) $ Just m
+            Nothing -> if isSat cnf' then Just m else Nothing
             Just c ->
               tryAssign c True <|> tryAssign c False
       where
@@ -71,6 +71,14 @@ getSolutions = go IntSet.empty
 
         m :: Solutions
         m = IntSet.union m1 m2
+        
+        isSat :: CNF -> Bool
+        isSat (CNF clauses'') = null clauses''
+        
+        isUnsat :: CNF -> Bool
+        isUnsat (CNF clauses'') = any null clauses''
+        
+        
 
 satisfiable :: CNF -> Bool
 satisfiable cnf@(CNF clauses) = case findFreeVariable cnf' of
