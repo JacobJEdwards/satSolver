@@ -3,7 +3,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal) where
+module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal, addClause) where
 
 import SAT.Expr (type Expr(Not, And, Or, Val, Var))
 
@@ -66,3 +66,7 @@ toCNF expr = CNF $ toClauses cnf
     toLiteral (Var n) = n
     toLiteral l = error $ "Invalid literal" ++ show l
 {-# INLINEABLE toCNF #-}
+
+addClause :: CNF -> Clause -> CNF
+addClause (CNF clauses) clause = CNF $ clause : clauses
+{-# INLINEABLE addClause #-}

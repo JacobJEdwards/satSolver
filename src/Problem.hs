@@ -17,7 +17,6 @@ import SAT.DIMACS.CNF qualified as DIMACS
 import SAT.DIMACS.Parser qualified as DIMACS
 import Sudoku (type Sudoku)
 import Sudoku qualified
-import Debug.Trace (trace)
 
 type Problem :: Type -> Constraint
 class Problem (a :: Type) where
@@ -49,7 +48,7 @@ instance Problem Sudoku where
   {-# INLINEABLE parse #-}
 
   example :: Sudoku
-  example = Sudoku.sudokuNine
+  example = Sudoku.sudokuSixteen
   {-# INLINEABLE example #-}
 
 instance Problem Nonogram where

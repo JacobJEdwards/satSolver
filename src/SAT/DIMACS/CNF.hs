@@ -104,6 +104,8 @@ fromCNF (CNF clauses') =
 
     numVars' :: Integer
     numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList
+   
+
 
 exampleDIMACS :: DIMACS
 exampleDIMACS = DIMACS 3 2 [[1, 2], [-1, 3]] ["This is an example CNF formula."]

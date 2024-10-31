@@ -252,6 +252,20 @@ exampleNonogram =
 --        ]
 --    }
 
+-- 8 by 8
+--exampleNonogram :: Nonogram
+--exampleNonogram =
+--  Nonogram
+--    { cols =
+--      [ [4], [6], [4],[3],[2],[2],[3, 2],[3,4],[6,2],[6,3] ],
+--      rows =
+--      [ [5], [5], [4], [2], [2,2], [4,4], [5,2], [4,1,1], [2,3], [2,2] ],
+--      solution =
+--        []
+--        }
+            
+
+
 -- exampleNonogram :: Nonogram
 -- exampleNonogram =
 --  Nonogram {

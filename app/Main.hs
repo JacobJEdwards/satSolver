@@ -11,7 +11,7 @@ import Data.String (fromString)
 import Data.Text (type Text)
 import Nonogram (type Nonogram)
 import Options (parseArgs, type Flag (Demo, File, Interactive, Nonogram, RunImmediate, Sudoku))
-import Problem (example, parse, parseFile, solve, isSatisfiable)
+import Problem (example, parse, parseFile, solve)
 import SAT (type Expr (And, Not, Or, Var))
 import SAT qualified
 import SAT.CNF qualified

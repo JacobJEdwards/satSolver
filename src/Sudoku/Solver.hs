@@ -8,6 +8,7 @@
 module Sudoku.Solver
   ( sudokuFour,
     sudokuNine,
+    sudokuSixteen,
     type Sudoku (..),
     type Size (..),
     type Variable (..),
@@ -23,7 +24,6 @@ import Data.Kind (type Type)
 import Data.Maybe (fromMaybe)
 import SAT (checkValue, uniqueOnly, type Solutions)
 import SAT.DIMACS qualified as DIMACS
-import Debug.Trace (trace)
 
 type Board :: Type
 type Board = [[Int]]
@@ -193,3 +193,31 @@ sudokuNine =
         ],
       size = NineByNine
     }
+
+sudokuSixteen :: Sudoku
+sudokuSixteen =
+  Sudoku
+    { board =
+        [ [0, 11, 0, 0, 0, 2, 3, 14, 0, 0, 9, 12, 0, 0, 0, 16],
+          [15, 12, 0, 0, 0, 11, 0, 1, 13, 10, 0, 0, 0, 0, 7, 2],
+          [0, 0, 10, 0, 0, 0, 0, 0, 16, 11, 0, 1, 6, 4, 12, 3],
+          [0, 16, 14, 1, 0, 4, 0, 6, 0, 3, 0, 15, 0, 8, 0, 0],
+          
+          [1, 6, 5, 12, 0, 0, 11, 0, 0, 9, 8, 0, 0, 0, 0, 0],
+          [0, 0, 0, 7, 14, 1, 8, 0, 0, 15, 6, 0, 13, 5, 0, 4],
+          [4, 15, 8, 0, 9, 13, 0, 0, 0, 0, 7, 16, 3, 0, 0, 0],
+          [0, 9, 13, 0, 0, 0, 0, 15, 10, 0, 0, 0, 7, 6, 0, 11],
+          
+          [14, 0, 6, 11, 0, 0, 0, 12, 7, 0, 0, 0, 0, 3, 13, 0],
+          [0, 0, 0, 5, 8, 14, 0, 0, 0, 0, 13, 11, 0, 1, 2, 6],
+          [13, 0, 16, 4, 0, 15, 5, 0, 0, 1, 12, 6, 8, 0, 0, 0],
+          [0, 0, 0, 0, 0, 16, 10, 0, 0, 8, 0, 0, 11, 9, 4, 5],
+          
+          [0, 0, 11, 0, 1, 0, 14, 0, 5, 0, 3, 0, 15, 7, 16, 0],
+          [5, 13, 15, 3, 16, 0, 4, 7, 0, 0, 0, 0, 0, 2, 0, 0],
+          [16, 1, 0, 0, 0, 0, 12, 2, 14, 0, 15, 0, 0, 0, 3, 8],
+          [9, 0, 0, 0, 13, 5, 0, 0, 8, 6, 16, 0, 0, 0, 10, 0]
+        ],
+      size = SixteenBySixteen
+    }
+
