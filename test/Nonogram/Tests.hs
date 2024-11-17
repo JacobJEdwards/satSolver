@@ -1,0 +1,2 @@
+module Nonogram.Tests where
+

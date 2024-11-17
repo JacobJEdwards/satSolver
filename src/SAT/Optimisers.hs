@@ -2,14 +2,14 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module SAT.Optimisers (unitPropagate, literalElimination, substitute, collectLiterals, collectLiteralsToSet, uniqueOnly, eliminateLiterals) where
+module SAT.Optimisers (unitPropagate, literalElimination, substitute, collectLiterals, collectLiteralsToSet, 
+uniqueOnly, eliminateLiterals, assign, partialAssignment) where
 
-import Data.Maybe (mapMaybe)
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Set (type Set)
 import Data.Set qualified as Set
-import SAT.CNF (CNF(CNF), Clause, type Literal)
+import SAT.CNF (CNF(CNF), Clause, type Literal, type Assignment, type DecisionLevel)
 import SAT.Polarity (type Polarity (Negative, Positive, Mixed))
 import Data.IntMap qualified as IntMap
 import Data.IntMap(type IntMap)
@@ -47,18 +47,18 @@ literalPolarities (CNF clauses') = foldl updatePolarity IntMap.empty (concatMap 
     
 {-# INLINEABLE literalPolarities #-}
 
-eliminateLiterals :: CNF -> IntMap Bool -> (CNF, IntMap Bool)
-eliminateLiterals (CNF clauses) solutions = (clauses', solutions')
+eliminateLiterals :: CNF -> Assignment -> DecisionLevel -> (CNF, Assignment)
+eliminateLiterals (CNF clauses) solutions dl = (clauses', solutions')
   where 
     literals :: IntMap Polarity
     literals = IntMap.filter (/= Mixed) $ literalPolarities (CNF clauses)
     
     (clauses', solutions') = getClauses literals (CNF clauses) solutions
     
-    getClauses :: IntMap Polarity -> CNF -> IntMap Bool -> (CNF, IntMap Bool)
+    getClauses :: IntMap Polarity -> CNF -> Assignment -> (CNF, Assignment)
     getClauses pols expr sols = case IntMap.minViewWithKey pols of
       Nothing -> (expr, sols)
-      Just ((c, p), pols') -> getClauses pols' (substitute c value expr) (IntMap.insert c value sols)
+      Just ((c, p), pols') -> getClauses pols' (substitute c value expr) (IntMap.insert c (value, dl) sols)
         where 
           value :: Bool
           value = p == Positive
@@ -66,7 +66,7 @@ eliminateLiterals (CNF clauses) solutions = (clauses', solutions')
 
 
 
-substitute :: Int -> Bool -> CNF -> CNF
+substitute :: Literal -> Bool -> CNF -> CNF
 substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter (not . clauseIsTrue var val) clauses
   where
     clauseIsTrue :: Literal -> Bool -> Clause -> Bool
@@ -88,7 +88,7 @@ substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter 
     eliminateClause c p = filter (not . literalIsFalse' c p)
 {-# INLINEABLE substitute #-}
 
-literalElimination :: CNF -> IntMap Bool -> (CNF, IntMap Bool)
+literalElimination :: CNF -> Assignment -> DecisionLevel -> (CNF, Assignment)
 literalElimination = eliminateLiterals
 {-# INLINEABLE literalElimination #-}
 
@@ -102,16 +102,13 @@ findUnitClause (CNF clauses) = case unitClause of
     isUnitClause :: Clause -> Bool
     isUnitClause c = length c  == 1 
     
-unitPropagate :: CNF -> IntMap Bool -> (CNF, IntMap Bool)
-unitPropagate = go
-  where
-    go :: CNF -> IntMap Bool -> (CNF, IntMap Bool)
-    go e m = case findUnitClause e of
+unitPropagate :: CNF -> Assignment -> DecisionLevel -> (CNF, Assignment)
+unitPropagate e m dl = case findUnitClause e of
       Nothing -> (e, m)
       Just (c, p) ->
         let newExpr = substitute c p e
-            newSol = IntMap.insert c p m
-         in go newExpr newSol
+            newSol = IntMap.insert c (p, dl) m
+         in unitPropagate newExpr newSol dl
 {-# INLINEABLE unitPropagate #-}
 
 -- https://buffered.io/posts/a-better-nub/
@@ -124,3 +121,27 @@ uniqueOnly = go mempty
       | x `Set.member` s = go s xs
       | otherwise = x : go (Set.insert x s) xs
 {-# INLINEABLE uniqueOnly #-}
+
+assign :: Assignment -> Literal -> Bool -> DecisionLevel -> Assignment
+assign m c v dl = IntMap.insertWith (const id) (abs c) (v, dl) m
+{-# INLINEABLE assign #-}
+
+partialAssignment :: Assignment -> CNF -> CNF
+partialAssignment m (CNF clauses) = CNF $ map (filter isFalseLiteral) $ filter (not . isTrueClause) clauses
+  where
+    isTrueClause :: Clause -> Bool
+    isTrueClause = any isTrueLiteral
+    
+    isTrueLiteral :: Literal -> Bool
+    isTrueLiteral l = case IntMap.lookup (abs l) m of
+      Just (True, _) -> l > 0
+      Just (False, _) -> l < 0
+      _ -> False
+      
+    isFalseLiteral :: Literal -> Bool
+    isFalseLiteral l = case IntMap.lookup (abs l) m of
+      Just (False, _) -> l <= 0
+      Just (True, _) -> l >= 0
+      _ -> True
+      
+{-# INLINEABLE partialAssignment #-}

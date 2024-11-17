@@ -37,6 +37,7 @@ data Expr (a :: Type) where
   And :: Expr a -> Expr a -> Expr a
   Or :: Expr a -> Expr a -> Expr a
   Val :: Bool -> Expr a
+  Implies :: Expr a -> Expr a -> Expr a
 
 instance (Eq a) => Eq (Expr a) where
   {-# INLINEABLE (==) #-}
@@ -47,6 +48,7 @@ instance (Eq a) => Eq (Expr a) where
   And e1 e2 == And e1' e2' = e1 == e1' && e2 == e2'
   Or e1 e2 == Or e1' e2' = e1 == e1' && e2 == e2'
   Val b1 == Val b2 = b1 == b2
+  Implies e1 e2 == Implies e1' e2' = e1 == e1' && e2 == e2'
   _ == _ = False
 
 deriving stock instance (Ord a) => Ord (Expr a)
@@ -89,6 +91,7 @@ instance (Show a) => Show (Expr a) where
   show (And e1 e2) = showAnd e1 e2
   show (Or e1 e2) = showOr e1 e2
   show (Val b) = show b
+  show (Implies e1 e2) = showDuo "=>" e1 e2
 
 instance Semigroup (Expr a) where
   {-# INLINEABLE (<>) #-}
@@ -107,6 +110,7 @@ instance Functor Expr where
   fmap f (Not e) = Not $ fmap f e
   fmap f (And e1 e2) = And (fmap f e1) (fmap f e2)
   fmap f (Or e1 e2) = Or (fmap f e1) (fmap f e2)
+  fmap f (Implies e1 e2) = Implies (fmap f e1) (fmap f e2)
   fmap _ (Val b) = Val b
 
 instance Foldable Expr where
@@ -116,6 +120,7 @@ instance Foldable Expr where
   foldMap f (Not e) = foldMap f e
   foldMap f (And e1 e2) = foldMap f e1 <> foldMap f e2
   foldMap f (Or e1 e2) = foldMap f e1 <> foldMap f e2
+  foldMap f (Implies e1 e2) = foldMap f e1 <> foldMap f e2
   foldMap _ (Val _) = mempty
 
 instance Traversable Expr where
@@ -125,6 +130,7 @@ instance Traversable Expr where
   traverse f (Not e) = Not <$> traverse f e
   traverse f (And e1 e2) = And <$> traverse f e1 <*> traverse f e2
   traverse f (Or e1 e2) = Or <$> traverse f e1 <*> traverse f e2
+  traverse f (Implies e1 e2) = Implies <$> traverse f e1 <*> traverse f e2
   traverse _ (Val b) = pure $ Val b
 
 instance Applicative Expr where
@@ -138,6 +144,7 @@ instance Applicative Expr where
   (<*>) (Not f) e = Not (f <*> e)
   (<*>) (And f1 f2) e = And (f1 <*> e) (f2 <*> e)
   (<*>) (Or f1 f2) e = Or (f1 <*> e) (f2 <*> e)
+  (<*>) (Implies f1 f2) e = Implies (f1 <*> e) (f2 <*> e)
   (<*>) (Val b) _ = Val b
 
 instance Monad Expr where
@@ -146,6 +153,7 @@ instance Monad Expr where
   (>>=) (Not e) f = Not (e >>= f)
   (>>=) (And e1 e2) f = And (e1 >>= f) (e2 >>= f)
   (>>=) (Or e1 e2) f = Or (e1 >>= f) (e2 >>= f)
+  (>>=) (Implies e1 e2) f = Implies (e1 >>= f) (e2 >>= f)
   (>>=) (Val b) _ = Val b
 
 
@@ -162,6 +170,7 @@ toList x =
     Not e -> toList e
     And e1 e2 -> toList e1 ++ toList e2
     Or e1 e2 -> toList e1 ++ toList e2
+    Implies e1 e2 -> toList e1 ++ toList e2
     Val _ -> []
 {-# INLINEABLE toList #-}
 

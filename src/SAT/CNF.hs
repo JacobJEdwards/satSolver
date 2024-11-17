@@ -3,9 +3,13 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal, addClause) where
+module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative) where
 
-import SAT.Expr (type Expr(Not, And, Or, Val, Var))
+import SAT.Expr (type Expr(Not, And, Or, Val, Var, Implies))
+import Data.IntMap (type IntMap)
+
+type DecisionLevel = Int
+type Assignment = IntMap (Bool, DecisionLevel)
 
 -- data cnf is list of clauses
 
@@ -28,6 +32,7 @@ deMorgansLaws (Not (Val b)) = Val $ not b
 deMorgansLaws (And e1 e2) = And (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Or e1 e2) = Or (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Not e) = Not $ deMorgansLaws e
+deMorgansLaws (Implies e1 e2) = Or (deMorgansLaws $ Not e1) (deMorgansLaws e2)
 deMorgansLaws e = e
 
 distributiveLaws :: Expr a -> Expr a
@@ -36,6 +41,7 @@ distributiveLaws (Or (And e1 e2) e3) = And (Or (distributiveLaws e3) (distributi
 distributiveLaws (Or e1 e2) = Or (distributiveLaws e1) (distributiveLaws e2)
 distributiveLaws (And e1 e2) = And (distributiveLaws e1) (distributiveLaws e2)
 distributiveLaws (Not e) = Not $ distributiveLaws e
+distributiveLaws (Implies e1 e2) = Implies (distributiveLaws e1) (distributiveLaws e2)
 distributiveLaws e = e
 
 applyLaws :: (Eq a) => Expr a -> Expr a
@@ -70,3 +76,7 @@ toCNF expr = CNF $ toClauses cnf
 addClause :: CNF -> Clause -> CNF
 addClause (CNF clauses) clause = CNF $ clause : clauses
 {-# INLINEABLE addClause #-}
+
+isNegative :: Literal -> Bool
+isNegative = (< 0)
+{-# INLINEABLE isNegative #-}

@@ -13,7 +13,7 @@ module SAT.DIMACS.CNF (toExpr, fromExpr, type Clause, type DIMACS (..), exampleD
 
 import Data.Kind (type Type)
 import Data.Text (type Text)
-import SAT.Expr (type Expr (And, Not, Or, Var))
+import SAT.Expr (type Expr (And, Not, Or, Var, Implies))
 import SAT.CNF (type CNF(CNF))
 import SAT.CNF qualified as CNF
 import Data.Set qualified as Set
@@ -62,6 +62,7 @@ fromExpr expr =
 
     fromOr :: Expr Literal -> Clause
     fromOr (Or e1 e2) = fromOr e1 <> fromOr e2
+    fromOr (Implies e1 e2) = fromOr (Or (Not e1) e2)
     fromOr e = [fromLiteral e]
 
     fromLiteral :: Expr Literal -> Literal

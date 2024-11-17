@@ -7,7 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 
-module SAT.Polarity (Polarity (Positive, Negative, Mixed), flipPolarity) where
+module SAT.Polarity (type Polarity (Positive, Negative, Mixed), flipPolarity) where
   
 import Data.Kind (type Type)
 

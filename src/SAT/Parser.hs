@@ -8,7 +8,7 @@ import Control.Applicative ((<|>))
 import Data.Functor (($>))
 import Data.Text (type Text)
 import Parser (anySymbol, chainl1, digit, parens, runParser, some, type Parser, type Result (Errors, Result))
-import SAT.Expr (type Expr (And, Not, Or, Val, Var))
+import SAT.Expr (type Expr (And, Not, Or, Val, Var, Implies))
 
 parse :: Text -> Maybe (Expr Int)
 parse input = case parseExpr input of
@@ -19,7 +19,7 @@ parseExpr :: Text -> Result Text Text (Text, Expr Int)
 parseExpr = runParser expr
 
 expr :: Parser Text Text (Expr Int)
-expr = chainl1 term orOp
+expr = chainl1 term orOp <|> chainl1 term impliesOp
 
 term :: Parser Text Text (Expr Int)
 term = chainl1 factor andOp
@@ -38,6 +38,9 @@ andOp = anySymbol ["∧", "and"] $> And
 
 orOp :: Parser Text Text (Expr a -> Expr a -> Expr a)
 orOp = anySymbol ["∨", "or"] $> Or
+
+impliesOp :: Parser Text Text (Expr a -> Expr a -> Expr a)
+impliesOp = anySymbol ["=>", "implies"] $> Implies
 
 literal :: Parser Text Text (Expr a)
 literal = Val <$> (true <|> false)

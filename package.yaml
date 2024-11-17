@@ -30,6 +30,9 @@ dependencies:
 - mtl
 - QuickCheck
 - parallel
+- tasty
+- tasty-hunit
+- tasty-quickcheck
 
 ghc-options:
 - -Wall
@@ -72,3 +75,7 @@ tests:
     - satSolver
     - haskeline
     - lens
+    - QuickCheck
+    - tasty
+    - tasty-hunit
+    - tasty-quickcheck
