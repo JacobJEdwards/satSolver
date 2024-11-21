@@ -1,3 +1,7 @@
+{-|
+Module      : SAT
+Description : Exports the SAT solver modules.
+-}
 module SAT
   ( module SAT.Expr,
     module SAT.Solver,

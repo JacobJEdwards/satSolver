@@ -41,6 +41,7 @@ library
       SAT.DIMACS.CNF
       SAT.DIMACS.Parser
       SAT.Expr
+      SAT.Monad
       SAT.Old.Optimisers
       SAT.Old.Solver
       SAT.Optimisers

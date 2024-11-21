@@ -1,3 +1,7 @@
+{-|
+Module      : Sudoku
+Description : Exports the Sudoku solver and parser modules.
+-}
 
 module Sudoku
   ( module Sudoku.Solver,

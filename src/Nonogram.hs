@@ -1,3 +1,7 @@
+{-|
+Module      : Nonogram
+Description : Exports the Nonogram solver and parser modules.
+-}
 
 module Nonogram
   ( module Nonogram.Solver,

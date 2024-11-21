@@ -1,3 +1,8 @@
+{-|
+Module      : SAT.DIMACS.CNF
+Description : Exports the CNF module.
+-}
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
@@ -18,12 +23,15 @@ import SAT.CNF (type CNF(CNF))
 import SAT.CNF qualified as CNF
 import Data.Set qualified as Set
 
+-- | The literal type.
 type Literal :: Type
 type Literal = Int
 
+-- | The clause type.
 type Clause :: Type
 type Clause = [Literal]
 
+-- | The DIMACS type.
 type DIMACS :: Type
 data DIMACS = DIMACS
   { numVars :: Integer,
@@ -33,6 +41,7 @@ data DIMACS = DIMACS
   }
   deriving stock (Eq, Show)
 
+-- | Converts a list of clauses to an expression.
 toExpr :: [Clause] -> Expr Literal
 toExpr = foldr1 And . map toOr
   where
@@ -44,6 +53,10 @@ toExpr = foldr1 And . map toOr
       | n < 0 = Not $ Var $ abs n
       | otherwise = Var n
 
+-- | Converts an expression to dimacs.
+-- 
+-- >>> fromExpr (Or (Var 1) (Var 2))
+-- DIMACS {numVars = 2, numClauses = 1, clauses = [[1,2]], comments = ["This is a CNF formula generated from an expression."]}
 fromExpr :: Expr Literal -> DIMACS
 fromExpr expr =
   DIMACS
@@ -53,26 +66,35 @@ fromExpr expr =
       comments = ["This is a CNF formula generated from an expression."]
     }
   where
+    -- | The list of clauses.
     clauseList :: [Clause]
     clauseList = fromAnd expr
 
+    -- | Converts an expression to a list of clauses.
     fromAnd :: Expr Literal -> [Clause]
     fromAnd (And e1 e2) = fromAnd e1 <> fromAnd e2
     fromAnd e = [fromOr e]
 
+    -- | Converts an expression to a clause.
     fromOr :: Expr Literal -> Clause
     fromOr (Or e1 e2) = fromOr e1 <> fromOr e2
     fromOr (Implies e1 e2) = fromOr (Or (Not e1) e2)
     fromOr e = [fromLiteral e]
 
+    -- | Converts an expression to a literal.
     fromLiteral :: Expr Literal -> Literal
     fromLiteral (Not (Var n)) = negate n
     fromLiteral (Var n) = n
     fromLiteral _ = error "Invalid literal"
     
+    -- | The number of variables.
     numVars' :: Integer
     numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList
     
+-- | Converts a DIMACS formula to CNF.
+-- 
+-- >>> toCNF exampleDIMACS
+-- CNF {clauses = [[1,2],[-1,3]]}
 toCNF :: DIMACS -> CNF
 toCNF = CNF . toCNF' . clauses
   where
@@ -85,6 +107,10 @@ toCNF = CNF . toCNF' . clauses
     toLiteral :: Literal -> CNF.Literal
     toLiteral = id
 
+-- | Converts a CNF formula to DIMACS.
+-- 
+-- >>> fromCNF (CNF [[1,2],[-1,3]])
+-- DIMACS {numVars = 3, numClauses = 2, clauses = [[1,2],[-1,3]], comments = ["This is a CNF formula generated from a CNF formula."]}
 fromCNF :: CNF -> DIMACS
 fromCNF (CNF clauses') =
   DIMACS
@@ -107,6 +133,6 @@ fromCNF (CNF clauses') =
     numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList
    
 
-
+-- | An example DIMACS formula.
 exampleDIMACS :: DIMACS
 exampleDIMACS = DIMACS 3 2 [[1, 2], [-1, 3]] ["This is an example CNF formula."]

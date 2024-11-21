@@ -1,3 +1,8 @@
+{-|
+Module      : Parser.Input
+Description : Defines the 'Input' type class for parsing input types.
+-}
+
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -15,14 +20,23 @@ import Data.String (type IsString)
 import Data.Text (type Text)
 import Data.Text qualified as Text
 
+-- | The 'Input' type class for parsing
 type Input :: Type -> Constraint
 class (Eq i, IsString i, Monoid i) => Input (i :: Type) where
+  -- | The token type of the input.
   type Token i
+  -- | Uncons the input.
   uncons :: i -> Maybe (Token i, i)
+  -- | Get the head of the input.
   head :: i -> Maybe (Token i)
+  -- | Check if the input is empty.
   null :: i -> Bool
+  -- | Unpack the input to a string.
   unpack :: i -> String
 
+-- | Instances of the 'Input' type class for different input types.
+
+-- | 'Input' instance for 'BS.ByteString'.
 instance Input BS.ByteString where
   type Token BS.ByteString = Char
 
@@ -42,6 +56,7 @@ instance Input BS.ByteString where
   unpack = BS.unpack
   {-# INLINEABLE unpack #-}
 
+-- | 'Input' instance for 'Text'.
 instance Input Text where
   type Token Text = Char
 
@@ -61,6 +76,7 @@ instance Input Text where
   unpack = Text.unpack
   {-# INLINEABLE unpack #-}
 
+-- | 'Input' instance for 'String'.
 instance Input String where
   type Token String = Char
 

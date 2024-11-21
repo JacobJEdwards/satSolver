@@ -1,3 +1,8 @@
+{-|
+Module      : Problem
+Description : Exports the problem module. Represents a problem that can be solved by the SAT solver.
+-}
+
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -18,16 +23,26 @@ import SAT.DIMACS.Parser qualified as DIMACS
 import Sudoku (type Sudoku)
 import Sudoku qualified
 
+-- | Represents a problem that can be solved by the SAT solver.
 type Problem :: Type -> Constraint
 class Problem (a :: Type) where
+  -- | The type of variables in the problem.
   type Variable a
 
-  toDIMACS :: a -> DIMACS.DIMACS
+  -- | Converts the problem to DIMACS format.
+  toDIMACS :: a -> DIMACS.DIMACS 
+  -- | Decodes the solution to the problem.
   decode :: a -> Solutions -> a
+  -- | Encodes a variable to an integer.
   encodeVar :: a -> Variable a -> Int
+  -- | Parses a problem from a string.
   example :: a
+  -- | Parses a problem from a string.
   parse :: Text -> Maybe a
 
+-- | Instances of the 'Problem' type class for different types of problems.
+
+-- | Sudoku problem.
 instance Problem Sudoku where
   type Variable Sudoku = Sudoku.Variable
 
@@ -51,6 +66,7 @@ instance Problem Sudoku where
   example = Sudoku.sudokuSixteen
   {-# INLINEABLE example #-}
 
+-- | Nonogram problem.
 instance Problem Nonogram where
   type Variable Nonogram = Nonogram.Variable
 
@@ -74,6 +90,7 @@ instance Problem Nonogram where
   example = Nonogram.exampleNonogram
   {-# INLINEABLE example #-}
 
+-- | DIMACS problem.
 instance Problem DIMACS.DIMACS where
   type Variable DIMACS.DIMACS = Int
 
@@ -97,6 +114,7 @@ instance Problem DIMACS.DIMACS where
   example = DIMACS.exampleDIMACS
   {-# INLINEABLE example #-}
 
+-- | SAT problem.
 instance Problem (Expr Int) where
   type Variable (Expr Int) = Int
 
@@ -120,6 +138,7 @@ instance Problem (Expr Int) where
   example = undefined
   {-# INLINEABLE example #-}
 
+-- | CNF problem.
 instance Problem CNF where
   type Variable CNF = Int
 
@@ -143,24 +162,88 @@ instance Problem CNF where
   example = undefined
   {-# INLINEABLE example #-}
 
+-- | Parses a problem from a file.
 parseFile :: (Problem a) => Text -> IO (Maybe a)
 parseFile filename = do
   contents <- readFile (Text.unpack filename)
   return $ parse (Text.pack contents)
 {-# INLINEABLE parseFile #-}
 
+-- | Solves a problem.
+-- Returns 'Nothing' if the problem is unsatisfiable.
+-- Returns 'Just' the solution if the problem is satisfiable.
+-- 
+-- >>> solve Sudoku.sudokuSixteen
+-- Just ...
+-- 
+-- >>> solve Nonogram.exampleNonogram
+-- Just ...
+-- 
+-- >>> solve DIMACS.exampleDIMACS
+-- Just ...
+-- 
+-- >>> solve (SAT.toCNF (SAT.fromExpr (SAT.Var 1)))
+-- Just 1
+-- 
+-- >>> solve (SAT.toCNF (SAT.fromExpr (SAT.Not (SAT.Var 1)) `SAT.And` SAT.fromExpr (SAT.Var 1)))
+-- Nothing
 solve :: (Problem a) => a -> Maybe a
 solve puzzle = decode puzzle <$> getSolutions (toCNF puzzle)
 {-# INLINEABLE solve #-}
 
+-- | Checks if a problem is satisfiable.
+-- 
+-- >>> isSatisfiable Sudoku.sudokuSixteen
+-- True
+-- 
+-- >>> isSatisfiable Nonogram.exampleNonogram
+-- True
+-- 
+-- >>> isSatisfiable DIMACS.exampleDIMACS
+-- True
+-- 
+-- >>> isSatisfiable (SAT.toCNF (SAT.fromExpr (SAT.Var 1)))
+-- True
+-- 
+-- >>> isSatisfiable (SAT.toCNF (SAT.fromExpr (SAT.Not (SAT.Var 1)) `SAT.And` SAT.fromExpr (SAT.Var 1)))
+-- False
 isSatisfiable :: (Problem a) => a -> Bool
 isSatisfiable = SAT.satisfiable . toCNF
 {-# INLINEABLE isSatisfiable #-}
 
+-- | Converts a problem to an expression.
+-- 
+-- >>> toExpr Sudoku.sudokuSixteen
+-- ...
+-- 
+-- >>> toExpr Nonogram.exampleNonogram
+-- ...
+-- 
+-- >>> toExpr DIMACS.exampleDIMACS
+-- ...
+-- 
+-- >>> toExpr (SAT.toCNF (SAT.fromExpr (SAT.Var 1)))
+-- SAT.Var 1
 toExpr :: (Problem a) => a -> Expr Int
 toExpr = DIMACS.toExpr . DIMACS.clauses . toDIMACS
 {-# INLINEABLE toExpr #-}
 
+-- | Converts a problem to CNF.
+-- 
+-- >>> toCNF Sudoku.sudokuSixteen
+-- ...
+-- 
+-- >>> toCNF Nonogram.exampleNonogram
+-- ...
+-- 
+-- >>> toCNF DIMACS.exampleDIMACS
+-- ...
+-- 
+-- >>> toCNF (SAT.toCNF (SAT.fromExpr (SAT.Var 1)))
+-- CNF [[1]]
+-- 
+-- >>> toCNF (SAT.toCNF (SAT.fromExpr (SAT.Not (SAT.Var 1)) `SAT.And` SAT.fromExpr (SAT.Var 1)))
+-- CNF [[-1][1]]
 toCNF :: (Problem a) => a -> CNF
 toCNF = SAT.toCNF . toExpr
 {-# INLINEABLE toCNF #-}

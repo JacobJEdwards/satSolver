@@ -1,3 +1,8 @@
+{-|
+Module      : Options
+Description : Exports the command line options parser module.
+-}
+
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -20,13 +25,20 @@ import Data.Text (type Text)
 import System.Console.GetOpt (getOpt, type ArgDescr (NoArg, OptArg, ReqArg), type ArgOrder (Permute), type OptDescr (Option))
 import System.Exit (exitFailure)
 
+-- | Command line options.
 type Flag :: Type
 data Flag :: Type where
+  -- | Run in interactive mode.
   Interactive :: Flag
+  -- | Run in default demo mode.
   Demo :: Flag
+  -- | Run the given expression.
   RunImmediate :: Text -> Flag
+  -- | Run the given file.
   File :: Text -> Flag
+  -- | Run sudoku.
   Sudoku :: Maybe Text -> Flag
+  -- | Run nonogram.
   Nonogram :: Maybe Text -> Flag
 
 deriving stock instance Show Flag
@@ -37,18 +49,21 @@ deriving stock instance Ord Flag
 
 deriving stock instance Data Flag
 
+-- | Command line options.
 type Options :: Type
 newtype Options = Options
-  { optMode :: Flag
+  { optMode :: Flag -- ^ The mode to run in.
   }
   deriving stock (Show)
 
+-- | Default command line options.
 defaultOptions :: Options
 defaultOptions =
   Options
     { optMode = Nonogram Nothing
     }
 
+-- | Command line options.
 options :: [OptDescr (Options -> Options)]
 options =
   [ Option
@@ -83,6 +98,14 @@ options =
       "Run nonogram"
   ]
 
+-- | Parse command line arguments.
+-- Returns the parsed command line options.
+-- 
+-- >>> parseArgs ["-i"]
+-- Interactive
+-- 
+-- >>> parseArgs ["-d"]
+-- Demo
 parseArgs :: [String] -> IO Flag
 parseArgs args = do
   let (opts, _, errs) = getOpt Permute options args

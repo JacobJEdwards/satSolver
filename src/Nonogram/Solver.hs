@@ -1,3 +1,8 @@
+{-|
+Module      : Nonogram.Solver
+Description : Exports the Nonogram solver module.
+-}
+
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -25,16 +30,37 @@ import Data.Maybe (fromMaybe)
 import SAT (ands, checkValue, ors, applyLaws, toVar, uniqueOnly, type Expr, type Solutions)
 import SAT.DIMACS qualified as DIMACS
 
+-- | Represents a cell in a nonogram.
 type Cell :: Type
 data Cell = Filled | Unfilled | Unknown
   deriving stock (Eq)
 
+-- | Show instance for the 'Cell' type.
+-- 
+-- >>> show Filled
+-- "#"
+-- 
+-- >>> show Unfilled
+-- "."
+-- 
+-- >>> show Unknown
+-- " "
 instance Show Cell where
   show :: Cell -> String
   show Filled = "#"
   show Unfilled = "."
   show Unknown = " "
 
+-- | Enum instance for the 'Cell' type.
+-- 
+-- >>> fromEnum Filled
+-- 2
+-- 
+-- >>> fromEnum Unfilled
+-- 1
+-- 
+-- >>> fromEnum Unknown
+-- 0
 instance Enum Cell where
   fromEnum :: Cell -> Int
   fromEnum Filled = 2
@@ -47,6 +73,13 @@ instance Enum Cell where
   toEnum 0 = Unknown
   toEnum _ = error "Invalid cell"
 
+-- | Bounded instance for the 'Cell' type.
+-- 
+-- >>> minBound :: Cell
+-- Unknown
+-- 
+-- >>> maxBound :: Cell
+-- Filled
 instance Bounded Cell where
   minBound :: Cell
   minBound = Unknown
@@ -54,15 +87,19 @@ instance Bounded Cell where
   maxBound :: Cell
   maxBound = Filled
 
+-- | Represents a constraint in a nonogram (e.g. [1, 2, 3]) (nearly CNF)
 type Constraint :: Type
 type Constraint = [Int]
 
+-- | Represents the size of a nonogram.
 type Size :: Type
 type Size = Int
 
+-- | Represents a mask in a nonogram.
 type Mask :: Type
 type Mask = [Int]
 
+-- | Represents a nonogram.
 type Nonogram :: Type
 data Nonogram = Nonogram
   { rows :: [Constraint],
@@ -71,10 +108,15 @@ data Nonogram = Nonogram
   }
   deriving stock (Eq)
 
+-- | Show instance for the 'Nonogram' type.
+-- 
+-- >>> putStrLn $ show exampleNonogram
+-- cols: [[1,1],[1,2],[3],[2,1],[1,1]]
 instance Show Nonogram where
   show :: Nonogram -> String
   show (Nonogram rows' cols' solution') = "cols: " ++ show cols' ++ "\n" ++ "rows: " ++ show rows' ++ "\n" ++ "solution: \n" ++ unlines (map (unwords . map show) solution')
 
+-- | Represents a variable in a nonogram.
 type Variable :: Type
 data Variable = Variable
   { row :: Int,
@@ -83,12 +125,20 @@ data Variable = Variable
   }
   deriving stock (Eq, Show)
 
+-- | Encodes a variable to an integer.
+-- 
+-- >>> encodeVar exampleNonogram (Variable 1 1 Filled)
+-- 2
 encodeVar :: Nonogram -> Variable -> DIMACS.Literal
 encodeVar (Nonogram rs cs _) (Variable r c f) = (r - 1) * boardWidth * 2 + (c - 1) * 2 + fromEnum f
   where
     boardWidth :: Int
     boardWidth = max (length cs) (length rs)
 
+-- | Decodes the solution to the nonogram.
+-- 
+-- >>> decodeSolution exampleNonogram (Solutions [])
+-- ...
 decodeSolution :: Nonogram -> Solutions -> Nonogram
 decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' [[cellValue r c | c <- [1 .. length cols']] | r <- [1 .. length rows']]
   where
@@ -107,6 +157,10 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
     checkVar :: Variable -> Bool
     checkVar = checkValue' . encodeVar'
 
+-- | Converts a nonogram to DIMACS format.
+-- 
+-- >>> toDIMACS exampleNonogram
+-- DIMACS {numVars = 20, numClauses = 0, clauses = ..., comments = ["Nonogram"]}
 toDIMACS :: Nonogram -> DIMACS.DIMACS
 toDIMACS puzzle =
   DIMACS.DIMACS
@@ -130,15 +184,6 @@ toDIMACS puzzle =
     colClauses :: [DIMACS.Clause]
     colClauses = encodeColConstraints encodeVar' colSize $ cols puzzle
 
-    --    solutionClauses :: [DIMACS.Clause]
-    --    solutionClauses =
-    --      [ [encodeVar' (Variable r c f)]
-    --        | r <- [1 .. rowSize],
-    --          c <- [1 .. colSize],
-    --          let f = fromMaybe Unknown (solution' ^? ix (c - 1) >>= (^? element (r - 1))),
-    --          f /= Unknown
-    --      ]
-
     encodeVar' :: Variable -> DIMACS.Literal
     encodeVar' = encodeVar puzzle
 
@@ -158,6 +203,10 @@ toDIMACS puzzle =
 -- [0, 1, 0, 0, 1]
 -- [0, 0, 1, 0, 1]
 
+-- | Encodes the row constraints to DIMACS format.
+-- 
+-- >>> encodeRowConstraints (encodeVar exampleNonogram) 5 [[1, 1]]
+-- [[2, 4], [2, 5], [3, 5], [6, 8], [6, 9], [7, 9]]
 encodeRowConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> [DIMACS.Clause]
 encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
   where
@@ -172,6 +221,11 @@ encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
        in encodeVar' (Variable (row' + 1) (col' + 1) (if cell >= 1 then Filled else Unfilled))
 
 -- issue here was i was finding the index with equality, whereas i had to pass it in as i needed referential in case two
+-- cells had the same value
+-- | Encodes the column constraints to DIMACS format.
+-- 
+-- >>> encodeColConstraints (encodeVar exampleNonogram) 5 [[1, 1]]
+-- [[2, 4], [2, 5], [3, 5], [6, 8], [6, 9], [7, 9]]
 encodeColConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> [DIMACS.Clause]
 encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
   where
@@ -187,6 +241,10 @@ encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
 
 -- columns had the same number of filled cells
 ---- https://www.kbyte.io/projects/201908_nonogram/
+-- | Generates all possible solutions for a given constraint.
+-- 
+-- >>> generatePossibleSolutions (encodeCell 0) 5 [1, 1]
+-- [[2, 4], [2, 5], [3, 5], [6, 8], [6, 9], [7, 9]]
 generatePossibleSolutions :: (Mask -> Int -> DIMACS.Literal) -> Size -> Constraint -> [DIMACS.Clause]
 generatePossibleSolutions encodeCell size combinations =
   --- returns a list of AND clauses that need to be ORed together
@@ -214,6 +272,7 @@ generatePossibleSolutions encodeCell size combinations =
     toCNF :: [[DIMACS.Literal]] -> [DIMACS.Clause]
     toCNF = DIMACS.clauses . DIMACS.fromExpr . applyLaws . convertToOrExpr
 
+-- | Example nonogram.
 exampleNonogram :: Nonogram
 exampleNonogram =
   Nonogram

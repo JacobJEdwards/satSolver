@@ -1,3 +1,8 @@
+{-|
+Module      : Sudoku.Solver
+Description : Exports the Sudoku solver module.
+-}
+
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -25,9 +30,11 @@ import Data.Maybe (fromMaybe)
 import SAT (checkValue, uniqueOnly, type Solutions)
 import SAT.DIMACS qualified as DIMACS
 
+-- | The Sudoku board
 type Board :: Type
 type Board = [[Int]]
 
+-- | The Sudoku
 type Sudoku :: Type
 data Sudoku = Sudoku
   { board :: Board,
@@ -35,10 +42,12 @@ data Sudoku = Sudoku
   }
   deriving stock (Eq)
 
+-- | Show instance for Sudoku
 instance Show Sudoku where
   show :: Sudoku -> String
   show (Sudoku board' _) = unlines $ map (unwords . map show) board'
 
+-- | The Sudoku variable
 type Variable :: Type
 data Variable = Variable
   { row :: Int,
@@ -47,9 +56,20 @@ data Variable = Variable
   }
   deriving stock (Eq, Show)
 
+-- | The Size of the Sudoku
 type Size :: Type
 data Size = FourByFour | NineByNine | SixteenBySixteen deriving stock (Eq, Show, Ord)
 
+-- | Enum instance for Size
+-- 
+-- >>> fromEnum FourByFour
+-- 4
+-- 
+-- >>> fromEnum NineByNine
+-- 9
+-- 
+-- >>> fromEnum SixteenBySixteen
+-- 16
 instance Enum Size where
   fromEnum :: Size -> Int
   fromEnum FourByFour = 4
@@ -62,6 +82,13 @@ instance Enum Size where
   toEnum 16 = SixteenBySixteen
   toEnum _ = error "Invalid size"
 
+-- | Bounded instance for Size
+-- 
+-- >>> minBound :: Size
+-- FourByFour
+-- 
+-- >>> maxBound :: Size
+-- SixteenBySixteen
 instance Bounded Size where
   minBound :: Size
   minBound = FourByFour
@@ -69,11 +96,25 @@ instance Bounded Size where
   maxBound :: Size
   maxBound = SixteenBySixteen
 
+-- | The block size of the Sudoku
+-- 
+-- >>> blockSize FourByFour
+-- 2
+-- 
+-- >>> blockSize NineByNine
+-- 3
+-- 
+-- >>> blockSize SixteenBySixteen
+-- 4
 blockSize :: Size -> Int
 blockSize FourByFour = 2
 blockSize NineByNine = 3
 blockSize SixteenBySixteen = 4
 
+-- | Encodes a variable to a DIMACS literal
+-- 
+-- >>> encodeVar sudokuFour (Variable 1 1 1)
+-- 1
 encodeVar :: Sudoku -> Variable -> DIMACS.Literal
 encodeVar puzzle (Variable r c n) = var
   where
@@ -82,6 +123,10 @@ encodeVar puzzle (Variable r c n) = var
     var :: Int
     var = ((r - 1) * boardSize * boardSize + (c - 1) * boardSize + (n - 1)) + 1
 
+-- | Decodes a solution to a Sudoku
+-- 
+-- >>> decodeSolution sudokuFour [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+-- 1 2 3 4
 decodeSolution :: Sudoku -> Solutions -> Sudoku
 decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]] | r <- [1 .. boardSize]] $ size puzzle
   where
@@ -105,6 +150,10 @@ decodeSolution puzzle solution = Sudoku [[cellValue r c | c <- [1 .. boardSize]]
     checkVar :: Variable -> Bool
     checkVar = checkValue' . encodeVar'
 
+-- | Converts a Sudoku to DIMACS
+-- 
+-- >>> toDIMACS sudokuFour
+-- ...
 toDIMACS :: Sudoku -> DIMACS.DIMACS
 toDIMACS puzzle =
   DIMACS.DIMACS
@@ -114,12 +163,15 @@ toDIMACS puzzle =
       DIMACS.comments = ["Sudoku"]
     }
   where
+    -- | The size of the board
     boardSize :: Int
     boardSize = fromEnum $ size puzzle
 
+    -- | The size of the block
     blockSize' :: Int
     blockSize' = blockSize $ size puzzle
 
+    -- | The clauses of the Sudoku
     clauses :: [DIMACS.Clause]
     clauses =
       uniqueOnly $
@@ -131,15 +183,19 @@ toDIMACS puzzle =
             prefilledClauses
           ]
 
+    -- | The cell clauses
     cellClauses :: [DIMACS.Clause]
     cellClauses = [[encodeVar' (Variable r c n) | n <- [1 .. boardSize]] | r <- [1 .. boardSize], c <- [1 .. boardSize]]
 
+    -- | The row clauses
     rowClauses :: [DIMACS.Clause]
     rowClauses = [[-encodeVar' (Variable r c1 n), -encodeVar' (Variable r c2 n)] | r <- [1 .. boardSize], n <- [1 .. boardSize], c1 <- [1 .. boardSize], c2 <- [1 .. boardSize], c1 < c2]
 
+    -- | The column clauses
     colClauses :: [DIMACS.Clause]
     colClauses = [[-encodeVar' (Variable r1 c n), -encodeVar' (Variable r2 c n)] | c <- [1 .. boardSize], n <- [1 .. boardSize], r1 <- [1 .. boardSize], r2 <- [1 .. boardSize], r1 < r2]
 
+    -- | The block clauses
     blockClauses :: [DIMACS.Clause]
     blockClauses =
       [ [-encodeVar' (Variable r1 c1 n), -encodeVar' (Variable r2 c2 n)]
@@ -153,6 +209,7 @@ toDIMACS puzzle =
           (r1, c1) < (r2, c2)
       ]
 
+    -- | The prefilled (known) clauses
     prefilledClauses :: [DIMACS.Clause]
     prefilledClauses =
       [ [encodeVar' (Variable r c n)]
@@ -162,9 +219,13 @@ toDIMACS puzzle =
           n /= 0
       ]
 
+    -- | Encodes a variable to a DIMACS literal
     encodeVar' :: Variable -> DIMACS.Literal
     encodeVar' = encodeVar puzzle
 
+-- | Example Sudoku puzzles
+
+-- | A 4x4 Sudoku puzzle
 sudokuFour :: Sudoku
 sudokuFour =
   Sudoku
@@ -177,6 +238,7 @@ sudokuFour =
       size = FourByFour
     }
 
+-- | A 9x9 Sudoku puzzle
 sudokuNine :: Sudoku
 sudokuNine =
   Sudoku
@@ -194,6 +256,7 @@ sudokuNine =
       size = NineByNine
     }
 
+-- | A 16x16 Sudoku puzzle
 sudokuSixteen :: Sudoku
 sudokuSixteen =
   Sudoku

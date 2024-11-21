@@ -1,21 +1,36 @@
+{-|
+Module      : SAT.VSIDS
+Description : Exports the VSIDS module.
+-}
+
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 
-module SAT.VSIDS (type VSIDS, initVSIDS, decay, pickVariable, adjustScore, updateScore, decayFactor) where
+module SAT.VSIDS (type VSIDS, initVSIDS, decay, adjustScore, updateScore, decayFactor) where
   
 import Data.IntMap (type IntMap)
 import Data.IntMap qualified as IntMap
 import SAT.CNF (type CNF(CNF), type Clause, type Literal)
 import Data.List (foldl')
 
+-- | The VSIDS type.
 type VSIDS = IntMap Double
 
+-- | The decay factor.
 decayFactor :: Double
 decayFactor = 0.99
 
+-- | Decays the scores.
+-- 
+-- >>> decay (IntMap.fromList [(1, 1), (2, 2), (3, 3)])
+-- fromList [(1,0.99),(2,1.98),(3,2.97)]
 decay :: VSIDS -> VSIDS
 decay = IntMap.map (* decayFactor)
 
+-- | Initializes the VSIDS.
+-- 
+-- >>> initVSIDS (CNF [[1, 2], [2, 3], [3, 4]])
+-- fromList [(1,1.0),(2,2.0),(3,2.0),(4,1.0)]
 initVSIDS :: CNF -> VSIDS
 initVSIDS (CNF clauses) = foldl' updateVSIDS IntMap.empty clauses
   where
@@ -23,16 +38,19 @@ initVSIDS (CNF clauses) = foldl' updateVSIDS IntMap.empty clauses
     updateVSIDS = foldl' (\vsids' l -> IntMap.insertWith (+) (abs l) 1 vsids')
     
     
-pickVariable :: VSIDS -> Maybe (Literal, VSIDS)
-pickVariable vs = case IntMap.maxViewWithKey vs of
-  Just ((k, _), vsids') -> Just (k, vsids')
-  Nothing -> Nothing
-{-# INLINEABLE pickVariable #-}
 
+-- | Adjusts the score of a variable.
+-- 
+-- >>> adjustScore 1 (IntMap.fromList [(1, 1), (2, 2), (3, 3)])
+-- fromList [(1,2.0),(2,2.0),(3,3.0)]
 adjustScore :: Literal -> VSIDS -> VSIDS
 adjustScore l = IntMap.insertWith (+) (abs l) 1
 {-# INLINEABLE adjustScore #-}
 
+-- | Updates the score of a variable.
+-- 
+-- >>> updateScore 1 2 (IntMap.fromList [(1, 1), (2, 2), (3, 3)])
+-- fromList [(1,2.0),(2,2.0),(3,3.0)]
 updateScore :: Literal -> Double -> VSIDS -> VSIDS
 updateScore l = IntMap.insert (abs l)
 {-# INLINEABLE updateScore #-}

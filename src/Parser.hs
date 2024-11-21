@@ -1,3 +1,8 @@
+{-|
+Module      : Parser
+Description : Exports the parser module.
+-}
+
 {-# LANGUAGE Safe #-}
 
 module Parser
