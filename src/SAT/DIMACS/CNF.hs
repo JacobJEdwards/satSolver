@@ -8,11 +8,13 @@ Description : Exports the CNF module.
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Safe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module SAT.DIMACS.CNF (toExpr, fromExpr, type Clause, type DIMACS (..), exampleDIMACS, type Literal, toCNF, fromCNF) where
 
@@ -22,6 +24,8 @@ import SAT.Expr (type Expr (And, Not, Or, Var, Implies))
 import SAT.CNF (type CNF(CNF))
 import SAT.CNF qualified as CNF
 import Data.Set qualified as Set
+import GHC.Generics (Generic)
+import Control.Parallel.Strategies (NFData)
 
 -- | The literal type.
 type Literal :: Type
@@ -39,7 +43,9 @@ data DIMACS = DIMACS
     clauses :: [Clause],
     comments :: [Text]
   }
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Generic)
+
+deriving anyclass instance NFData DIMACS
 
 -- | Converts a list of clauses to an expression.
 toExpr :: [Clause] -> Expr Literal

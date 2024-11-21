@@ -8,17 +8,23 @@ Description : Exports the Polarity module.
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE Safe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module SAT.Polarity (type Polarity (Positive, Negative, Mixed), flipPolarity) where
   
 import Data.Kind (type Type)
+import GHC.Generics (Generic)
+import Control.Parallel.Strategies (NFData)
 
 -- | The 'Polarity' type.
 type Polarity :: Type
-data Polarity = Positive | Negative | Mixed deriving stock (Eq, Ord, Show)
+data Polarity = Positive | Negative | Mixed deriving stock (Eq, Ord, Show, Generic, Read)
+
+deriving anyclass instance NFData Polarity
 
 -- | Semigroup instance for the 'Polarity' type.
 instance Semigroup Polarity where

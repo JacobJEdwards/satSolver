@@ -25,7 +25,6 @@ dependencies:
 - vector
 - text
 - bytestring
-- lens >= 5.2.3
 - haskeline
 - mtl
 - QuickCheck
@@ -33,6 +32,7 @@ dependencies:
 - tasty
 - tasty-hunit
 - tasty-quickcheck
+- criterion
 
 ghc-options:
 - -Wall
@@ -61,7 +61,6 @@ executables:
     dependencies:
     - satSolver
     - haskeline
-    - lens
 
 tests:
   satSolver-test:
@@ -73,9 +72,19 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - satSolver
-    - haskeline
-    - lens
     - QuickCheck
     - tasty
     - tasty-hunit
     - tasty-quickcheck
+
+benchmarks:
+  satSolver-bench:
+    main:                Bench.hs
+    source-dirs:         bench
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - satSolver
+    - criterion

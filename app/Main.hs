@@ -41,8 +41,6 @@ showExprInfo expr = do
   putStrLn $ "CNF: " <> show cnf
   let freeVar = SAT.findFreeVariable cnf
   putStrLn $ "Free variable: " <> show freeVar
-  let satisfiable' = SAT.satisfiable cnf
-  putStrLn $ "Satisfiable: " <> show satisfiable'
   let solutions = SAT.getSolutions cnf
   putStrLn $ "Solutions: " <> show solutions
 
@@ -106,11 +104,17 @@ runSudoku file = do
 -- Otherwise, use the default nonogram.
 -- Solve the nonogram and print the solution.
 runNonogram :: Maybe Text -> IO ()
-runNonogram _ = do
-  let nonogram = example :: Nonogram
-  putStrLn "Example nonogram:"
-  print nonogram
-  let solution = solve nonogram
+runNonogram file = do
+  nonogramResult <- case file of
+    Just file' -> parseFile file' :: IO (Maybe Nonogram)
+    Nothing -> do
+      putStrLn "No file provided, using default nonogram"
+      return $ pure example
+
+  let nonogram' = fromMaybe (error "Invalid nonogram") nonogramResult
+  putStrLn "Parsed nonogram:"
+  print nonogram'
+  let solution = solve nonogram'
   maybe (putStrLn "No solution found") print solution
   
 -- | Run the application.

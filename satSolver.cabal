@@ -64,8 +64,8 @@ library
     , base >=4.7 && <5
     , bytestring
     , containers
+    , criterion
     , haskeline
-    , lens >=5.2.3
     , mtl
     , parallel
     , tasty
@@ -89,8 +89,8 @@ executable satSolver-exe
     , base >=4.7 && <5
     , bytestring
     , containers
+    , criterion
     , haskeline
-    , lens
     , mtl
     , parallel
     , satSolver
@@ -139,8 +139,35 @@ test-suite satSolver-test
     , base >=4.7 && <5
     , bytestring
     , containers
+    , criterion
     , haskeline
-    , lens
+    , mtl
+    , parallel
+    , satSolver
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , text
+    , vector
+  default-language: Haskell2010
+
+benchmark satSolver-bench
+  type: exitcode-stdio-1.0
+  main-is: Bench.hs
+  other-modules:
+      Paths_satSolver
+  autogen-modules:
+      Paths_satSolver
+  hs-source-dirs:
+      bench
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wmissing-import-lists -Wredundant-constraints -Wnoncanonical-monad-instances -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      QuickCheck
+    , base >=4.7 && <5
+    , bytestring
+    , containers
+    , criterion
+    , haskeline
     , mtl
     , parallel
     , satSolver

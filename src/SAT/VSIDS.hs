@@ -23,7 +23,8 @@ decayFactor = 0.99
 -- | Decays the scores.
 -- 
 -- >>> decay (IntMap.fromList [(1, 1), (2, 2), (3, 3)])
--- fromList [(1,0.99),(2,1.98),(3,2.97)]
+-- WAS fromList [(1,0.99),(2,1.98),(3,2.97)]
+-- NOW fromList [(1,0.99),(2,1.98),(3,2.9699999999999998)]
 decay :: VSIDS -> VSIDS
 decay = IntMap.map (* decayFactor)
 

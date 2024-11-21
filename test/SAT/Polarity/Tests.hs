@@ -1,12 +1,13 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module SAT.Polarity.Tests (tests) where
 
-import Test.Tasty
+import Test.Tasty(TestTree, testGroup)
 import Test.Tasty.QuickCheck qualified as QC
 import Test.Tasty.QuickCheck ((==>))
-import Test.Tasty.HUnit 
+import Test.Tasty.HUnit (testCase, (@?=)) 
 
 import SAT.Polarity qualified as SAT
 

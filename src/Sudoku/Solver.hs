@@ -9,6 +9,12 @@ Description : Exports the Sudoku solver module.
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Sudoku.Solver
   ( sudokuFour,
@@ -24,11 +30,11 @@ module Sudoku.Solver
   )
 where
 
-import Control.Lens (element, (^?))
 import Data.Kind (type Type)
-import Data.Maybe (fromMaybe)
 import SAT (checkValue, uniqueOnly, type Solutions)
 import SAT.DIMACS qualified as DIMACS
+import GHC.Generics (Generic)
+import Control.Parallel.Strategies (NFData)
 
 -- | The Sudoku board
 type Board :: Type
@@ -40,7 +46,9 @@ data Sudoku = Sudoku
   { board :: Board,
     size :: Size
   }
-  deriving stock (Eq)
+  deriving stock (Eq, Generic)
+
+deriving anyclass instance NFData Sudoku
 
 -- | Show instance for Sudoku
 instance Show Sudoku where
@@ -54,11 +62,15 @@ data Variable = Variable
     col :: Int,
     num :: Int
   }
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Ord, Generic)
+
+deriving anyclass instance NFData Variable
 
 -- | The Size of the Sudoku
 type Size :: Type
-data Size = FourByFour | NineByNine | SixteenBySixteen deriving stock (Eq, Show, Ord)
+data Size = FourByFour | NineByNine | SixteenBySixteen deriving stock (Eq, Show, Ord, Generic)
+
+deriving anyclass instance NFData Size
 
 -- | Enum instance for Size
 -- 
@@ -215,7 +227,7 @@ toDIMACS puzzle =
       [ [encodeVar' (Variable r c n)]
         | r <- [1 .. boardSize],
           c <- [1 .. boardSize],
-          let n = fromMaybe 0 (board puzzle ^? element (r - 1) >>= (^? element (c - 1))),
+          let n = board puzzle !! (r - 1) !! (c - 1),
           n /= 0
       ]
 

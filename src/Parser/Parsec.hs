@@ -13,6 +13,7 @@ Description : Exports the Parsec parser module.
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Parser.Parsec
   ( type Parser (..),

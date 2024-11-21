@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 module SAT.Solver.Tests where
 
 import SAT.Solver

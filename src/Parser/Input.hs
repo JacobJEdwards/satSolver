@@ -12,7 +12,6 @@ Description : Defines the 'Input' type class for parsing input types.
 
 module Parser.Input (type Input (..)) where
 
-import Control.Lens (ix, (^?))
 import Data.ByteString.Char8 qualified as BS
 import Data.Kind (type Constraint, type Type)
 import Data.List qualified as List
@@ -65,7 +64,7 @@ instance Input Text where
   {-# INLINEABLE uncons #-}
 
   head :: Text -> Maybe Char
-  head t = t ^? ix 0
+  head t = fst <$> Text.uncons t
   {-# INLINEABLE head #-}
 
   null :: Text -> Bool
@@ -85,7 +84,7 @@ instance Input String where
   {-# INLINEABLE uncons #-}
 
   head :: String -> Maybe Char
-  head t = t ^? ix 0
+  head t = fst <$> List.uncons t
   {-# INLINEABLE head #-}
 
   null :: String -> Bool

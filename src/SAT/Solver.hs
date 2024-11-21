@@ -10,32 +10,31 @@ Description : Exports the SAT solver module.
 
 module SAT.Solver
   ( satisfiable,
-    getSolutions,
     type Solutions,
     checkValue,
     findFreeVariable,
+    getSolutions,
+    bruteForce,
+    withUnitPropagation,
+    withPureLiteralElimination,
+    withPureLiteralAndUnitPropagation,
+    pureLitOnlyAsPreprocess,
+    literalEvery100,
   )
 where
 
 import Control.Applicative ((<|>))
-import Data.IntMap (type IntMap)
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.Maybe (listToMaybe)
-import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, type DecisionLevel)
-import SAT.Expr (type Solutions)
-import SAT.Optimisers (collectLiterals, eliminateLiterals, substitute, unitPropagate, assign, partialAssignment, partialAssignmentM, pickVariableM, pickVariable, decayM)
-import SAT.VSIDS (decay, initVSIDS, type VSIDS)
-import Control.Monad.RWS.Strict (RWST)
-import Control.Monad.RWS.Strict qualified as RWST 
-import Control.Monad.Writer.Strict (tell)
-import Control.Monad.State.Strict (modify)
-import Control.Monad (guard)
-import Control.Monad qualified
-import Control.Monad.Reader (ask)
-import Control.Monad.Trans (lift)
-import SAT.Monad (SolverM, SolverState, SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals)
+import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, toCNF)
+import SAT.Expr (type Solutions, Expr)
+import SAT.Optimisers (collectLiterals, eliminateLiterals, pickVariableM, decayM, eliminateLiteralsM, unitPropagateM, assignM, removeTautologiesM, isNotUnsatM, isSatM, substitute, unitPropagate)
+import SAT.VSIDS (initVSIDS)
+import Control.Monad.RWS.Strict qualified as RWST
+import Control.Monad (when, unless)
 
+import SAT.Monad (SolverM, SolverState, WatchedLiterals, getAssignment, ifM, guardM)
 
 -- | Initializes the watched literals.
 initWatchedLiterals :: CNF -> WatchedLiterals
@@ -50,7 +49,7 @@ initWatchedLiterals (CNF clauses) = foldl updateWatchedLiterals IntMap.empty cla
 
 -- | Initializes the solver state.
 initState :: CNF -> SolverState
-initState cnf = (mempty, mempty, mempty, initWatchedLiterals cnf, 0, initVSIDS cnf)
+initState cnf = (mempty, mempty, mempty, initWatchedLiterals cnf, 0, initVSIDS cnf, cnf)
 
 -- | Finds a free variable at random.
 findFreeVariable :: CNF -> Maybe Literal
@@ -65,35 +64,6 @@ checkValue :: Solutions -> Literal -> Bool
 checkValue = flip IntSet.member
 {-# INLINEABLE checkValue #-}
 
--- | Checks if a CNF is satisfied
--- 
--- >>> isSat (CNF [[1, 2], [2, 3], [3, 4]])
--- False
--- 
--- >>> isSat (CNF [])
--- True
-isSat :: CNF -> Bool
-isSat (CNF clauses) = null clauses
-
--- | Checks if a CNF is unsatisfiable
--- 
--- >>> isUnsat (CNF [[1, 2], [2, 3], [3, 4]])
--- False
--- 
--- >>> isUnsat (CNF [[]])
--- True
-isUnsat :: CNF -> Bool
-isUnsat (CNF clauses) = any clauseIsUnsat clauses
-
--- | Checks if a clause is unsatisfiable
--- 
--- >>> clauseIsUnsat [1, 2, 3]
--- False
--- 
--- >>> clauseIsUnsat []
--- True
-clauseIsUnsat :: Clause -> Bool
-clauseIsUnsat = null
 
 -- | Converts an assignment to a set of solutions.
 solutionsFromAssignment :: Assignment -> Solutions
@@ -101,98 +71,192 @@ solutionsFromAssignment = IntMap.keysSet . IntMap.filter fst
 {-# INLINEABLE solutionsFromAssignment #-}
 
 solutions :: SolverM Solutions
-solutions = do
-  (m, _, _, _, _, _) <- RWST.get
-  return $ solutionsFromAssignment m
+solutions = solutionsFromAssignment <$> getAssignment
 
--- | Simplifies the CNF and the assignment by eliminating pure literals and unit propagating.
-simplify :: CNF -> Assignment -> VSIDS -> DecisionLevel -> (Assignment, VSIDS)
-simplify cnf m vsids dl = (m'', vsids) -- TODO, move vsids through
-  where
-     assigned :: CNF
-     assigned = partialAssignment m cnf
-     
-     (cnf', m') = eliminateLiterals assigned m dl
-     (_, m'') = unitPropagate cnf' m' dl
-     
+maybeEliminateLiterals :: SolverM ()
+maybeEliminateLiterals = do
+  (m, _, _, _, dl, _, partial) <- RWST.get
+  when (mod dl 100 == 0) $ do
+    let (m', partial') = eliminateLiterals partial m dl
+    RWST.modify (\(_, b, c, d, e, f, _) -> (m', b, c, d, e, f, partial'))
+    return ()
+
+
 simplifyM :: SolverM ()
 simplifyM = do
-  (m1, _, _, _, dl, vsids) <- RWST.get
-  cnf <- RWST.ask
-  let (m, vsids') = simplify cnf m1 vsids dl
-  RWST.put (m, [], IntMap.empty, IntMap.empty, dl, vsids')
+  maybeEliminateLiterals
+  -- removeTautologiesM
   return ()
 
--- | Gets the solutions of a CNF.
+preprocess :: SolverM ()
+preprocess = do
+  m <- getAssignment
+  _ <- unitPropagateM
+  eliminateLiteralsM
+  removeTautologiesM
+  m' <- getAssignment
+  unless (m == m') preprocess
+
+
 getSolutions :: CNF -> Maybe Solutions
-getSolutions cnf = go $ initState cnf
-  where
-    go :: SolverState -> Maybe Solutions
-    go (m1, trail, ig, wl, dl, vsids)
-      | isUnsat assigned = Nothing
-      | isSat assigned = Just $ solutionsFromAssignment m
-      | otherwise = case pickVariable vsids' of
-          Nothing -> if isSat assigned then Just $ solutionsFromAssignment m else Nothing
-          Just (c, vsids'') -> tryAssign c True wl vsids'' <|> tryAssign c False wl vsids''
-      where
-        (m, vsids') = simplify cnf m1 vsids dl
-        
-        assigned :: CNF
-        assigned = partialAssignment m cnf
-
-        tryAssign :: Literal -> Bool -> WatchedLiterals -> VSIDS -> Maybe Solutions
-        tryAssign c v wl' vsids'' =
-           let newM = assign m c v dl
-           in go (newM, (c, dl, v) : trail, ig, wl', dl, decay vsids'')
-
-getSolutionsMonadic :: CNF -> Maybe Solutions
-getSolutionsMonadic cnf' = do
-   (solutions', _) <- RWST.evalRWST solver cnf' (initState cnf')
+getSolutions cnf' = do
+   (solutions', _) <- RWST.evalRWST run cnf' (initState cnf')
    return solutions'
-  where 
+  where
+    run :: SolverM Solutions
+    run = preprocess >> solver
+
     solver :: SolverM Solutions
-    solver = do 
+    solver = do
       simplifyM
-      assigned <- partialAssignmentM
-      tell ["Simplify: " ++ show assigned]
-      
-      guard $ not $ isUnsat assigned
-      
-      if isSat assigned then do
-        tell ["Sat"]
-        solutions
-      else do
-        var <- pickVariableM
-        case var of
-          Nothing -> do
-            tell ["No variable to pick"]
-            guard $ isSat assigned
-            solutions
-          Just c -> do
-            tell ["Picked variable: " ++ show c]
-            tryAssign c True <|> tryAssign c False
-            
+      guardM isNotUnsatM
+      ifM isSatM solutions branch
+
+    branch :: SolverM Solutions
+    branch = maybe failed try =<< pickVariableM
+
+    failed :: SolverM Solutions
+    failed = return mempty
+
+    try :: Literal -> SolverM Solutions
+    try c = tryAssign c True <|> tryAssign c False
+
     tryAssign :: Literal -> Bool -> SolverM Solutions
     tryAssign c v = do
       decayM
       assignM c v
-      tell ["Assigned " ++ show c ++ " to " ++ show v]
-      solver
-    
-    assignM :: Literal -> Bool -> SolverM ()
-    assignM c v = do
-      modify $ \(m, trail, ig, wl, dl, vsids) -> (assign m c v dl, (c, dl, v) : trail, ig, wl, dl, vsids)
-      tell ["Assigned " ++ show c ++ " to " ++ show v]
-    
-        
+      propagate
+
+    propagate :: SolverM Solutions
+    propagate = do
+      conflict <- unitPropagateM
+      case conflict of
+        Just c -> handleConflict (Just c)
+        Nothing -> solver
+
+    handleConflict :: Maybe Clause -> SolverM Solutions
+    handleConflict conflict = undefined
+{-# INLINEABLE getSolutions #-}
+
 -- | Checks if a CNF is satisfiable.
 satisfiable :: CNF -> Bool
-satisfiable cnf@(CNF clauses) = case findFreeVariable cnf' of
-  Nothing -> null clauses
-  Just c ->
-    let trueGuess = substitute c True cnf'
-        falseGuess = substitute c False cnf'
-     in satisfiable trueGuess || satisfiable falseGuess
-  where
-    cnf' = cnf
+satisfiable cnf = case getSolutions cnf of
+  Nothing -> False
+  Just _ -> True
 {-# INLINEABLE satisfiable #-}
+
+
+bruteForce :: Expr Int -> Maybe Solutions
+bruteForce expr = let cnf = toCNF expr in go cnf mempty
+  where
+    go :: CNF -> Solutions -> Maybe Solutions
+    go cnf m = case findFreeVariable cnf of
+      Nothing -> if isSat cnf then Just m else Nothing
+      Just c -> try c True <|> try c False
+      where
+        try :: Literal -> Bool -> Maybe Solutions
+        try c v = go (substitute c v cnf) (IntSet.insert c m)
+
+        isSat :: CNF -> Bool
+        isSat (CNF clauses) = null clauses
+{-# INLINEABLE bruteForce #-}
+
+withUnitPropagation :: Expr Int -> Maybe Solutions
+withUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
+  where
+    go :: CNF -> Assignment -> Maybe Solutions
+    go cnf m = case findFreeVariable cnf' of
+      Nothing -> if isSat cnf' then Just (solutionsFromAssignment m') else Nothing
+      Just c -> try c True <|> try c False
+      where
+        try :: Literal -> Bool -> Maybe Solutions
+        try c v = go (substitute c v cnf') (IntMap.insert c (v, 0) m')
+
+        isSat :: CNF -> Bool
+        isSat (CNF clauses) = null clauses
+
+        cnf' :: CNF
+        (m', cnf') = unitPropagate cnf m 0
+{-# INLINEABLE withUnitPropagation #-}
+
+withPureLiteralElimination :: Expr Int -> Maybe Solutions
+withPureLiteralElimination expr = let cnf = toCNF expr in go cnf mempty
+  where
+    go :: CNF -> Assignment -> Maybe Solutions
+    go cnf m = case findFreeVariable cnf' of
+      Nothing -> if isSat cnf' then Just (solutionsFromAssignment m') else Nothing
+      Just c -> try c True <|> try c False
+      where
+        try :: Literal -> Bool -> Maybe Solutions
+        try c v = go (substitute c v cnf') (IntMap.insert c (v, 0) m')
+
+        isSat :: CNF -> Bool
+        isSat (CNF clauses) = null clauses
+
+        cnf' :: CNF
+        (m', cnf') = eliminateLiterals cnf m 0
+{-# INLINEABLE withPureLiteralElimination #-}
+
+withPureLiteralAndUnitPropagation :: Expr Int -> Maybe Solutions
+withPureLiteralAndUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
+  where
+    go :: CNF -> Assignment -> Maybe Solutions
+    go cnf m = case findFreeVariable cnf'' of
+      Nothing -> if isSat cnf'' then Just (solutionsFromAssignment m'') else Nothing
+      Just c -> try c True <|> try c False
+      where
+        try :: Literal -> Bool -> Maybe Solutions
+        try c v = go (substitute c v cnf'') (IntMap.insert c (v, 0) m'')
+
+        isSat :: CNF -> Bool
+        isSat (CNF clauses) = null clauses
+
+        cnf' :: CNF
+        (m', cnf') = eliminateLiterals cnf m 0
+
+        cnf'' :: CNF
+        (m'', cnf'') = unitPropagate cnf' m' 0
+{-# INLINEABLE withPureLiteralAndUnitPropagation #-}
+
+
+pureLitOnlyAsPreprocess :: Expr Int -> Maybe Solutions
+pureLitOnlyAsPreprocess expr = go cnf' m
+  where
+    cnf = toCNF expr
+    (m, cnf') = eliminateLiterals cnf mempty 0
+
+    go :: CNF -> Assignment -> Maybe Solutions
+    go cnf'' m' = case findFreeVariable cnf'' of
+      Nothing -> if isSat cnf'' then Just (solutionsFromAssignment m'') else Nothing
+      Just c -> try c True <|> try c False
+      where
+        try :: Literal -> Bool -> Maybe Solutions
+        try c v = go (substitute c v cnf''') (IntMap.insert c (v, 0) m'')
+
+        isSat :: CNF -> Bool
+        isSat (CNF clauses) = null clauses
+
+        (m'', cnf''') = unitPropagate cnf'' m' 0
+{-# INLINEABLE pureLitOnlyAsPreprocess #-}
+
+literalEvery100 :: Expr Int -> Maybe Solutions
+literalEvery100 expr = go cnf' m 0
+  where
+    cnf = toCNF expr
+    (m, cnf') = eliminateLiterals cnf mempty 0
+
+    go :: CNF -> Assignment -> Int -> Maybe Solutions
+    go cnf'' m' i = case findFreeVariable cnf'''' of
+      Nothing -> if isSat cnf'''' then Just (solutionsFromAssignment m''') else Nothing
+      Just c -> try c True <|> try c False
+      where
+        try :: Literal -> Bool -> Maybe Solutions
+        try c v = go (substitute c v cnf'''') (IntMap.insert c (v, 0) m''') (i + 1)
+
+        isSat :: CNF -> Bool
+        isSat (CNF clauses) = null clauses
+
+        (m'', cnf''') = unitPropagate cnf'' m' 0
+        (m''', cnf'''') = if i `mod` 100 == 0 then eliminateLiterals cnf''' m'' 0 else (m'', cnf''')
+
+{-# INLINEABLE literalEvery100 #-}

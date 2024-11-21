@@ -7,11 +7,16 @@ Description : Exports the CNF module.
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative) where
 
 import SAT.Expr (type Expr(Not, And, Or, Val, Var, Implies))
 import Data.IntMap (type IntMap)
+import GHC.Generics (Generic)
+import Control.Parallel.Strategies (NFData)
 
 type DecisionLevel = Int
 type Assignment = IntMap (Bool, DecisionLevel)
@@ -21,7 +26,9 @@ type Assignment = IntMap (Bool, DecisionLevel)
 -- consider moving these into vector or seq
 -- | The CNF type.
 newtype CNF = CNF [Clause]
-  deriving stock (Eq, Show, Ord)
+  deriving stock (Eq, Show, Ord, Generic)
+
+deriving anyclass instance NFData CNF
 
 -- | The clause type.
 type Clause = [Literal] 
@@ -82,13 +89,13 @@ toCNF expr = CNF $ toClauses cnf
     cnf :: Expr Int
     cnf = applyLaws expr
     
-    toClauses :: Expr Int -> [Clause]
+    toClauses :: (Traversable t, Semigroup (t Clause), Applicative t) => Expr Int -> t Clause
     toClauses (And e1 e2) = toClauses e1 <> toClauses e2
-    toClauses e = [toClause e]
+    toClauses e = pure $ toClause e
     
     toClause :: Expr Int -> Clause
     toClause (Or e1 e2) = toClause e1 <> toClause e2
-    toClause e = [toLiteral e]
+    toClause e = pure $ toLiteral e
     
     toLiteral :: Expr Int -> Literal
     toLiteral (Not (Var n)) = negate n

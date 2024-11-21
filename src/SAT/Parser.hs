@@ -5,7 +5,6 @@ Description : Exports the SAT parser module.
 
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Safe #-}
 
 module SAT.Parser (parse) where
 

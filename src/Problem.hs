@@ -9,7 +9,7 @@ Description : Exports the problem module. Represents a problem that can be solve
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Problem (Problem (..), parseFile, solve, toExpr, toCNF, isSatisfiable) where
+module Problem (Problem (..), parseFile, solve, toExpr, toCNF, isSatisfiable, getNumClauses, getNumVars, solveWith) where
 
 import Data.Kind (type Constraint, type Type)
 import Data.Text (type Text)
@@ -20,8 +20,9 @@ import SAT (getSolutions, type Expr, type Solutions, type CNF)
 import SAT qualified
 import SAT.DIMACS.CNF qualified as DIMACS
 import SAT.DIMACS.Parser qualified as DIMACS
-import Sudoku (type Sudoku)
+import Sudoku.Solver ( type Sudoku )
 import Sudoku qualified
+import Data.List (genericLength)
 
 -- | Represents a problem that can be solved by the SAT solver.
 type Problem :: Type -> Constraint
@@ -87,7 +88,7 @@ instance Problem Nonogram where
   {-# INLINEABLE parse #-}
 
   example :: Nonogram
-  example = Nonogram.exampleNonogram
+  example = Nonogram.fiveByFive
   {-# INLINEABLE example #-}
 
 -- | DIMACS problem.
@@ -190,6 +191,22 @@ parseFile filename = do
 solve :: (Problem a) => a -> Maybe a
 solve puzzle = decode puzzle <$> getSolutions (toCNF puzzle)
 {-# INLINEABLE solve #-}
+
+solveWith :: (Problem a) => (Expr Int -> Maybe Solutions) -> a -> Maybe a
+solveWith f puzzle = decode puzzle <$> f (toExpr puzzle)
+{-# INLINEABLE solveWith #-}
+
+-- | Gets the number of clauses in a problem.
+--
+-- >>> getNumClauses Sudoku.sudokuSixteen
+-- ...
+getNumClauses :: (Problem a) => a -> Integer
+getNumClauses = genericLength . DIMACS.clauses . toDIMACS
+{-# INLINEABLE getNumClauses #-}
+
+getNumVars :: (Problem a) => a -> Integer
+getNumVars = DIMACS.numVars . toDIMACS
+{-# INLINEABLE getNumVars #-}
 
 -- | Checks if a problem is satisfiable.
 -- 

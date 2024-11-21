@@ -9,10 +9,12 @@ Description : Exports the SAT expression module.
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE Safe #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module SAT.Expr
   ( type Expr (..),
@@ -32,6 +34,8 @@ where
 import Data.Data (type Data)
 import Data.Kind (type Type)
 import Data.IntSet (type IntSet)
+import GHC.Generics (Generic)
+import Control.Parallel.Strategies (NFData)
 
 -- | The solutions type.
 type Solutions = IntSet
@@ -64,6 +68,13 @@ deriving stock instance (Ord a) => Ord (Expr a)
 
 deriving stock instance (Data a) => Data (Expr a)
 
+deriving stock instance (Read a) => Read (Expr a)
+
+deriving stock instance Functor Expr
+deriving stock instance Foldable Expr
+deriving stock instance Traversable Expr
+deriving stock instance Generic (Expr a)
+deriving anyclass instance (NFData a) => NFData (Expr a)
 
 (.||.) :: Expr a -> Expr a -> Expr a
 (.||.) = Or
@@ -127,47 +138,6 @@ instance Monoid (Expr a) where
   mempty :: Expr a
   mempty = Val False
 
--- | Functor instance for the 'Expr' type.
--- 
--- >>> fmap (+1) (Var 1)
--- Var 2
-instance Functor Expr where
-  {-# INLINEABLE fmap #-}
-  fmap :: (a -> b) -> Expr a -> Expr b
-  fmap f (Var v) = Var $ f v
-  fmap f (Not e) = Not $ fmap f e
-  fmap f (And e1 e2) = And (fmap f e1) (fmap f e2)
-  fmap f (Or e1 e2) = Or (fmap f e1) (fmap f e2)
-  fmap f (Implies e1 e2) = Implies (fmap f e1) (fmap f e2)
-  fmap _ (Val b) = Val b
-
--- | Foldable instance for the 'Expr' type.
--- 
--- >>> foldMap Sum (Var 1)
--- Sum {getSum = 1}
-instance Foldable Expr where
-  {-# INLINEABLE foldMap #-}
-  foldMap :: (Monoid m) => (a -> m) -> Expr a -> m
-  foldMap f (Var v) = f v
-  foldMap f (Not e) = foldMap f e
-  foldMap f (And e1 e2) = foldMap f e1 <> foldMap f e2
-  foldMap f (Or e1 e2) = foldMap f e1 <> foldMap f e2
-  foldMap f (Implies e1 e2) = foldMap f e1 <> foldMap f e2
-  foldMap _ (Val _) = mempty
-
--- | Traversable instance for the 'Expr' type.
--- 
--- >>> traverse Just (Var 1)
--- Just (Var 1)
-instance Traversable Expr where
-  {-# INLINEABLE traverse #-}
-  traverse :: (Applicative f) => (a -> f b) -> Expr a -> f (Expr b)
-  traverse f (Var v) = Var <$> f v
-  traverse f (Not e) = Not <$> traverse f e
-  traverse f (And e1 e2) = And <$> traverse f e1 <*> traverse f e2
-  traverse f (Or e1 e2) = Or <$> traverse f e1 <*> traverse f e2
-  traverse f (Implies e1 e2) = Implies <$> traverse f e1 <*> traverse f e2
-  traverse _ (Val b) = pure $ Val b
 
 -- | Applicative instance for the 'Expr' type.
 -- 

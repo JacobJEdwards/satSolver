@@ -7,7 +7,6 @@
 -- Description : Exports the SAT optimisers module.
 module SAT.Optimisers
   ( unitPropagate,
-    literalElimination,
     substitute,
     collectLiterals,
     collectLiteralsToSet,
@@ -18,16 +17,24 @@ module SAT.Optimisers
     partialAssignmentM,
     pickVariable,
     pickVariableM,
+    literalPolarities,
     decayM,
+    eliminateLiteralsM,
+    findUnitClause,
+    unitPropagateM,
+    substituteM,
+    assignM,
+    removeTautologies,
+    removeTautologiesM,
+    isNotUnsatM,
+    isSat,
+    isSatM,
+    isUnsat,
+    isUnsatM,
   )
 where
 
-import Control.Monad (guard)
-import Control.Monad.RWS.Strict (RWST)
-import Control.Monad.RWS.Strict qualified as RWST
-import Control.Monad.Reader (ask)
-import Control.Monad.State.Strict (get, gets, modify, put)
-import Control.Monad.Writer.Strict (tell)
+import Control.Monad.State.Strict (get, modify)
 import Data.IntMap (type IntMap)
 import Data.IntMap qualified as IntMap
 import Data.IntSet (type IntSet)
@@ -36,7 +43,7 @@ import Data.List (find)
 import Data.Set (type Set)
 import Data.Set qualified as Set
 import SAT.CNF (CNF (CNF), Clause, type Assignment, type DecisionLevel, type Literal)
-import SAT.Monad (ImplicationGraph, Reason, SolverLog, SolverM, SolverState, Trail, WatchedLiterals)
+import SAT.Monad (SolverM, getVSIDS, logM, getPartialAssignment, notM)
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (decay, type VSIDS)
 
@@ -105,13 +112,13 @@ literalPolarities (CNF clauses') = foldl updatePolarity IntMap.empty (concatMap 
 -- | eliminates any literals that are either positive or negative
 -- from the CNF and updates the assignment
 -- returns the updated CNF and assignment
-eliminateLiterals :: CNF -> Assignment -> DecisionLevel -> (CNF, Assignment)
-eliminateLiterals (CNF clauses) solutions dl = (clauses', solutions')
+eliminateLiterals :: CNF -> Assignment -> DecisionLevel -> (Assignment, CNF)
+eliminateLiterals cnf solutions dl = (solutions', cnf')
   where
     literals :: IntMap Polarity
-    literals = IntMap.filter (/= Mixed) $ literalPolarities (CNF clauses)
+    literals = IntMap.filter (/= Mixed) $ literalPolarities cnf
 
-    (clauses', solutions') = getClauses literals (CNF clauses) solutions
+    (cnf', solutions') = getClauses literals cnf solutions
 
     getClauses :: IntMap Polarity -> CNF -> Assignment -> (CNF, Assignment)
     getClauses pols expr sols = case IntMap.minViewWithKey pols of
@@ -121,6 +128,14 @@ eliminateLiterals (CNF clauses) solutions dl = (clauses', solutions')
           value :: Bool
           value = p == Positive
 {-# INLINEABLE eliminateLiterals #-} -- wrong i think
+
+eliminateLiteralsM :: SolverM ()
+eliminateLiteralsM = do
+  (m, _, _, _, dl, _, partial) <- get
+  let (m', partial') = eliminateLiterals partial m dl
+  modify (\(_, b, c, d, e, f, _) -> (m', b, c, d, e, f, partial'))
+  return ()
+{-# INLINEABLE eliminateLiteralsM #-}
 
 -- | Substitutes a literal in a CNF.
 --
@@ -148,11 +163,13 @@ substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter 
     eliminateClause c p = filter (not . literalIsFalse' c p)
 {-# INLINEABLE substitute #-}
 
--- | Eliminates any literals that are either positive or negative
--- from the CNF and updates the assignment
-literalElimination :: CNF -> Assignment -> DecisionLevel -> (CNF, Assignment)
-literalElimination = eliminateLiterals
-{-# INLINEABLE literalElimination #-}
+substituteM :: Literal -> Bool -> SolverM ()
+substituteM c p = do
+  (_, _, _, _, _, _, partial) <- get
+  let partial' = substitute c p partial
+  modify (\(a, b, c', d, e, f, _) -> (a, b, c', d, e, f, partial'))
+  return ()
+{-# INLINEABLE substituteM #-}
 
 -- | Finds a unit clause in a CNF (a clause with only one literal).
 --
@@ -181,14 +198,22 @@ findUnitClause (CNF clauses) = do
 --
 -- >>> unitPropagate (CNF [[1], [2, 3], [3, 4]]) IntMap.empty 0
 -- (CNF {clauses = [[2,3],[3,4]]},fromList [(1,True)])
-unitPropagate :: CNF -> Assignment -> DecisionLevel -> (CNF, Assignment)
-unitPropagate e m dl = case findUnitClause e of
-  Nothing -> (e, m)
+unitPropagate :: CNF -> Assignment -> DecisionLevel -> (Assignment, CNF)
+unitPropagate cnf m dl = case findUnitClause cnf of
+  Nothing -> (m, cnf)
   Just (c, p) ->
-    let newExpr = substitute c p e
-        newSol = IntMap.insert c (p, dl) m
-     in unitPropagate newExpr newSol dl
+    let cnf'' = substitute c p cnf
+        m' = IntMap.insert c (p, dl) m
+     in unitPropagate cnf'' m' dl
 {-# INLINEABLE unitPropagate #-}
+
+unitPropagateM :: SolverM (Maybe Clause)
+unitPropagateM = do
+  (m, _, _, _, dl, _, partial) <- get
+  let (m', partial') = unitPropagate partial m dl
+  modify (\(_, b, c, d, e, f, _) -> (m', b, c, d, e, f, partial'))
+  return Nothing
+{-# INLINEABLE unitPropagateM #-}
 
 -- https://buffered.io/posts/a-better-nub/
 
@@ -214,6 +239,16 @@ assign :: Assignment -> Literal -> Bool -> DecisionLevel -> Assignment
 assign m c v dl = IntMap.insertWith (const id) (abs c) (v, dl) m
 {-# INLINEABLE assign #-}
 
+assignM :: Literal -> Bool -> SolverM ()
+assignM c v = do
+  logM $ "Assigning " ++ show c ++ " to " ++ show v
+  (m, _, _, _, dl, _, _) <- get
+  substituteM c v
+  let m' = assign m c v dl
+  modify (\(_, b, c', d, e, f, p) -> (m', b, c', d, e, f, p))
+  return ()
+{-# INLINEABLE assignM #-}
+
 -- | Applies a partial assignment to a CNF.
 --
 -- >>> partialAssignment (IntMap.fromList [(1, (True, 0))]) (CNF [[1, 2], [-2, -3], [3, 4]])
@@ -237,11 +272,11 @@ partialAssignment m (CNF clauses) = CNF $ map (filter isFalseLiteral) $ filter (
       _ -> True
 {-# INLINEABLE partialAssignment #-}
 
-partialAssignmentM :: SolverM CNF
+partialAssignmentM :: SolverM ()
 partialAssignmentM = do
-  cnf <- ask
-  (m, _, _, _, _, _) <- get
-  return $ partialAssignment m cnf
+  (m, _, _, _, _, _, partial) <- get
+  let partial' = partialAssignment m partial
+  modify (\(a, b, c, d, e, f, _) -> (a, b, c, d, e, f, partial'))
 {-# INLINEABLE partialAssignmentM #-}
 
 -- | Picks a variable.
@@ -256,17 +291,79 @@ pickVariable vs = do
 
 pickVariableM :: SolverM (Maybe Literal)
 pickVariableM = do
-  vs <- gets (\(_, _, _, _, _, vsids) -> vsids)
+  vs <- getVSIDS
   case pickVariable vs of
     Just (l, vs') -> do
-      modify (\(a, b, c, d, e, _) -> (a, b, c, d, e, vs'))
+      modify (\(a, b, c, d, e, _, p) -> (a, b, c, d, e, vs', p))
       return $ Just l
-    Nothing -> return Nothing
+    Nothing -> 
+      return Nothing
 
 decayM :: SolverM ()
 decayM = do
-  vs <- gets (\(_, _, _, _, _, vsids) -> vsids)
+  vs <- getVSIDS
   let vs' = decay vs
-  modify (\(a, b, c, d, e, _) -> (a, b, c, d, e, vs'))
+  modify (\(a, b, c, d, e, _, p) -> (a, b, c, d, e, vs', p))
   return ()
 {-# INLINEABLE decayM #-}
+
+
+-- | Removes tautologies from a CNF.
+-- A tautology is a clause that contains both a literal and its negation, and is always true therefore.
+-- This function removes all such clauses from the CNF.
+--
+-- >>> removeTautologies (CNF [[-2, 2], [-2, -3], [3, 4]])
+-- CNF {[[-2,-3],[3,4]]}
+removeTautologies :: CNF -> CNF
+removeTautologies (CNF clauses') = CNF $ filter (not . tautology) clauses'
+  where
+    tautology :: Clause -> Bool
+    tautology c = any (\x -> -x `elem` c) c
+{-# INLINEABLE removeTautologies #-}
+
+removeTautologiesM :: SolverM ()
+removeTautologiesM = do
+  (_, _, _, _, _, _, partial) <- get
+  let partial' = removeTautologies partial
+  modify (\(a, b, c, d, e, f, _) -> (a, b, c, d, e, f, partial'))
+  return ()
+{-# INLINEABLE removeTautologiesM #-}
+
+-- | Checks if a CNF is satisfied
+-- 
+-- >>> isSat (CNF [[1, 2], [2, 3], [3, 4]])
+-- False
+-- 
+-- >>> isSat (CNF [])
+-- True
+isSat :: CNF -> Bool
+isSat (CNF clauses) = null clauses
+
+isSatM :: SolverM Bool
+isSatM = isSat <$> getPartialAssignment
+
+-- | Checks if a CNF is unsatisfiable
+-- 
+-- >>> isUnsat (CNF [[1, 2], [2, 3], [3, 4]])
+-- False
+-- 
+-- >>> isUnsat (CNF [[]])
+-- True
+isUnsat :: CNF -> Bool
+isUnsat (CNF clauses) = any clauseIsUnsat clauses
+
+isUnsatM :: SolverM Bool
+isUnsatM = isUnsat <$> getPartialAssignment
+
+isNotUnsatM :: SolverM Bool
+isNotUnsatM = notM isUnsatM
+
+-- | Checks if a clause is unsatisfiable
+-- 
+-- >>> clauseIsUnsat [1, 2, 3]
+-- False
+-- 
+-- >>> clauseIsUnsat []
+-- True
+clauseIsUnsat :: Clause -> Bool
+clauseIsUnsat = null
