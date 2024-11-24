@@ -11,12 +11,13 @@ Description : Exports the CNF module.
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveAnyClass #-}
 
-module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative) where
+module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative, tseitin, toTseitin) where
 
 import SAT.Expr (type Expr(Not, And, Or, Val, Var, Implies))
 import Data.IntMap (type IntMap)
 import GHC.Generics (Generic)
 import Control.Parallel.Strategies (NFData)
+import Control.Monad.State.Strict (State, get, put, runState)
 
 type DecisionLevel = Int
 type Assignment = IntMap (Bool, DecisionLevel)
@@ -30,8 +31,11 @@ newtype CNF = CNF [Clause]
 
 deriving anyclass instance NFData CNF
 
+-- data CNF where 
+--   CNF :: (Traversable t, Semigroup (t Clause), Applicative t) => t Clause -> CNF
+
 -- | The clause type.
-type Clause = [Literal] 
+type Clause = [Literal]
 
 -- | The literal type.
 type Literal = Int
@@ -79,36 +83,51 @@ applyLaws expr
     expr' = distributiveLaws $ deMorgansLaws expr
 {-# INLINEABLE applyLaws #-}
 
+
 -- | Converts an expression to CNF.
 -- 
 -- >>> toCNF (Or (And (Var 1) (Var 2)) (Not (Var 3)))
 -- CNF [[-3,1],[-3,2]]
 toCNF :: Expr Int -> CNF
 toCNF expr = CNF $ toClauses cnf
-  where 
+  where
     cnf :: Expr Int
     cnf = applyLaws expr
-    
+
     toClauses :: (Traversable t, Semigroup (t Clause), Applicative t) => Expr Int -> t Clause
     toClauses (And e1 e2) = toClauses e1 <> toClauses e2
     toClauses e = pure $ toClause e
-    
+
     toClause :: Expr Int -> Clause
     toClause (Or e1 e2) = toClause e1 <> toClause e2
     toClause e = pure $ toLiteral e
-    
+
     toLiteral :: Expr Int -> Literal
     toLiteral (Not (Var n)) = negate n
     toLiteral (Var n) = n
     toLiteral l = error $ "Invalid literal" ++ show l
 {-# INLINEABLE toCNF #-}
 
+toTseitin :: Expr Int -> CNF
+toTseitin expr = CNF clauses
+  where 
+    tseitin' :: State Int (CNF, Literal)
+    tseitin' = tseitin expr
+
+    tseitin'' :: State Int CNF
+    tseitin'' = do
+      (CNF clauses', l) <- tseitin'
+      return $ CNF $ [[l]] <> clauses'
+
+    (CNF clauses, _) = runState tseitin'' (highestVar expr + 1)
+{-# INLINEABLE toTseitin #-}
+
 -- | Adds a clause to a CNF.
 -- 
 -- >>> addClause (CNF [[1,2]]) [3]
 -- CNF [[3],[1,2]]
 addClause :: CNF -> Clause -> CNF
-addClause (CNF clauses) clause = CNF $ clause : clauses
+addClause (CNF clauses) clause = CNF $ pure clause <> clauses
 {-# INLINEABLE addClause #-}
 
 -- | Checks if a literal is negative.
@@ -123,3 +142,43 @@ addClause (CNF clauses) clause = CNF $ clause : clauses
 isNegative :: Literal -> Bool
 isNegative = (< 0)
 {-# INLINEABLE isNegative #-}
+
+type FreshVariable = State Int
+
+freshVariable :: FreshVariable Literal
+freshVariable = do
+  n <- get
+  put $ n + 1
+  return n
+
+-- | Returns the highest variable in an expression.
+-- In order to know where to start the fresh variables.
+highestVar :: Expr Int -> Int
+highestVar (Var n) = n
+highestVar (Val _) = 0
+highestVar (Not e) = highestVar e
+highestVar (And e1 e2) = max (highestVar e1) (highestVar e2)
+highestVar (Or e1 e2) = max (highestVar e1) (highestVar e2)
+highestVar (Implies e1 e2) = max (highestVar e1) (highestVar e2)
+
+tseitin :: Expr Int -> State Int (CNF, Literal)
+tseitin (Var n) = return (CNF [], n)
+tseitin (Val b) = return (CNF [], if b then 1 else -1)
+tseitin (Not e) = do
+  (CNF clauses, l) <- tseitin e
+  l' <- freshVariable
+  let clauses' = [[-l', -l], [l', l]]
+  return (CNF (clauses <> clauses'), l')
+tseitin (And e1 e2) = do
+  (CNF clauses1, l1) <- tseitin e1
+  (CNF clauses2, l2) <- tseitin e2
+  l' <- freshVariable
+  let clauses = [[-l', l1], [-l', l2], [l', -l1, -l2]]
+  return (CNF (clauses <> clauses1 <> clauses2), l')
+tseitin (Or e1 e2) = do
+  (CNF clauses1, l1) <- tseitin e1
+  (CNF clauses2, l2) <- tseitin e2
+  l' <- freshVariable
+  let clauses = [[l', -l1], [l', -l2], [-l', l1, l2]]
+  return (CNF (clauses <> clauses1 <> clauses2), l')
+tseitin (Implies e1 e2) = tseitin $ Or (Not e1) e2

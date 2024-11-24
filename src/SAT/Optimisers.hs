@@ -1,6 +1,8 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE BangPatterns #-}
 
 -- |
 -- Module      : SAT.Optimisers
@@ -31,6 +33,10 @@ module SAT.Optimisers
     isSatM,
     isUnsat,
     isUnsatM,
+    backtrack,
+    analyseConflict,
+    addDecision,
+    addPropagation,
   )
 where
 
@@ -39,13 +45,16 @@ import Data.IntMap (type IntMap)
 import Data.IntMap qualified as IntMap
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
-import Data.List (find)
+import Data.List (find, partition)
 import Data.Set (type Set)
 import Data.Set qualified as Set
 import SAT.CNF (CNF (CNF), Clause, type Assignment, type DecisionLevel, type Literal)
-import SAT.Monad (SolverM, getVSIDS, logM, getPartialAssignment, notM)
+import SAT.Monad (SolverM, getVSIDS, getPartialAssignment, notM, getTrail, getAssignment, cnfWithLearnedClauses, getImplicationGraph, getDecisionLevel, ImplicationGraph)
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (decay, type VSIDS)
+import Control.Monad.RWS (MonadReader(ask))
+import Data.Maybe (mapMaybe)
+import Debug.Trace (trace)
 
 -- | Collects all literals in a CNF.
 --
@@ -129,12 +138,12 @@ eliminateLiterals cnf solutions dl = (solutions', cnf')
           value = p == Positive
 {-# INLINEABLE eliminateLiterals #-} -- wrong i think
 
-eliminateLiteralsM :: SolverM ()
+eliminateLiteralsM :: SolverM (Maybe Clause)
 eliminateLiteralsM = do
-  (m, _, _, _, dl, _, partial) <- get
+  (m, _, _, _, dl, _, partial, _) <- get
   let (m', partial') = eliminateLiterals partial m dl
-  modify (\(_, b, c, d, e, f, _) -> (m', b, c, d, e, f, partial'))
-  return ()
+  modify (\(_, b, c, d, e, f, _, lc) -> (m', b, c, d, e, f, partial', lc))
+  return Nothing
 {-# INLINEABLE eliminateLiteralsM #-}
 
 -- | Substitutes a literal in a CNF.
@@ -165,9 +174,9 @@ substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter 
 
 substituteM :: Literal -> Bool -> SolverM ()
 substituteM c p = do
-  (_, _, _, _, _, _, partial) <- get
+  (_, _, _, _, _, _, partial, _) <- get
   let partial' = substitute c p partial
-  modify (\(a, b, c', d, e, f, _) -> (a, b, c', d, e, f, partial'))
+  modify (\(a, b, c', d, e, f, _, lc) -> (a, b, c', d, e, f, partial', lc))
   return ()
 {-# INLINEABLE substituteM #-}
 
@@ -198,22 +207,55 @@ findUnitClause (CNF clauses) = do
 --
 -- >>> unitPropagate (CNF [[1], [2, 3], [3, 4]]) IntMap.empty 0
 -- (CNF {clauses = [[2,3],[3,4]]},fromList [(1,True)])
-unitPropagate :: CNF -> Assignment -> DecisionLevel -> (Assignment, CNF)
+unitPropagate :: CNF -> Assignment -> DecisionLevel -> Either (Assignment, CNF) Clause
 unitPropagate cnf m dl = case findUnitClause cnf of
-  Nothing -> (m, cnf)
+  Nothing -> Left (m, cnf)
   Just (c, p) ->
-    let cnf'' = substitute c p cnf
+    let cnf''@(CNF clauses) = substitute c p cnf
         m' = IntMap.insert c (p, dl) m
-     in unitPropagate cnf'' m' dl
+     in if any clauseIsUnsat clauses then Right [c] else
+      unitPropagate cnf'' m' dl
 {-# INLINEABLE unitPropagate #-}
+
+-- | Finds a unit clause in a CNF (a clause with only one literal).
+-- Returns the literal, its polarity, and the clause it belongs to.
+findUnitClause' :: [Clause] -> Assignment -> Maybe (Int, Bool, Clause)
+findUnitClause' clauses m =
+  let checkUnit clause = case partialAssignment m (CNF [clause]) of
+        CNF [[p]] -> Just (abs p, p > 0, clause)
+        _ -> Nothing
+
+  in case mapMaybe checkUnit clauses of
+    [] -> Nothing
+    (x:_) -> Just x
+
+findUnitClauseM :: SolverM (Maybe (Int, Bool, Clause))
+findUnitClauseM = do
+  CNF clauses <- ask
+  findUnitClause' clauses <$> getAssignment
 
 unitPropagateM :: SolverM (Maybe Clause)
 unitPropagateM = do
-  (m, _, _, _, dl, _, partial) <- get
-  let (m', partial') = unitPropagate partial m dl
-  modify (\(_, b, c, d, e, f, _) -> (m', b, c, d, e, f, partial'))
-  return Nothing
+  CNF clauses <- ask
+  let loop = do
+        unit <- findUnitClauseM
+        trace ("unit: " ++ show unit) $ case unit of
+          Just (c, p, clause) -> do
+            trace ("unit: " ++ show c ++ " " ++ show p ++ " " ++ show clause) $ assignM c p
+            addPropagation c clause
+            checkForConflict clauses >>= \case
+              Just c' -> return $ Just c'
+              Nothing -> loop
+          Nothing ->  return Nothing
+
+  loop
+
 {-# INLINEABLE unitPropagateM #-}
+
+checkForConflict :: [Clause] -> SolverM (Maybe Clause)
+checkForConflict clauses = do
+    assignment <- getAssignment
+    return $ find (\c -> partialAssignment assignment (CNF [c]) == CNF [[]]) clauses
 
 -- https://buffered.io/posts/a-better-nub/
 
@@ -241,11 +283,11 @@ assign m c v dl = IntMap.insertWith (const id) (abs c) (v, dl) m
 
 assignM :: Literal -> Bool -> SolverM ()
 assignM c v = do
-  logM $ "Assigning " ++ show c ++ " to " ++ show v
-  (m, _, _, _, dl, _, _) <- get
+  (m, t, _, _, dl, _, _, _) <- get
+  let t' = (c, dl, v) : t
   substituteM c v
   let m' = assign m c v dl
-  modify (\(_, b, c', d, e, f, p) -> (m', b, c', d, e, f, p))
+  modify (\(_, _, c', d, e, f, p, lc) -> (m', t', c', d, e, f, p, lc))
   return ()
 {-# INLINEABLE assignM #-}
 
@@ -274,9 +316,9 @@ partialAssignment m (CNF clauses) = CNF $ map (filter isFalseLiteral) $ filter (
 
 partialAssignmentM :: SolverM ()
 partialAssignmentM = do
-  (m, _, _, _, _, _, partial) <- get
+  (m, _, _, _, _, _, partial, _) <- get
   let partial' = partialAssignment m partial
-  modify (\(a, b, c, d, e, f, _) -> (a, b, c, d, e, f, partial'))
+  modify (\(a, b, c, d, e, f, _, lc) -> (a, b, c, d, e, f, partial', lc))
 {-# INLINEABLE partialAssignmentM #-}
 
 -- | Picks a variable.
@@ -294,16 +336,16 @@ pickVariableM = do
   vs <- getVSIDS
   case pickVariable vs of
     Just (l, vs') -> do
-      modify (\(a, b, c, d, e, _, p) -> (a, b, c, d, e, vs', p))
+      modify (\(a, b, c, d, e, _, p, lc) -> (a, b, c, d, e, vs', p, lc))
       return $ Just l
-    Nothing -> 
+    Nothing ->
       return Nothing
 
 decayM :: SolverM ()
 decayM = do
   vs <- getVSIDS
   let vs' = decay vs
-  modify (\(a, b, c, d, e, _, p) -> (a, b, c, d, e, vs', p))
+  modify (\(a, b, c, d, e, _, p, lc) -> (a, b, c, d, e, vs', p, lc))
   return ()
 {-# INLINEABLE decayM #-}
 
@@ -323,9 +365,9 @@ removeTautologies (CNF clauses') = CNF $ filter (not . tautology) clauses'
 
 removeTautologiesM :: SolverM ()
 removeTautologiesM = do
-  (_, _, _, _, _, _, partial) <- get
+  (_, _, _, _, _, _, partial, _) <- get
   let partial' = removeTautologies partial
-  modify (\(a, b, c, d, e, f, _) -> (a, b, c, d, e, f, partial'))
+  modify (\(a, b, c, d, e, f, _, lc) -> (a, b, c, d, e, f, partial', lc))
   return ()
 {-# INLINEABLE removeTautologiesM #-}
 
@@ -367,3 +409,41 @@ isNotUnsatM = notM isUnsatM
 -- True
 clauseIsUnsat :: Clause -> Bool
 clauseIsUnsat = null
+
+-- | Backtracks to a given decision level.
+backtrack :: DecisionLevel -> SolverM ()
+backtrack dl = do
+    trail <- getTrail
+    assignments <- getAssignment
+    cnf <- cnfWithLearnedClauses
+    ig <- getImplicationGraph
+
+    let (trail', toRemove) = partition (\(_, dl', _) -> dl' < dl) trail
+        toRemoveKeys = Set.fromList $ map (\(l, _, _) -> abs l) toRemove
+        assignments' = IntMap.filterWithKey (\k _ -> k `notElem` toRemoveKeys) assignments
+        ig' = IntMap.filterWithKey (\k _ -> k `notElem` toRemoveKeys) ig
+    modify $ \(_, _, _, wl, _, vsids, _, lc) -> (assignments', trail', ig', wl, dl, vsids, cnf, lc)
+    partialAssignmentM
+
+analyseConflict :: Clause -> SolverM (Clause, DecisionLevel)
+analyseConflict conflict = return (conflict, 0)
+
+
+
+
+
+addDecision :: Literal -> SolverM ()
+addDecision literal = do
+    level <- getDecisionLevel
+    graph <- getImplicationGraph
+    let newNode = (literal, Nothing, level)
+    let graph' = IntMap.insert (abs literal) newNode graph
+    modify $ \ (a, b, _, d, e, f, g, h) -> (a, b, graph', d, e, f, g, h)
+
+addPropagation :: Literal -> Clause -> SolverM ()
+addPropagation literal clause = do
+    level <- getDecisionLevel
+    graph <- getImplicationGraph
+    let newNode = (literal, Just clause, level)
+    let graph' = IntMap.insert (abs literal) newNode graph
+    modify $ \ (a, b, _, d, e, f, g, h) -> (a, b, graph', d, e, f, g, h)
