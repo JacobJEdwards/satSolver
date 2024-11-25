@@ -20,7 +20,8 @@ import Control.Parallel.Strategies (NFData)
 import Control.Monad.State.Strict (State, get, put, runState)
 
 type DecisionLevel = Int
-type Assignment = IntMap (Bool, DecisionLevel)
+
+type Assignment = IntMap Bool
 
 -- data cnf is list of clauses
 
