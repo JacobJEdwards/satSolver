@@ -1,6 +1,7 @@
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE DerivingStrategies #-}
 
-module SAT.Monad (SolverM, SolverState, SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals, getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, getPartialAssignment, logM, ifM, guardM, notM, getLearnedClauses, learn, cnfWithLearnedClauses, increaseDecisionLevel) where
+module SAT.Monad (SolverM, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals, getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, getPartialAssignment, logM, ifM, guardM, notM, getLearnedClauses, learn, cnfWithLearnedClauses, increaseDecisionLevel, ClauseState(..)) where
 
 import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, type DecisionLevel)
 import Data.IntMap (IntMap)
@@ -12,17 +13,43 @@ import Control.Monad (MonadPlus, guard)
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]
+
 -- | The reason for a conflict.
 type Reason = Clause
--- | The implication graph.
-type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
--- | Watched literals (literals in clauses that are being watched).
-type WatchedLiterals = IntMap [Clause]
 
+-- | The implication graph (maybe turn into a more explicit graph).
+type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
+
+-- | Watched literals (literals in clauses that are being watched).
+
+-- | Clauses learnt from conflicts (CDCL).
 type LearnedClauses = [Clause]
 
+data ClauseState = ClauseState {
+  original :: Clause,
+  current :: Maybe Clause, -- ^ The clause after resolution.
+  watched :: [Literal]
+} deriving stock (Show)
+
+type WatchedLiterals = IntMap [ClauseState]
+
+type ClauseDB = [ClauseState]
+
 -- | The solver state.
-type SolverState = (Assignment, Trail, ImplicationGraph, WatchedLiterals, DecisionLevel, VSIDS, CNF, LearnedClauses) -- partial assignment at end
+-- Contains information for solving and any optimisations.
+data SolverState = SolverState {
+  assignment :: Assignment,
+  trail :: Trail,
+  implicationGraph :: ImplicationGraph,
+  watchedLiterals :: WatchedLiterals,
+  decisionLevel :: DecisionLevel,
+  clauseDB :: ClauseDB,
+  vsids :: VSIDS,
+  partial :: CNF,
+  learnedClauses :: LearnedClauses
+} deriving stock (Show)
+
+
 
 -- | The solver log.
 type SolverLog = [String]
@@ -34,53 +61,52 @@ type SolverM = RWST CNF SolverLog SolverState Maybe
 
 -- | Gets the assignment.
 getAssignment :: SolverM Assignment
-getAssignment = gets $ \(a, _, _, _, _, _, _, _) -> a
+getAssignment = gets assignment
 {-# INLINEABLE getAssignment #-}
 
 -- | Gets the trail.
 getTrail :: SolverM Trail
-getTrail = gets $ \(_, t, _, _, _, _, _, _) -> t
+getTrail = gets trail
 {-# INLINEABLE getTrail #-}
 
 -- | Gets the implication graph.
 getImplicationGraph :: SolverM ImplicationGraph
-getImplicationGraph = gets $ \(_, _, ig, _, _, _, _, _) -> ig
+getImplicationGraph = gets implicationGraph
 {-# INLINEABLE getImplicationGraph #-}
 
 -- | Gets the watched literals.
 getWatchedLiterals :: SolverM WatchedLiterals
-getWatchedLiterals = gets $ \(_, _, _, wl, _, _,_, _) -> wl
+getWatchedLiterals = gets watchedLiterals
 {-# INLINEABLE getWatchedLiterals #-}
 
 -- | Gets the decision level.
 getDecisionLevel :: SolverM DecisionLevel
-getDecisionLevel = gets $ \(_, _, _, _, dl, _, _,_) -> dl
+getDecisionLevel = gets decisionLevel
 {-# INLINEABLE getDecisionLevel #-}
 
 -- | Gets the VSIDS.
 getVSIDS :: SolverM VSIDS
-getVSIDS = gets $ \(_, _, _, _, _, vsids, _,_) -> vsids
+getVSIDS = gets vsids
 {-# INLINEABLE getVSIDS #-}
 
 -- | Gets the partial assignment.
 getPartialAssignment :: SolverM CNF
-getPartialAssignment = gets $ \(_, _, _, _, _, _, cnf, _) -> cnf
+getPartialAssignment = gets partial
 {-# INLINEABLE getPartialAssignment #-}
 
 getLearnedClauses :: SolverM LearnedClauses
-getLearnedClauses = gets $ \(_, _, _, _, _, _, _, lc) -> lc
+getLearnedClauses = gets learnedClauses
 {-# INLINEABLE getLearnedClauses #-}
 
 learn :: Clause -> SolverM ()
-learn clause = modify $ \(a, b, c, d, e, f, g, lc) -> (a, b, c, d, e, f, g, clause:lc)
+learn clause = modify $ \s -> s { learnedClauses = clause : learnedClauses s}
 {-# INLINEABLE learn #-}
 
 cnfWithLearnedClauses :: SolverM CNF
 cnfWithLearnedClauses = do
-  learnedClauses <- getLearnedClauses
-  -- get cnf from reader monad
+  lc <- getLearnedClauses
   CNF clauses <- ask
-  return $ CNF $ clauses ++ learnedClauses
+  return $ CNF $ clauses ++ lc
 {-# INLINEABLE cnfWithLearnedClauses #-}
 
 -- | Logs a message.
@@ -98,5 +124,5 @@ notM :: Monad m => m Bool -> m Bool
 notM = fmap not
 
 increaseDecisionLevel :: SolverM ()
-increaseDecisionLevel = modify $ \(a, b, c, d, e, f, g, h) -> (a, b, c, d, e + 1, f, g, h)
+increaseDecisionLevel = modify $ \s -> s { decisionLevel = decisionLevel s + 1}
 {-# INLINEABLE increaseDecisionLevel #-}

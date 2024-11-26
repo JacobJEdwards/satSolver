@@ -3,10 +3,29 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Strict #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 -- |
 -- Module      : SAT.Solver
 -- Description : Exports the SAT solver module.
+-- https://kienyew.github.io/CDCL-SAT-Solver-from-Scratch/Two-Watched-Literals.html
+-- https://www.cs.upc.edu/~oliveras/LAI/cdcl.pdf
+-- simplify for now, don't use partials, don't worry about inefficiencies
+-- that is what watch literals aim to solve
+-- or i could have my partial list of maybe clause, which i can index on the main clauses to get them
+-- but must compare that to watched literals when i implement that
+--
+-- so for now, when finding units just compare the main cnf against the assignment
+-- follow the tutorial (but with ig)
+-- experiment with the use of pure literals, not sure how they fit in with the watched literals (maybe tautlogies could be useful too)
+--
+-- maybe worth dragging the cnf around in state to add learned clauses iwht little hassle
+-- consider not using vsids for now, just bare minimum
+-- biggest issue is that i need the conflicting clause to learn from it, hence lack of partials
+-- another issue is if my solver is dramatically more inefficient due to partials lacking, how can i know if cdcl is working ??
+-- i suppose i check the learned clauses against other solvers
+--
+-- simplify simplify simpify
 module SAT.Solver
   ( satisfiable,
     type Solutions,
@@ -30,25 +49,42 @@ import Data.IntSet qualified as IntSet
 import Data.Maybe (listToMaybe)
 import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
 import SAT.Expr (Expr, type Solutions)
-import SAT.Monad (SolverM, SolverState, WatchedLiterals, getAssignment, guardM, ifM, learn, increaseDecisionLevel)
+import SAT.Monad (SolverM, SolverState (..), WatchedLiterals, getAssignment, guardM, ifM, learn, increaseDecisionLevel, ClauseState (..))
 import SAT.Optimisers (assignM, collectLiterals, decayM, eliminateLiterals, eliminateLiteralsM, isNotUnsatM, isSatM, pickVariableM, removeTautologiesM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision)
 import SAT.VSIDS (initVSIDS, decay)
 import Debug.Trace (trace)
+import Control.Monad.RWS (get, modify)
 
 -- | Initializes the watched literals.
 initWatchedLiterals :: CNF -> WatchedLiterals
 initWatchedLiterals (CNF clauses) = foldl updateWatchedLiterals IntMap.empty clauses
   where
+    initClauseState :: [Int] -> Clause -> ClauseState
+    initClauseState literals clause = ClauseState {original = clause, current = Just clause, watched = literals}
+
     updateWatchedLiterals :: WatchedLiterals -> Clause -> WatchedLiterals
     updateWatchedLiterals wl clause =
       case take 2 $ collectLiterals $ CNF [clause] of
-        [l1, l2] -> IntMap.insertWith (++) l1 [clause] $ IntMap.insertWith (++) l2 [clause] wl
-        [l] -> IntMap.insertWith (++) l [clause] wl
+        [l1, l2] -> 
+          let state = initClauseState [l1, l2] clause in
+          IntMap.insertWith (++) l1 [state] $ IntMap.insertWith (++) l2 [state] wl
+        [l] -> IntMap.insertWith (++) l [initClauseState clause [l]] wl
         _ -> wl
 
 -- | Initializes the solver state.
-initState :: CNF -> SolverState
-initState cnf = (mempty, mempty, mempty, initWatchedLiterals cnf, 0, initVSIDS cnf, cnf, mempty)
+initState :: CNF -> SAT.Monad.SolverState
+initState cnf =
+  SolverState
+    { assignment = mempty,
+      trail = mempty,
+      implicationGraph = mempty,
+      watchedLiterals = initWatchedLiterals cnf,
+      decisionLevel = 0,
+      vsids = initVSIDS cnf,
+      clauseDB = [],
+      partial = cnf,
+      learnedClauses = mempty
+    }
 
 -- | Finds a free variable at random.
 findFreeVariable :: CNF -> Maybe Literal
@@ -73,10 +109,10 @@ solutions = solutionsFromAssignment <$> getAssignment
 
 maybeEliminateLiterals :: SolverM ()
 maybeEliminateLiterals = do
-  (m, _, _, _, dl, _, partial, _) <- RWST.get
-  when (mod dl 100 == 0) $ do
-    let (m', partial') = eliminateLiterals partial m dl
-    RWST.modify (\(_, b, c, d, e, f, _, lc) -> (m', b, c, d, e, f, partial', lc))
+  SolverState { assignment, partial, decisionLevel } <- get
+  when (mod decisionLevel 100 == 0) $ do
+    let (m', partial') = eliminateLiterals partial assignment decisionLevel
+    modify $ \s -> s { partial = partial', assignment = m' }
     return ()
 
 simplifyM :: SolverM ()
@@ -91,12 +127,10 @@ preprocess = do
   unitPropagateM >>= \case
     Just c -> return (Just c)
     Nothing -> do
-      eliminateLiteralsM >>= \case
-        Just c -> return (Just c)
-        Nothing -> do
-          removeTautologiesM
-          m' <- getAssignment
-          if m == m' then return Nothing else preprocess
+      eliminateLiteralsM
+      removeTautologiesM
+      m' <- getAssignment
+      if m == m' then return Nothing else preprocess
 
 getSolutions :: CNF -> Maybe Solutions
 getSolutions cnf' = do
@@ -134,9 +168,9 @@ getSolutions cnf' = do
 
     propagate :: SolverM Solutions
     propagate = do
-      trace "propagate" $ unitPropagateM >>= \case
-        Just c -> trace "propagate failed" $ handleConflict c
-        Nothing -> trace "propagate success" solver
+      unitPropagateM >>= \case
+        Just c -> solver
+        Nothing -> solver
 
     handleConflict :: Clause -> SolverM Solutions
     handleConflict c = do 
@@ -184,7 +218,7 @@ withUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
         isSat (CNF clauses) = null clauses
 
         cnf' :: CNF
-        Left(m', cnf') = unitPropagate cnf m 0
+        (m', cnf') = unitPropagate cnf m 0
 {-# INLINEABLE withUnitPropagation #-}
 
 withPureLiteralElimination :: Expr Int -> Maybe Solutions
@@ -223,7 +257,7 @@ withPureLiteralAndUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
         (m', cnf') = eliminateLiterals cnf m 0
 
         cnf'' :: CNF
-        Left(m'', cnf'') = unitPropagate cnf' m' 0
+        (m'', cnf'') = unitPropagate cnf' m' 0
 {-# INLINEABLE withPureLiteralAndUnitPropagation #-}
 
 pureLitOnlyAsPreprocess :: Expr Int -> Maybe Solutions
@@ -243,7 +277,7 @@ pureLitOnlyAsPreprocess expr = go cnf' m
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
 
-        Left(m'', cnf''') = unitPropagate cnf'' m' 0
+        (m'', cnf''') = unitPropagate cnf'' m' 0
 {-# INLINEABLE pureLitOnlyAsPreprocess #-}
 
 literalEvery100 :: Expr Int -> Maybe Solutions
@@ -263,6 +297,6 @@ literalEvery100 expr = go cnf' m 0
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
 
-        Left(m'', cnf''') = unitPropagate cnf'' m' 0
+        (m'', cnf''') = unitPropagate cnf'' m' 0
         (m''', cnf'''') = if i `mod` 100 == 0 then eliminateLiterals cnf''' m'' 0 else (m'', cnf''')
 {-# INLINEABLE literalEvery100 #-}
