@@ -59,6 +59,7 @@ import SAT.CNF (CNF (CNF), Clause, literalValue, varOfLiteral, type Assignment, 
 import SAT.Monad (SolverM, SolverState (..), cnfWithLearnedClauses, getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPartialAssignment, getTrail, getVSIDS, notM, getPropagationStack, getWatchedLiterals, WatchedLiterals (WatchedLiterals, literals, clauses))
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (decay, type VSIDS, adjustScores)
+import qualified Data.Vector as V
 
 -- | Collects all literals in a CNF.
 --
@@ -546,3 +547,16 @@ adjustScoresM :: Clause -> SolverM ()
 adjustScoresM clause = do 
   vsids <- getVSIDS
   modify $ \s -> s {vsids = adjustScores clause vsids}
+
+vectorToSet :: (Ord a) => V.Vector a -> Set.Set a
+vectorToSet = V.foldr Set.insert Set.empty
+
+vectorToIntSet :: V.Vector Int -> IntSet
+vectorToIntSet = V.foldr IntSet.insert IntSet.empty
+
+intSetToVector :: IntSet.IntSet -> V.Vector Int
+intSetToVector = V.fromList . IntSet.toAscList
+
+setToVector :: Set.Set a -> V.Vector a
+setToVector = V.fromList . Set.toAscList
+
