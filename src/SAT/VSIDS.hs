@@ -18,7 +18,7 @@ type VSIDS = IntMap Double
 
 -- | The decay factor.
 decayFactor :: Double
-decayFactor = 0.95
+decayFactor = 0.96
 
 -- | Decays the scores.
 -- 

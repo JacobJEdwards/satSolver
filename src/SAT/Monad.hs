@@ -20,8 +20,6 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import GHC.Generics (Generic)
 import Control.Parallel.Strategies (NFData)
-import Data.List (sortBy)
-import Data.Maybe (fromMaybe)
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]

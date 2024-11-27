@@ -67,6 +67,7 @@ negateLiteral :: Literal -> Literal
 negateLiteral = negate
 {-# INLINEABLE negateLiteral #-}
 
+
 -- https://en.wikipedia.org/wiki/Tseytin_transformation -> look into this
 
 -- https://hackage.haskell.org/package/picologic-0.3.0/docs/src/Picologic-Tseitin.html

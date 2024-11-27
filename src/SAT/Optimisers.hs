@@ -37,7 +37,10 @@ module SAT.Optimisers
     addDecision,
     addPropagation,
     isSatisfied,
-    adjustScoresM
+    adjustScoresM,
+    getClauseStatus,
+    findCanditateWatchedLiteral,
+    ClauseStatus (..),
   )
 where
 
@@ -56,9 +59,6 @@ import SAT.CNF (CNF (CNF), Clause, literalValue, varOfLiteral, type Assignment, 
 import SAT.Monad (SolverM, SolverState (..), cnfWithLearnedClauses, getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPartialAssignment, getTrail, getVSIDS, notM, getPropagationStack, getWatchedLiterals, WatchedLiterals (WatchedLiterals, literals, clauses))
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (decay, type VSIDS, adjustScores)
-import qualified Data.Map as Map
-import qualified Data.List as List
-import Data.Maybe (fromMaybe)
 
 -- | Collects all literals in a CNF.
 --
@@ -140,7 +140,7 @@ eliminateLiterals cnf solutions dl = (solutions', cnf')
         where
           value :: Bool
           value = p == Positive
-{-# INLINEABLE eliminateLiterals #-} -- wrong i think
+{-# INLINEABLE eliminateLiterals #-}
 
 eliminateLiteralsM :: SolverM ()
 eliminateLiteralsM = do
@@ -235,55 +235,6 @@ getClauseStatus clause = do
     Just [l] -> return $ Unit l
     Just _ -> return Unresolved
 
-
-{-
-def unit_propagation(assignments, lit2clauses, clause2lits, to_propagate: List[Literal]) -> Tuple[str, Optional[Clause]]:
-    while len(to_propagate) > 0:
-        watching_lit = to_propagate.pop().neg()
-
-        # use list(.) to copy it because size of 
-        # lit2clauses[watching_lit]might change during for-loop
-        watching_clauses = list(lit2clauses[watching_lit])
-        for watching_clause in watching_clauses:
-            for lit in watching_clause:
-                if lit in clause2lits[watching_clause]:
-                    # lit is another watching literal of watching_clause
-                    continue
-                elif lit.variable in assignments and assignments.value(lit) == False:
-                    # lit is a assigned False
-                    continue
-                else:
-                    # lit is not another watching literal of watching_clause
-                    # and is non-False literal, so we rewatch it. (case 1)
-                    clause2lits[watching_clause].remove(watching_lit)
-                    clause2lits[watching_clause].append(lit)
-                    lit2clauses[watching_lit].remove(watching_clause)
-                    lit2clauses[lit].append(watching_clause)
-                    break
-            else:
-                # we cannot find another literal to rewatch (case 2,3,4)
-                watching_lits = clause2lits[watching_clause]
-                if len(watching_lits) == 1:
-                    # watching_clause is unit clause, and the only literal
-                    # is assigned False, thus indicates a conflict
-                    return ('conflict', watching_clause)
-               	
-                # the other watching literal
-                other = watching_lits[0] if watching_lits[1] == watching_lit else watching_lits[1]
-                if other.variable not in assignments:
-                    # the other watching literal is unassigned. (case 3)
-                    assignments.assign(other.variable, not other.negation, watching_clause)
-                    to_propagate.insert(0, other)
-                elif assignments.value(other) == True:
-                    # the other watching literal is assigned True. (case 2)
-                    continue
-                else:
-                    # the other watching literal is assigned False. (case 4)
-                    return ('conflict', watching_clause)
-
-    return ('unresolved', None)
--}
-
 unitPropagateM :: SolverM (Maybe Clause)
 unitPropagateM = do
   clauses <- getClauseDB
@@ -319,75 +270,6 @@ findCanditateWatchedLiteral clause = do
 
 isUnassigned :: Literal -> Assignment -> Bool
 isUnassigned lit = IntMap.notMember (varOfLiteral lit)
-
--- unitPropagateM :: SolverM (Maybe Clause)
--- unitPropagateM = do
---     -- Retrieve the current solver state
---     state <- get
---     let stack = propagationStack state
-
---     case stack of
---         [] -> return Nothing -- No literals left to propagate; no conflict
---         (lit:rest) -> do
---             -- Update the propagation stack
---             modify (\s -> s { propagationStack = rest })
-
---             -- Get clauses watching the negation of the current literal
---             let wLits = watchedLiterals state
---             let litNeg = negate lit
---             case IntMap.lookup litNeg (literals wLits) of
---                 Nothing -> unitPropagateM -- No watching clauses; continue propagation
---                 Just clausesWatching -> do
---                     -- Process each clause watching the negation of the literal
---                     conflict <- foldM (processClause lit litNeg) Nothing clausesWatching
---                     case conflict of
---                         Just conflictingClause -> return $ Just conflictingClause
---                         Nothing -> unitPropagateM -- Continue propagation
-
--- {-# INLINEABLE unitPropagateM #-}
-
--- processClause :: Literal -> Literal -> Maybe Clause -> Clause -> SolverM (Maybe Clause)
--- processClause _ _ (Just conflict) _ = return (Just conflict) -- Stop if conflict already found
--- processClause lit litNeg Nothing clause = do
---     state <- get
---     let wLits = watchedLiterals state
---     let assignments = assignment state
---     let watched = fromMaybe [] (Map.lookup clause (clauses wLits))
-
---     if any (`isTrue` assignments) watched
---         then return Nothing -- Clause satisfied; no conflict
---         else do
---             -- Attempt to find a new literal to watch
---             let unassignedOrTrue = filter (\l -> isUnassigned l assignments || isTrue l assignments) clause
---             case unassignedOrTrue of
---                 [] -> return $ Just clause -- Conflict: all literals false
---                 (newWatch:_) -> do
---                     -- Update watched literals for the clause
---                     let updatedWatched = newWatch : List.delete litNeg watched
---                     let updatedLiteralsMap = IntMap.alter (removeClause clause) litNeg (literals wLits)
---                         newLiteralsMap = IntMap.insertWith (++) (varOfLiteral newWatch) [clause] updatedLiteralsMap
---                     modify (\s -> s {
---                         watchedLiterals = wLits {
---                             literals = newLiteralsMap,
---                             clauses = Map.insert clause updatedWatched (clauses wLits)
---                         }
---                     })
---                     return Nothing
-
-
--- isUnassigned :: Literal -> Assignment -> Bool
--- isUnassigned lit = IntMap.notMember (varOfLiteral lit)
-
--- isTrue :: Literal -> Assignment -> Bool
--- isTrue lit assignments =
---     case IntMap.lookup (varOfLiteral lit) assignments of
---         Just (val, _) -> val == (lit > 0)
---         Nothing -> False
-
--- removeClause :: Clause -> Maybe [Clause] -> Maybe [Clause]
--- removeClause _ Nothing = Nothing
--- removeClause clause (Just clauses) = Just (List.delete clause clauses)
-
 
 -- https://buffered.io/posts/a-better-nub/
 
@@ -575,11 +457,7 @@ resolve a b x = do
 
 analyseConflict :: Clause -> SolverM (Clause, DecisionLevel)
 analyseConflict conflict = do
-  SolverState {trail, decisionLevel, implicationGraph} <- get
-
-  traceM $ "Analyse conflict: " ++ show conflict
-  traceM $ "Trail: " ++ show trail
-  traceM $ "Decision level: " ++ show decisionLevel
+  SolverState { decisionLevel, implicationGraph} <- get
 
   if decisionLevel == 0
     then return (conflict, -1)

@@ -42,22 +42,24 @@ module SAT.Solver
     withPureLiteralAndUnitPropagation,
     pureLitOnlyAsPreprocess,
     literalEvery100,
+    withTautologyElimination
   )
 where
 
 import Control.Applicative ((<|>))
-import Control.Monad (when)
+import Control.Monad (when, filterM)
 import Control.Monad.RWS.Strict qualified as RWST
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.Maybe (listToMaybe)
 import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
 import SAT.Expr (Expr, type Solutions)
-import SAT.Monad (SolverM, SolverState (..), WatchedLiterals, getAssignment, ifM, learn, increaseDecisionLevel, ClauseState (..), initWatchedLiterals, getVSIDS)
-import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, removeTautologiesM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM)
-import SAT.VSIDS (initVSIDS, pickLiteral)
+import SAT.Monad (SolverM, SolverState (..), WatchedLiterals, getAssignment, ifM, learn, increaseDecisionLevel, ClauseState (..), initWatchedLiterals, getVSIDS, getClauseDB)
+import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, removeTautologiesM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM, getClauseStatus, ClauseStatus (..))
+import SAT.VSIDS (initVSIDS, pickLiteral, decay)
 import Control.Monad.RWS (get, modify)
 import Debug.Trace (trace, traceM)
+import Foreign.C.String (withCString)
 
 -- | Initializes the solver state.
 initState :: CNF -> SAT.Monad.SolverState
@@ -106,7 +108,17 @@ maybeEliminateLiterals = do
     return ()
 
 simplifyM :: SolverM ()
-simplifyM = maybeEliminateLiterals
+simplifyM = do 
+  maybeEliminateLiterals
+  clauseDB <- getClauseDB
+  clauses <- filterM clauseIsSat clauseDB
+  modify $ \s -> s { clauseDB = clauses }
+
+clauseIsSat :: Clause -> SolverM Bool
+clauseIsSat c = do
+  status <- getClauseStatus c
+  return $ status == SAT
+
 -- removeTautologiesM
 
 preprocess :: SolverM (Maybe Clause)
@@ -129,7 +141,7 @@ getSolutions cnf' = do
     run :: SolverM (Maybe Solutions)
     run = do
       preprocess >>= \case
-        Just _ -> return mempty -- failure
+        Just _ -> return mempty -- failure from the start
         Nothing -> solver
 
     solver :: SolverM (Maybe Solutions)
@@ -148,10 +160,9 @@ getSolutions cnf' = do
 
     tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
     tryAssign c v = do
-      decayM
       increaseDecisionLevel
-      assignM c v
       addDecision c
+      assignM c v
       propagate
 
     propagate :: SolverM (Maybe Solutions)
@@ -165,6 +176,7 @@ getSolutions cnf' = do
       traceM "conflict"
       (clause, dl) <- analyseConflict c
       if dl < 0 then return mempty else do
+        decayM
         adjustScoresM clause
         learn clause
         backtrack dl
@@ -182,17 +194,18 @@ satisfiable cnf = case getSolutions cnf of
 bruteForce :: Expr Int -> Maybe Solutions
 bruteForce expr = let cnf = toCNF expr in go cnf mempty
   where
-    go :: CNF -> Solutions -> Maybe Solutions
+    go :: CNF -> Assignment -> Maybe Solutions
     go cnf m = case findFreeVariable cnf of
-      Nothing -> if isSat cnf then Just m else Nothing
+      Nothing -> if isSat cnf then Just (solutionsFromAssignment m) else Nothing
       Just c -> try c True <|> try c False
       where
         try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf) (IntSet.insert c m)
+        try c v = go (substitute c v cnf) (IntMap.insert c (v, 0) m)
 
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
 {-# INLINEABLE bruteForce #-}
+
 
 withUnitPropagation :: Expr Int -> Maybe Solutions
 withUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
@@ -292,7 +305,35 @@ literalEvery100 expr = go cnf' m 0
         (m''', cnf'''') = if i `mod` 100 == 0 then eliminateLiterals cnf''' m'' 0 else (m'', cnf''')
 {-# INLINEABLE literalEvery100 #-}
 
+withTautologyElimination :: Expr Int -> Maybe Solutions
+withTautologyElimination expr = go init' m''
+  where
+    cnf'' = toCNF expr
+    (m'', i) = eliminateLiterals cnf'' mempty 0
+    init' = removeTautologies i
+
+    go :: CNF -> Assignment -> Maybe Solutions
+    go cnf m = case findFreeVariable cnf' of
+      Nothing -> if isSat cnf' then Just (solutionsFromAssignment m') else Nothing
+      Just c -> try c True <|> try c False
+      where
+        try :: Literal -> Bool -> Maybe Solutions
+        try c v = go (substitute c v cnf') (IntMap.insert c (v, 0) m')
+
+        isSat :: CNF -> Bool
+        isSat (CNF clauses) = null clauses
+
+        cnf' :: CNF
+        (m', cnf') = unitPropagate cnf m 0
+{-# INLINEABLE withTautologyElimination #-}
+
 allVariablesAssigned :: SolverM Bool
 allVariablesAssigned = do
   SolverState { variables, assignment } <- get
   return $ IntSet.null $ variables `IntSet.difference` IntMap.keysSet assignment
+
+removeTautologies :: CNF -> CNF
+removeTautologies (CNF cs) = CNF $ filter (not . isTautology) cs
+  where 
+    isTautology :: Clause -> Bool
+    isTautology c = any (\l -> IntSet.member (negate l) (IntSet.fromList c)) c

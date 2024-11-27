@@ -9,7 +9,7 @@ Description : Exports the problem module. Represents a problem that can be solve
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Problem (Problem (..), parseFile, solve, toExpr, toCNF, isSatisfiable, getNumClauses, getNumVars, solveWith) where
+module Problem (Problem (..), parseFile, solve, toExpr, toCNF, isSatisfiable, getNumClauses, getNumVars, solveWith, averageClauseLength, getTotalNumLiterals) where
 
 import Data.Kind (type Constraint, type Type)
 import Data.Text (type Text)
@@ -204,9 +204,19 @@ getNumClauses :: (Problem a) => a -> Integer
 getNumClauses = genericLength . DIMACS.clauses . toDIMACS
 {-# INLINEABLE getNumClauses #-}
 
+getTotalNumLiterals :: (Problem a) => a -> Integer
+getTotalNumLiterals = sum . map genericLength . DIMACS.clauses . toDIMACS
+{-# INLINEABLE getTotalNumLiterals #-}
+
 getNumVars :: (Problem a) => a -> Integer
 getNumVars = DIMACS.numVars . toDIMACS
 {-# INLINEABLE getNumVars #-}
+
+averageClauseLength :: (Problem a) => a -> Double
+averageClauseLength p = fromIntegral (getTotalNumLiterals p) / fromIntegral (getNumClauses p)
+
+
+{-# INLINEABLE averageClauseLength #-}
 
 -- | Checks if a problem is satisfiable.
 -- 
