@@ -59,16 +59,18 @@ import SAT.CNF (CNF (CNF), Clause, literalValue, varOfLiteral, type Assignment, 
 import SAT.Monad (SolverM, SolverState (..), cnfWithLearnedClauses, getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPartialAssignment, getTrail, getVSIDS, notM, getPropagationStack, getWatchedLiterals, WatchedLiterals (WatchedLiterals, literals, clauses))
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (decay, type VSIDS, adjustScores)
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 -- | Collects all literals in a CNF.
 --
 -- >>> collectLiterals (CNF [[1, 2], [2, 3], [3, 4]])
 -- [1,2,2,3,3,4]
-collectLiterals :: CNF -> [Int]
-collectLiterals (CNF clauses') = concatMap getVars clauses'
+collectLiterals :: CNF -> Vector Int
+collectLiterals (CNF clauses') = V.concatMap getVars clauses'
   where
-    getVars :: Clause -> [Int]
-    getVars = map varOfLiteral
+    getVars :: Clause -> Vector Int
+    getVars = V.map varOfLiteral
 {-# INLINEABLE collectLiterals #-}
 
 -- | Collects all literals in a CNF and returns them as a set.
@@ -76,7 +78,7 @@ collectLiterals (CNF clauses') = concatMap getVars clauses'
 -- >>> collectLiteralsToSet (CNF [[1, 2], [2, 3], [3, 4]])
 -- fromList [1,2,3,4]
 collectLiteralsToSet :: CNF -> IntSet
-collectLiteralsToSet = IntSet.fromList . collectLiterals
+collectLiteralsToSet = IntSet.fromList . V.toList . collectLiterals 
 {-# INLINEABLE collectLiteralsToSet #-}
 
 -- | Finds the polarities of the literals in a CNF.
@@ -84,9 +86,9 @@ collectLiteralsToSet = IntSet.fromList . collectLiterals
 -- >>> literalPolarities (CNF [[1, 2], [-2, -3], [3, 4]])
 -- fromList [(1,Positive),(2,Mixed),(3,Mixed),(4,Positive)]
 literalPolarities :: CNF -> IntMap Polarity
-literalPolarities (CNF clauses') = foldl updatePolarity IntMap.empty (concatMap clausePolarities clauses')
+literalPolarities (CNF clauses') = foldl updatePolarity IntMap.empty (V.concatMap clausePolarities clauses')
   where
-    clausePolarities clause = [(unLit lit, literalPolarity lit) | lit <- clause]
+    clausePolarities clause = V.fromList [(unLit lit, literalPolarity lit) | lit <- V.toList clause] -- TODO: fix inefficiency
 
     -- \| Unwraps a literal.
     --
@@ -154,7 +156,7 @@ eliminateLiteralsM = do
 -- >>> substitute 1 True (CNF [[1, 2], [2, 3], [3, 4]])
 -- CNF {clauses = [[2,3],[3,4]]}
 substitute :: Literal -> Bool -> CNF -> CNF
-substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter (not . clauseIsTrue var val) clauses
+substitute var val (CNF clauses) = CNF $ V.map (eliminateClause var val) $ V.filter (not . clauseIsTrue var val) clauses
   where
     clauseIsTrue :: Literal -> Bool -> Clause -> Bool
     clauseIsTrue c p = any (literalIsTrue' c p)
@@ -172,7 +174,7 @@ substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter 
       _ -> False
 
     eliminateClause :: Literal -> Bool -> Clause -> Clause
-    eliminateClause c p = filter (not . literalIsFalse' c p)
+    eliminateClause c p = V.filter (not . literalIsFalse' c p)
 {-# INLINEABLE substitute #-}
 
 substituteM :: Literal -> Bool -> SolverM ()
@@ -191,7 +193,7 @@ substituteM c p = do
 findUnitClause :: CNF -> Maybe (Int, Bool)
 findUnitClause (CNF clauses) = do
   clause <- unitClause
-  let p = head clause
+  let p = V.head clause
   return (abs p, p > 0)
   where
     unitClause :: Maybe Clause
@@ -223,7 +225,7 @@ partialAssignClause :: Assignment -> Clause -> Maybe Clause
 partialAssignClause m c =
   if any (\l -> literalValue m l == Just True) c
     then Nothing
-    else Just $ filter (\l -> literalValue m l /= Just False) c
+    else Just $ V.filter (\l -> literalValue m l /= Just False) c
 
 getClauseStatus :: Clause -> SolverM ClauseStatus
 getClauseStatus clause = do
@@ -231,9 +233,10 @@ getClauseStatus clause = do
   let c = partialAssignClause assignment clause
   case c of
     Nothing -> return SAT
-    Just [] -> return UNSAT
-    Just [l] -> return $ Unit l
-    Just _ -> return Unresolved
+    Just v 
+        | V.null v -> return UNSAT
+        | V.length v == 1 -> return $ Unit (V.head v)
+        | otherwise -> return Unresolved
 
 unitPropagateM :: SolverM (Maybe Clause)
 unitPropagateM = do
@@ -242,26 +245,26 @@ unitPropagateM = do
   loop clauses
 
   where
-    loop :: [Clause] -> SolverM (Maybe Clause)
+    loop :: Vector Clause -> SolverM (Maybe Clause)
     loop clauses = process clauses False
       where
-        process :: [Clause] -> Bool -> SolverM (Maybe Clause)
-        process [] updated =
-          if updated
-            then loop clauses
-            else return Nothing
-        process (c : cs') updated = do
-          status <- getClauseStatus c
-          case status of
-            SAT -> process cs' updated
-            UNSAT -> do
-              return $ Just c
-            Unit l -> do
-              let p = l > 0
-              assignM l p
-              addPropagation (abs l) c
-              process cs' True
-            Unresolved -> process cs' updated
+        process :: Vector Clause -> Bool -> SolverM (Maybe Clause)
+        process ls updated 
+          | V.null ls = if updated then loop clauses else return Nothing
+          | otherwise = do 
+              let c = V.head ls
+              let cs' = V.tail ls
+              status <- getClauseStatus c
+              case status of
+                SAT -> process cs' updated
+                UNSAT -> do
+                  return $ Just c
+                Unit l -> do
+                  let p = l > 0
+                  assignM l p
+                  addPropagation (abs l) c
+                  process cs' True
+                Unresolved -> process cs' updated
 
 findCanditateWatchedLiteral :: Clause -> SolverM (Maybe Literal)
 findCanditateWatchedLiteral clause = do
@@ -287,6 +290,10 @@ uniqueOnly = go mempty
       | otherwise = x : go (Set.insert x s) xs
 {-# INLINEABLE uniqueOnly #-}
 
+uniqueOnlyV :: forall a. (Ord a) => Vector a -> Vector a
+uniqueOnlyV = V.fromList . uniqueOnly . V.toList
+{-# INLINEABLE uniqueOnlyV #-}
+
 -- | Assigns a value to a literal.
 --
 -- >>> assign IntMap.empty 1 True 0
@@ -298,7 +305,7 @@ assign m c v dl = IntMap.insertWith (const id) (abs c) (v, dl) m
 assignM :: Literal -> Bool -> SolverM ()
 assignM c v = do
   SolverState {assignment, trail, decisionLevel} <- get
-  let t = (c, decisionLevel, v) : trail
+  let t = V.cons (c, decisionLevel, v) trail
   substituteM c v
   let m = assign assignment c v decisionLevel
   modify $ \s -> s {assignment = m, trail = t}
@@ -310,7 +317,7 @@ assignM c v = do
 -- >>> partialAssignment (IntMap.fromList [(1, (True, 0))]) (CNF [[1, 2], [-2, -3], [3, 4]])
 -- CNF {clauses = [[2],[-3],[3,4]]}
 partialAssignment :: Assignment -> CNF -> CNF
-partialAssignment m (CNF clauses) = CNF $ map (filter isFalseLiteral) $ filter (not . isTrueClause) clauses
+partialAssignment m (CNF clauses) = CNF $ V.map (V.filter isFalseLiteral) $ V.filter (not . isTrueClause) clauses
   where
     isTrueClause :: Clause -> Bool
     isTrueClause = any isTrueLiteral
@@ -368,7 +375,7 @@ decayM = do
 -- >>> removeTautologies (CNF [[-2, 2], [-2, -3], [3, 4]])
 -- CNF {[[-2,-3],[3,4]]}
 removeTautologies :: CNF -> CNF
-removeTautologies (CNF clauses') = CNF $ filter (not . tautology) clauses'
+removeTautologies (CNF clauses') = CNF $ V.filter (not . tautology) clauses'
   where
     tautology :: Clause -> Bool
     tautology c = any (\x -> -x `elem` c) c
@@ -433,8 +440,8 @@ backtrack dl = do
   cnf <- cnfWithLearnedClauses
   ig <- getImplicationGraph
 
-  let (trail', toRemove) = partition (\(_, dl', _) -> dl' < dl) trail
-      toRemoveKeys = Set.fromList $ map (\(l, _, _) -> l) toRemove
+  let (trail', toRemove) = V.partition (\(_, dl', _) -> dl' < dl) trail
+      toRemoveKeys = Set.fromList $ V.toList $ V.map (\(l, _, _) -> l) toRemove
       assignments' = IntMap.filterWithKey (\k _ -> k `notElem` toRemoveKeys) assignments
       ig' = IntMap.filterWithKey (\k _ -> k `notElem` toRemoveKeys) ig
   modify $ \s -> s {trail = trail', assignment = assignments', partial = cnf, implicationGraph = ig', decisionLevel = dl}
@@ -452,8 +459,8 @@ def resolve(a: Clause, b: Clause, x: int) -> Clause:
 -}
 resolve :: Clause -> Clause -> Int -> Clause
 resolve a b x = do
-  let result = IntSet.fromList (a <> b) IntSet.\\ IntSet.fromList [x, -x]
-  IntSet.toList result
+  let result = IntSet.fromList (V.toList $ a <> b) IntSet.\\ IntSet.fromList [x, -x]
+  V.fromList $ IntSet.toList result
 
 analyseConflict :: Clause -> SolverM (Clause, DecisionLevel)
 analyseConflict conflict = do
@@ -464,8 +471,8 @@ analyseConflict conflict = do
     else do
       -- literals = [literal for literal in clause if assignments[literal.variable].dl == assignments.dl]
       let literals =
-            map abs $
-              filter
+            V.map abs $
+              V.filter
                 ( \l -> case IntMap.lookup (abs l) implicationGraph of
                     Just (_, _, dl) -> dl == decisionLevel
                     Nothing -> False
@@ -474,26 +481,28 @@ analyseConflict conflict = do
 
       traceM $ "Literals: " ++ show literals
 
-      let loop :: [Int] -> SolverM (Clause, DecisionLevel)
-          loop [] = return (conflict, -1)
+      let loop :: Vector Int -> SolverM (Clause, DecisionLevel)
+          loop literals 
+                  | V.null literals = return (conflict, -1)
           loop literals = do
             implied <-
-              filterM
+              V.filterM
                 ( \l -> case IntMap.lookup (abs l) implicationGraph of
                     Just (_, _, dl) -> return $ dl /= decisionLevel
                     Nothing -> return False
                 )
                 literals
 
-            case implied of
-              [] -> return (conflict, -1)
-              (l : _) -> do
+
+            if V.null implied then return (conflict, -1)
+            else do
+                let l = V.head implied
                 let antecedent = case IntMap.lookup (abs l) implicationGraph of
                       Just (_, Just c, _) -> c
-                      _ -> []
+                      _ -> V.empty
                 let clause' = resolve conflict antecedent (abs l)
                 let literals' =
-                      filter
+                      V.filter
                         ( \l' -> case IntMap.lookup (abs l') implicationGraph of
                             Just (_, _, dl) -> dl == decisionLevel
                             Nothing -> False
@@ -504,8 +513,8 @@ analyseConflict conflict = do
       (conflict', _) <- loop literals
 
       let decisionLevels =
-            uniqueOnly $
-              map
+            uniqueOnlyV $
+              V.map
                 ( \l -> case IntMap.lookup (abs l) implicationGraph of
                     Just (_, _, dl) -> dl
                     Nothing -> -1
@@ -515,7 +524,7 @@ analyseConflict conflict = do
       if length decisionLevels <= 1
         then return (conflict', -1)
         else
-          return (conflict', decisionLevels !! (length decisionLevels - 2))
+          return (conflict', decisionLevels V.! (length decisionLevels - 2))
 
 addDecision :: Literal -> SolverM ()
 addDecision literal = do

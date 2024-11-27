@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 module SAT.Monad (SolverM, getPropagationStack, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals(..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, initWatchedLiterals, getDecisionLevel, getVSIDS, getPartialAssignment, logM, ifM, guardM, notM, getLearnedClauses, learn, cnfWithLearnedClauses, increaseDecisionLevel, ClauseState(..), getClauseDB) where
 
@@ -20,9 +21,11 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import GHC.Generics (Generic)
 import Control.Parallel.Strategies (NFData)
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 -- | The trail type (the previous assignments).
-type Trail = [(Literal, DecisionLevel, Bool)]
+type Trail = Vector (Literal, DecisionLevel, Bool)
 
 -- | The reason for a conflict or assignment.
 type Reason = Clause
@@ -31,18 +34,18 @@ type Reason = Clause
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
 
 -- | Clauses learnt from conflicts (CDCL).
-type LearnedClauses = [Clause]
+type LearnedClauses = Vector Clause
 
 data ClauseState = ClauseState {
   original :: Clause,
   current :: Maybe Clause, -- ^ The clause after resolution.
-  watched :: [Literal]
+  watched :: Vector Literal -- ^ The literals being watched.
 } deriving stock (Show)
 
 -- | Watched literals (literals in clauses that are being watched).
 data WatchedLiterals = WatchedLiterals {
-  literals :: IntMap [Clause],
-  clauses :: Map Clause [Literal]
+  literals :: IntMap (Vector Clause), -- ^ Maps literals to clauses.
+  clauses :: Map Clause (Vector Literal) -- ^ Maps clauses to literals.
 } deriving stock (Show, Eq, Ord, Read, Generic)
 
 deriving anyclass instance NFData WatchedLiterals
@@ -50,26 +53,26 @@ deriving anyclass instance NFData WatchedLiterals
 initWatchedLiterals :: CNF -> WatchedLiterals
 initWatchedLiterals (CNF cs) = do 
   let getWatched clause = do 
-        case clause of 
-          [l] -> [l]
-          l1 : l2 : _ -> [l1, l2]
-          _ -> []
+        case V.toList clause of 
+          [l] -> V.singleton l
+          l1 : l2 : _ -> V.fromList [l1, l2]
+          _ -> V.empty
 
   let getDS clause = do 
         let lits = getWatched clause
-        let litMap = IntMap.fromList $ map (, [clause]) lits
+        let litMap = IntMap.fromList $ V.toList $ V.map (, V.singleton clause) lits
         let clauseMap = Map.fromList [(clause, lits)]
         (litMap, clauseMap)
 
-  let (l, c) = foldr (\clause (lits, cls) -> do
+  let (l, c) = V.foldr (\clause (lits, cls) -> do
           let (l', c') = getDS clause
-          (IntMap.unionWith (++) lits l', Map.unionWith (++) cls c')
+          (IntMap.unionWith (V.++) lits l', Map.unionWith (V.++) cls c')
         ) (mempty, mempty) cs
 
   WatchedLiterals l c
 
 -- | The clause database.
-type ClauseDB = [Clause]
+type ClauseDB = Vector Clause
 
 -- | The solver state.
 -- Contains information for solving and any optimisations.
@@ -156,7 +159,7 @@ def add_learnt_clause(formula, clause, assignments, lit2clauses, clause2lits):
 -}
 
 learn :: Clause -> SolverM ()
-learn clause = modify $ \s -> s { learnedClauses = clause : learnedClauses s, clauseDB = clause : clauseDB s }
+learn clause = modify $ \s -> s { learnedClauses = V.cons clause $ learnedClauses s, clauseDB = V.cons clause $ clauseDB s }
 {-# INLINEABLE learn #-}
 -- learn :: Clause -> SolverM ()
 -- learn clause = do 
@@ -201,7 +204,7 @@ cnfWithLearnedClauses :: SolverM CNF
 cnfWithLearnedClauses = do
   lc <- getLearnedClauses
   CNF clauses' <- ask
-  return $ CNF $ clauses' ++ lc
+  return $ CNF $ clauses' V.++ lc
 {-# INLINEABLE cnfWithLearnedClauses #-}
 
 -- | Logs a message.

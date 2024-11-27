@@ -15,6 +15,7 @@ Description : Exports the CNF module.
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module SAT.DIMACS.CNF (toExpr, fromExpr, type Clause, type DIMACS (..), exampleDIMACS, type Literal, toCNF, fromCNF) where
 
@@ -26,6 +27,8 @@ import SAT.CNF qualified as CNF
 import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Control.Parallel.Strategies (NFData)
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 -- | The literal type.
 type Literal :: Type
@@ -102,13 +105,13 @@ fromExpr expr =
 -- >>> toCNF exampleDIMACS
 -- CNF {clauses = [[1,2],[-1,3]]}
 toCNF :: DIMACS -> CNF
-toCNF = CNF . toCNF' . clauses
+toCNF (DIMACS { clauses })= CNF $ toCNF' $ V.fromList clauses
   where
-    toCNF' :: [Clause] -> [CNF.Clause]
-    toCNF' = map toClause
+    toCNF' :: Vector Clause -> Vector CNF.Clause
+    toCNF' = V.map toClause
     
     toClause :: Clause -> CNF.Clause
-    toClause = map toLiteral
+    toClause c = V.map toLiteral $ V.fromList c
     
     toLiteral :: Literal -> CNF.Literal
     toLiteral = id
@@ -127,10 +130,10 @@ fromCNF (CNF clauses') =
     }
   where
     clauseList :: [Clause]
-    clauseList = map fromClause clauses'
+    clauseList = map fromClause $ V.toList clauses'
 
     fromClause :: CNF.Clause -> Clause
-    fromClause = map fromLiteral
+    fromClause c = map fromLiteral $ V.toList c
 
     fromLiteral :: CNF.Literal -> Literal
     fromLiteral = id

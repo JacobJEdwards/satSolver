@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 -- |
 -- Module      : SAT.CNF
@@ -16,6 +17,8 @@ import Control.Parallel.Strategies (NFData)
 import Data.IntMap ((!?), type IntMap)
 import GHC.Generics (Generic)
 import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
+import Data.Vector (Vector)
+import Data.Vector qualified as V
 
 type DecisionLevel = Int
 
@@ -26,7 +29,7 @@ type Assignment = IntMap (Bool, DecisionLevel)
 -- consider moving these into vector or seq
 
 -- | The CNF type.
-newtype CNF = CNF [Clause]
+newtype CNF = CNF (Vector Clause)
   deriving stock (Eq, Show, Ord, Generic)
 
 deriving anyclass instance NFData CNF
@@ -35,7 +38,7 @@ deriving anyclass instance NFData CNF
 --   CNF :: (Traversable t, Semigroup (t Clause), Applicative t) => t Clause -> CNF
 
 -- | The clause type.
-type Clause = [Literal]
+type Clause = Vector Literal
 
 -- | The literal type.
 type Literal = Int
@@ -117,10 +120,10 @@ applyLaws expr
 -- >>> toCNF (Or (And (Var 1) (Var 2)) (Not (Var 3)))
 -- CNF [[-3,1],[-3,2]]
 toCNF :: Expr Int -> CNF
-toCNF expr = CNF $ map unique $ toClauses cnf
+toCNF expr = CNF $ V.map unique $ toClauses cnf
   where
-    unique :: Ord a => [a] -> [a]
-    unique = foldr (\x acc -> if x `elem` acc then acc else x : acc) []
+    unique :: Ord a => Vector a -> Vector a
+    unique = foldr (\x acc -> if x `elem` acc then acc else x `V.cons` acc) V.empty
 
     cnf :: Expr Int
     cnf = applyLaws expr
@@ -148,7 +151,7 @@ toTseitin expr = CNF clauses
     tseitin'' :: State Int CNF
     tseitin'' = do
       (CNF clauses', l) <- tseitin'
-      return $ CNF $ [[l]] <> clauses'
+      return $ CNF $ V.singleton (V.singleton l) <> clauses'
 
     (CNF clauses, _) = runState tseitin'' (highestVar expr + 1)
 {-# INLINEABLE toTseitin #-}
@@ -193,23 +196,24 @@ highestVar (Or e1 e2) = max (highestVar e1) (highestVar e2)
 highestVar (Implies e1 e2) = max (highestVar e1) (highestVar e2)
 
 tseitin :: Expr Int -> State Int (CNF, Literal)
-tseitin (Var n) = return (CNF [], n)
-tseitin (Val b) = return (CNF [], if b then 1 else -1)
+tseitin (Var n) = return (CNF V.empty, n)
+tseitin (Val b) = return (CNF V.empty, if b then 1 else -1)
 tseitin (Not e) = do
   (CNF clauses, l) <- tseitin e
   l' <- freshVariable
-  let clauses' = [[-l', -l], [l', l]]
+  let clauses' = V.fromList [V.fromList [-l', -l], V.fromList [l', l]] -- is a more efficient way to do this?
   return (CNF (clauses <> clauses'), l')
 tseitin (And e1 e2) = do
   (CNF clauses1, l1) <- tseitin e1
   (CNF clauses2, l2) <- tseitin e2
   l' <- freshVariable
-  let clauses = [[-l', l1], [-l', l2], [l', -l1, -l2]]
+  let clauses = V.fromList [V.fromList [-l', l1], V.fromList [-l', l2], V.fromList [l', -l1, -l2]]
   return (CNF (clauses <> clauses1 <> clauses2), l')
 tseitin (Or e1 e2) = do
   (CNF clauses1, l1) <- tseitin e1
   (CNF clauses2, l2) <- tseitin e2
   l' <- freshVariable
   let clauses = [[l', -l1], [l', -l2], [-l', l1, l2]]
-  return (CNF (clauses <> clauses1 <> clauses2), l')
+  let clauses' = V.fromList $ map V.fromList clauses
+  return (CNF (clauses' <> clauses1 <> clauses2), l')
 tseitin (Implies e1 e2) = tseitin $ Or (Not e1) e2

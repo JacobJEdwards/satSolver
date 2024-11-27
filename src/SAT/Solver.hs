@@ -59,7 +59,8 @@ import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLit
 import SAT.VSIDS (initVSIDS, pickLiteral, decay)
 import Control.Monad.RWS (get, modify)
 import Debug.Trace (trace, traceM)
-import Foreign.C.String (withCString)
+import Data.Vector qualified as V
+
 
 -- | Initializes the solver state.
 initState :: CNF -> SAT.Monad.SolverState
@@ -80,7 +81,7 @@ initState cnf@(CNF clauses) =
 
 -- | Finds a free variable at random.
 findFreeVariable :: CNF -> Maybe Literal
-findFreeVariable = listToMaybe . collectLiterals
+findFreeVariable = listToMaybe . V.toList . collectLiterals
 {-# INLINEABLE findFreeVariable #-}
 
 -- | Checks if a value is in the solutions.
@@ -111,15 +112,13 @@ simplifyM :: SolverM ()
 simplifyM = do 
   maybeEliminateLiterals
   clauseDB <- getClauseDB
-  clauses <- filterM clauseIsSat clauseDB
+  clauses <- V.filterM clauseIsSat clauseDB
   modify $ \s -> s { clauseDB = clauses }
 
 clauseIsSat :: Clause -> SolverM Bool
 clauseIsSat c = do
   status <- getClauseStatus c
   return $ status == SAT
-
--- removeTautologiesM
 
 preprocess :: SolverM (Maybe Clause)
 preprocess = do
@@ -333,7 +332,7 @@ allVariablesAssigned = do
   return $ IntSet.null $ variables `IntSet.difference` IntMap.keysSet assignment
 
 removeTautologies :: CNF -> CNF
-removeTautologies (CNF cs) = CNF $ filter (not . isTautology) cs
+removeTautologies (CNF cs) = CNF $ V.filter (not . isTautology) cs
   where 
     isTautology :: Clause -> Bool
-    isTautology c = any (\l -> IntSet.member (negate l) (IntSet.fromList c)) c
+    isTautology c = any (\l -> IntSet.member (negate l) (IntSet.fromList $ V.toList c)) c
