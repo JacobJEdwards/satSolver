@@ -1,9 +1,13 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
-module SAT.Monad (SolverM, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals, getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, getPartialAssignment, logM, ifM, guardM, notM, getLearnedClauses, learn, cnfWithLearnedClauses, increaseDecisionLevel, ClauseState(..), getClauseDB) where
+module SAT.Monad (SolverM, getPropagationStack, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals(..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, initWatchedLiterals, getDecisionLevel, getVSIDS, getPartialAssignment, logM, ifM, guardM, notM, getLearnedClauses, learn, cnfWithLearnedClauses, increaseDecisionLevel, ClauseState(..), getClauseDB) where
 
-import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, type DecisionLevel)
+import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, type DecisionLevel, varOfLiteral)
 import Data.IntMap (IntMap)
 import SAT.VSIDS (type VSIDS)
 import Control.Monad.RWS.Strict (RWST, tell, modify, MonadReader (ask))
@@ -11,6 +15,13 @@ import Control.Monad.State.Strict (gets)
 import Data.Bool (bool)
 import Control.Monad (MonadPlus, guard)
 import Data.IntSet (IntSet)
+import Data.Map (Map)
+import qualified Data.IntMap as IntMap
+import qualified Data.Map as Map
+import GHC.Generics (Generic)
+import Control.Parallel.Strategies (NFData)
+import Data.List (sortBy)
+import Data.Maybe (fromMaybe)
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]
@@ -20,7 +31,6 @@ type Reason = Clause
 
 -- | The implication graph (maybe turn into a more explicit graph).
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
-
 
 -- | Clauses learnt from conflicts (CDCL).
 type LearnedClauses = [Clause]
@@ -32,7 +42,33 @@ data ClauseState = ClauseState {
 } deriving stock (Show)
 
 -- | Watched literals (literals in clauses that are being watched).
-type WatchedLiterals = IntMap [ClauseState]
+data WatchedLiterals = WatchedLiterals {
+  literals :: IntMap [Clause],
+  clauses :: Map Clause [Literal]
+} deriving stock (Show, Eq, Ord, Read, Generic)
+
+deriving anyclass instance NFData WatchedLiterals
+
+initWatchedLiterals :: CNF -> WatchedLiterals
+initWatchedLiterals (CNF cs) = do 
+  let getWatched clause = do 
+        case clause of 
+          [l] -> [l]
+          l1 : l2 : _ -> [l1, l2]
+          _ -> []
+
+  let getDS clause = do 
+        let lits = getWatched clause
+        let litMap = IntMap.fromList $ map (, [clause]) lits
+        let clauseMap = Map.fromList [(clause, lits)]
+        (litMap, clauseMap)
+
+  let (l, c) = foldr (\clause (lits, cls) -> do
+          let (l', c') = getDS clause
+          (IntMap.unionWith (++) lits l', Map.unionWith (++) cls c')
+        ) (mempty, mempty) cs
+
+  WatchedLiterals l c
 
 -- | The clause database.
 type ClauseDB = [Clause]
@@ -49,9 +85,9 @@ data SolverState = SolverState {
   vsids :: VSIDS,
   partial :: CNF,
   learnedClauses :: LearnedClauses,
-  variables :: IntSet
+  variables :: IntSet,
+  propagationStack :: [Literal]
 } deriving stock (Show)
-
 
 
 -- | The solver log.
@@ -61,6 +97,11 @@ type SolverM = RWST CNF SolverLog SolverState Maybe
 
 
 -- | State methods
+
+-- | Gets the propagation stack.
+getPropagationStack :: SolverM [Literal]
+getPropagationStack = gets propagationStack
+{-# INLINEABLE getPropagationStack #-}
 
 -- | Gets the assignment.
 getAssignment :: SolverM Assignment
@@ -105,15 +146,64 @@ getClauseDB :: SolverM ClauseDB
 getClauseDB = gets clauseDB
 {-# INLINEABLE getClauseDB #-}
 
+{-
+def add_learnt_clause(formula, clause, assignments, lit2clauses, clause2lits):
+    formula.clauses.append(clause)
+    for lit in sorted(clause, key=lambda lit: -assignments[lit.variable].dl):
+        if len(clause2lits[clause]) < 2:
+            clause2lits[clause].append(lit)
+            lit2clauses[lit].append(clause)
+        else:
+            break
+-}
+
 learn :: Clause -> SolverM ()
 learn clause = modify $ \s -> s { learnedClauses = clause : learnedClauses s, clauseDB = clause : clauseDB s }
 {-# INLINEABLE learn #-}
+-- learn :: Clause -> SolverM ()
+-- learn clause = do 
+--   learned <- getLearnedClauses
+--   clauses <- getClauseDB
+--   assignments <- getAssignment
+--   let learned' = clause : learned
+--   wLits <- getWatchedLiterals
+
+--   let updatedClauses = clause : clauses
+--   let sortedLiterals = sortBy (compareDecisionLevel assignments) clause
+
+--   let (watchedLits, _) = splitAt 2 sortedLiterals
+--   let updatedWatched = foldl (updateWatched clause) wLits watchedLits
+
+--   modify (\s -> s {
+--         clauseDB = updatedClauses,
+--         watchedLiterals = updatedWatched,
+--         learnedClauses = learned'
+--     })
+  
+--   modify $ \s -> s { learnedClauses = clause : learnedClauses s, clauseDB = clause : clauseDB s }
+-- {-# INLINEABLE learn #-}
+
+-- compareDecisionLevel :: Assignment -> Literal -> Literal -> Ordering
+-- compareDecisionLevel assignments lit1 lit2 =
+--     compare (getDL lit2) (getDL lit1)
+--   where
+--     getDL lit = fromMaybe 0 $ do
+--       (b, dl) <- IntMap.lookup (varOfLiteral lit) assignments
+--       if b then Just dl else Nothing
+
+-- -- Update watched literals for a given literal
+-- updateWatched :: Clause -> WatchedLiterals -> Literal -> WatchedLiterals
+-- updateWatched clause wLits lit =
+--     let litMap = literals wLits
+--         clauseMap = clauses wLits
+--         updatedLitMap = IntMap.insertWith (++) (varOfLiteral lit) [clause] litMap
+--     in wLits { literals = updatedLitMap, clauses = Map.insertWith (++) clause [lit] clauseMap }
 
 cnfWithLearnedClauses :: SolverM CNF
 cnfWithLearnedClauses = do
   lc <- getLearnedClauses
-  CNF clauses <- ask
-  return $ CNF $ clauses ++ lc
+  CNF clauses' <- ask
+  return $ CNF $ clauses' ++ lc
 {-# INLINEABLE cnfWithLearnedClauses #-}
 
 -- | Logs a message.

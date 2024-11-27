@@ -53,27 +53,11 @@ import Data.IntSet qualified as IntSet
 import Data.Maybe (listToMaybe)
 import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
 import SAT.Expr (Expr, type Solutions)
-import SAT.Monad (SolverM, SolverState (..), WatchedLiterals, getAssignment, ifM, learn, increaseDecisionLevel, ClauseState (..))
-import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, isSatM, pickVariableM, removeTautologiesM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet)
-import SAT.VSIDS (initVSIDS)
+import SAT.Monad (SolverM, SolverState (..), WatchedLiterals, getAssignment, ifM, learn, increaseDecisionLevel, ClauseState (..), initWatchedLiterals, getVSIDS)
+import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, removeTautologiesM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM)
+import SAT.VSIDS (initVSIDS, pickLiteral)
 import Control.Monad.RWS (get, modify)
 import Debug.Trace (trace, traceM)
-
--- | Initializes the watched literals.
-initWatchedLiterals :: CNF -> WatchedLiterals
-initWatchedLiterals (CNF clauses) = foldl updateWatchedLiterals IntMap.empty clauses
-  where
-    initClauseState :: [Int] -> Clause -> ClauseState
-    initClauseState literals clause = ClauseState {original = clause, current = Just clause, watched = literals}
-
-    updateWatchedLiterals :: WatchedLiterals -> Clause -> WatchedLiterals
-    updateWatchedLiterals wl clause =
-      case take 2 $ collectLiterals $ CNF [clause] of
-        [l1, l2] -> 
-          let state = initClauseState [l1, l2] clause in
-          IntMap.insertWith (++) l1 [state] $ IntMap.insertWith (++) l2 [state] wl
-        [l] -> IntMap.insertWith (++) l [initClauseState clause [l]] wl
-        _ -> wl
 
 -- | Initializes the solver state.
 initState :: CNF -> SAT.Monad.SolverState
@@ -88,7 +72,8 @@ initState cnf@(CNF clauses) =
       clauseDB = clauses,
       partial = cnf,
       learnedClauses = mempty,
-      variables = collectLiteralsToSet cnf
+      variables = collectLiteralsToSet cnf,
+      propagationStack = mempty
     }
 
 -- | Finds a free variable at random.
@@ -149,27 +134,21 @@ getSolutions cnf' = do
 
     solver :: SolverM (Maybe Solutions)
     solver = do
-      -- simplifyM
+      simplifyM
       ifM allVariablesAssigned (Just <$> solutions) branch
 
     branch :: SolverM (Maybe Solutions)
-    branch = pickVariable 
-
-    pickVariable :: SolverM (Maybe Solutions)
-    pickVariable = do
-      SolverState { variables, assignment } <- get
-      let unassigned = variables `IntSet.difference` IntMap.keysSet assignment
-      case IntSet.minView unassigned of
-        Just (c, _) -> try c
-        Nothing -> return mempty
-
+    branch = do
+      vsids <- getVSIDS
+      let lit = pickLiteral vsids
+      try lit
 
     try :: Literal -> SolverM (Maybe Solutions)
     try c = tryAssign c True <|> tryAssign c False
 
     tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
     tryAssign c v = do
-      -- decayM
+      decayM
       increaseDecisionLevel
       assignM c v
       addDecision c
@@ -185,9 +164,8 @@ getSolutions cnf' = do
     handleConflict c = do 
       traceM "conflict"
       (clause, dl) <- analyseConflict c
-      traceM $ "learned clause: " ++ show clause
-      traceM $ "decision level: " ++ show dl
       if dl < 0 then return mempty else do
+        adjustScoresM clause
         learn clause
         backtrack dl
         solver

@@ -6,8 +6,8 @@ Description : Exports the VSIDS module.
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 
-module SAT.VSIDS (type VSIDS, initVSIDS, decay, adjustScore, updateScore, decayFactor) where
-  
+module SAT.VSIDS (type VSIDS, initVSIDS, decay, adjustScore, updateScore, decayFactor, adjustScores, pickLiteral) where
+
 import Data.IntMap (type IntMap)
 import Data.IntMap qualified as IntMap
 import SAT.CNF (type CNF(CNF), type Clause, type Literal)
@@ -18,7 +18,7 @@ type VSIDS = IntMap Double
 
 -- | The decay factor.
 decayFactor :: Double
-decayFactor = 0.99
+decayFactor = 0.95
 
 -- | Decays the scores.
 -- 
@@ -37,8 +37,8 @@ initVSIDS (CNF clauses) = foldl' updateVSIDS IntMap.empty clauses
   where
     updateVSIDS :: VSIDS -> Clause -> VSIDS
     updateVSIDS = foldl' (\vsids' l -> IntMap.insertWith (+) (abs l) 1 vsids')
-    
-    
+    -- updateVSIDS = foldl' (\vsids' l -> IntMap.insert (abs l) 1 vsids')
+
 
 -- | Adjusts the score of a variable.
 -- 
@@ -55,3 +55,11 @@ adjustScore l = IntMap.insertWith (+) (abs l) 1
 updateScore :: Literal -> Double -> VSIDS -> VSIDS
 updateScore l = IntMap.insert (abs l)
 {-# INLINEABLE updateScore #-}
+
+adjustScores :: Clause -> VSIDS -> VSIDS
+adjustScores clause vsids = foldl' (flip adjustScore) vsids clause
+{-# INLINEABLE adjustScores #-}
+
+pickLiteral :: VSIDS -> Literal
+pickLiteral = fst . IntMap.findMax
+{-# INLINEABLE pickLiteral #-}
