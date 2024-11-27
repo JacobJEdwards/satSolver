@@ -1,7 +1,7 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE DerivingStrategies #-}
 
-module SAT.Monad (SolverM, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals, getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, getPartialAssignment, logM, ifM, guardM, notM, getLearnedClauses, learn, cnfWithLearnedClauses, increaseDecisionLevel, ClauseState(..)) where
+module SAT.Monad (SolverM, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals, getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, getPartialAssignment, logM, ifM, guardM, notM, getLearnedClauses, learn, cnfWithLearnedClauses, increaseDecisionLevel, ClauseState(..), getClauseDB) where
 
 import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, type DecisionLevel)
 import Data.IntMap (IntMap)
@@ -10,17 +10,17 @@ import Control.Monad.RWS.Strict (RWST, tell, modify, MonadReader (ask))
 import Control.Monad.State.Strict (gets)
 import Data.Bool (bool)
 import Control.Monad (MonadPlus, guard)
+import Data.IntSet (IntSet)
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]
 
--- | The reason for a conflict.
+-- | The reason for a conflict or assignment.
 type Reason = Clause
 
 -- | The implication graph (maybe turn into a more explicit graph).
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
 
--- | Watched literals (literals in clauses that are being watched).
 
 -- | Clauses learnt from conflicts (CDCL).
 type LearnedClauses = [Clause]
@@ -31,9 +31,11 @@ data ClauseState = ClauseState {
   watched :: [Literal]
 } deriving stock (Show)
 
+-- | Watched literals (literals in clauses that are being watched).
 type WatchedLiterals = IntMap [ClauseState]
 
-type ClauseDB = [ClauseState]
+-- | The clause database.
+type ClauseDB = [Clause]
 
 -- | The solver state.
 -- Contains information for solving and any optimisations.
@@ -46,7 +48,8 @@ data SolverState = SolverState {
   clauseDB :: ClauseDB,
   vsids :: VSIDS,
   partial :: CNF,
-  learnedClauses :: LearnedClauses
+  learnedClauses :: LearnedClauses,
+  variables :: IntSet
 } deriving stock (Show)
 
 
@@ -98,8 +101,12 @@ getLearnedClauses :: SolverM LearnedClauses
 getLearnedClauses = gets learnedClauses
 {-# INLINEABLE getLearnedClauses #-}
 
+getClauseDB :: SolverM ClauseDB
+getClauseDB = gets clauseDB
+{-# INLINEABLE getClauseDB #-}
+
 learn :: Clause -> SolverM ()
-learn clause = modify $ \s -> s { learnedClauses = clause : learnedClauses s}
+learn clause = modify $ \s -> s { learnedClauses = clause : learnedClauses s, clauseDB = clause : clauseDB s }
 {-# INLINEABLE learn #-}
 
 cnfWithLearnedClauses :: SolverM CNF

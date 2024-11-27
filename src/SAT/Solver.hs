@@ -14,6 +14,8 @@
 -- that is what watch literals aim to solve
 -- or i could have my partial list of maybe clause, which i can index on the main clauses to get them
 -- but must compare that to watched literals when i implement that
+-- watched literals can also be checked for tautolofy
+-- should wathced literals be stored as the abs value or either ?
 --
 -- so for now, when finding units just compare the main cnf against the assignment
 -- follow the tutorial (but with ig)
@@ -26,6 +28,8 @@
 -- i suppose i check the learned clauses against other solvers
 --
 -- simplify simplify simpify
+--
+-- issue with using partial assignment to check for isSat is learned clauses
 module SAT.Solver
   ( satisfiable,
     type Solutions,
@@ -49,11 +53,11 @@ import Data.IntSet qualified as IntSet
 import Data.Maybe (listToMaybe)
 import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
 import SAT.Expr (Expr, type Solutions)
-import SAT.Monad (SolverM, SolverState (..), WatchedLiterals, getAssignment, guardM, ifM, learn, increaseDecisionLevel, ClauseState (..))
-import SAT.Optimisers (assignM, collectLiterals, decayM, eliminateLiterals, eliminateLiteralsM, isNotUnsatM, isSatM, pickVariableM, removeTautologiesM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision)
-import SAT.VSIDS (initVSIDS, decay)
-import Debug.Trace (trace)
+import SAT.Monad (SolverM, SolverState (..), WatchedLiterals, getAssignment, ifM, learn, increaseDecisionLevel, ClauseState (..))
+import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, isSatM, pickVariableM, removeTautologiesM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet)
+import SAT.VSIDS (initVSIDS)
 import Control.Monad.RWS (get, modify)
+import Debug.Trace (trace, traceM)
 
 -- | Initializes the watched literals.
 initWatchedLiterals :: CNF -> WatchedLiterals
@@ -73,7 +77,7 @@ initWatchedLiterals (CNF clauses) = foldl updateWatchedLiterals IntMap.empty cla
 
 -- | Initializes the solver state.
 initState :: CNF -> SAT.Monad.SolverState
-initState cnf =
+initState cnf@(CNF clauses) =
   SolverState
     { assignment = mempty,
       trail = mempty,
@@ -81,9 +85,10 @@ initState cnf =
       watchedLiterals = initWatchedLiterals cnf,
       decisionLevel = 0,
       vsids = initVSIDS cnf,
-      clauseDB = [],
+      clauseDB = clauses,
       partial = cnf,
-      learnedClauses = mempty
+      learnedClauses = mempty,
+      variables = collectLiteralsToSet cnf
     }
 
 -- | Finds a free variable at random.
@@ -116,9 +121,7 @@ maybeEliminateLiterals = do
     return ()
 
 simplifyM :: SolverM ()
-simplifyM = do
-  maybeEliminateLiterals
-
+simplifyM = maybeEliminateLiterals
 -- removeTautologiesM
 
 preprocess :: SolverM (Maybe Clause)
@@ -132,52 +135,62 @@ preprocess = do
       m' <- getAssignment
       if m == m' then return Nothing else preprocess
 
+-- i think this is close, slightly wrong, but close ! (maybe)
 getSolutions :: CNF -> Maybe Solutions
 getSolutions cnf' = do
   (solutions', _) <- RWST.evalRWST run cnf' (initState cnf')
-  return solutions'
+  solutions'
   where
-    run :: SolverM Solutions
+    run :: SolverM (Maybe Solutions)
     run = do
       preprocess >>= \case
         Just _ -> return mempty -- failure
         Nothing -> solver
 
-    solver :: SolverM Solutions
+    solver :: SolverM (Maybe Solutions)
     solver = do
       -- simplifyM
-      guardM isNotUnsatM
-      ifM isSatM solutions branch
+      ifM allVariablesAssigned (Just <$> solutions) branch
 
-    branch :: SolverM Solutions
-    branch = maybe failed try =<< pickVariableM
+    branch :: SolverM (Maybe Solutions)
+    branch = pickVariable 
 
-    failed :: SolverM Solutions
-    failed = return mempty
+    pickVariable :: SolverM (Maybe Solutions)
+    pickVariable = do
+      SolverState { variables, assignment } <- get
+      let unassigned = variables `IntSet.difference` IntMap.keysSet assignment
+      case IntSet.minView unassigned of
+        Just (c, _) -> try c
+        Nothing -> return mempty
 
-    try :: Literal -> SolverM Solutions
+
+    try :: Literal -> SolverM (Maybe Solutions)
     try c = tryAssign c True <|> tryAssign c False
 
-    tryAssign :: Literal -> Bool -> SolverM Solutions
+    tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
     tryAssign c v = do
-      decayM
+      -- decayM
+      increaseDecisionLevel
       assignM c v
       addDecision c
-      increaseDecisionLevel
       propagate
 
-    propagate :: SolverM Solutions
+    propagate :: SolverM (Maybe Solutions)
     propagate = do
       unitPropagateM >>= \case
-        Just c -> solver
-        Nothing -> solver
+        Just c -> handleConflict c
+        Nothing -> trace "no conflict" solver
 
-    handleConflict :: Clause -> SolverM Solutions
+    handleConflict :: Clause -> SolverM (Maybe Solutions)
     handleConflict c = do 
+      traceM "conflict"
       (clause, dl) <- analyseConflict c
-      learn clause
-      backtrack dl
-      solver
+      traceM $ "learned clause: " ++ show clause
+      traceM $ "decision level: " ++ show dl
+      if dl < 0 then return mempty else do
+        learn clause
+        backtrack dl
+        solver
 
 {-# INLINEABLE getSolutions #-}
 
@@ -300,3 +313,8 @@ literalEvery100 expr = go cnf' m 0
         (m'', cnf''') = unitPropagate cnf'' m' 0
         (m''', cnf'''') = if i `mod` 100 == 0 then eliminateLiterals cnf''' m'' 0 else (m'', cnf''')
 {-# INLINEABLE literalEvery100 #-}
+
+allVariablesAssigned :: SolverM Bool
+allVariablesAssigned = do
+  SolverState { variables, assignment } <- get
+  return $ IntSet.null $ variables `IntSet.difference` IntMap.keysSet assignment

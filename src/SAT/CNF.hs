@@ -1,37 +1,37 @@
-{-|
-Module      : SAT.CNF
-Description : Exports the CNF module.
--}
-
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
-module SAT.CNF (applyLaws, toCNF, type CNF(CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative, tseitin, toTseitin) where
+-- |
+-- Module      : SAT.CNF
+-- Description : Exports the CNF module.
+module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative, tseitin, toTseitin, varOfLiteral, varValue, literalValue, negateLiteral) where
 
-import SAT.Expr (type Expr(Not, And, Or, Val, Var, Implies))
-import Data.IntMap (type IntMap)
-import GHC.Generics (Generic)
-import Control.Parallel.Strategies (NFData)
 import Control.Monad.State.Strict (State, get, put, runState)
+import Control.Parallel.Strategies (NFData)
+import Data.IntMap ((!?), type IntMap)
+import GHC.Generics (Generic)
+import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
 
 type DecisionLevel = Int
+
 type Assignment = IntMap (Bool, DecisionLevel)
 
 -- data cnf is list of clauses
 
 -- consider moving these into vector or seq
+
 -- | The CNF type.
 newtype CNF = CNF [Clause]
   deriving stock (Eq, Show, Ord, Generic)
 
 deriving anyclass instance NFData CNF
 
--- data CNF where 
+-- data CNF where
 --   CNF :: (Traversable t, Semigroup (t Clause), Applicative t) => t Clause -> CNF
 
 -- | The clause type.
@@ -40,11 +40,39 @@ type Clause = [Literal]
 -- | The literal type.
 type Literal = Int
 
+-- | Gets the variable of a literal.
+--
+-- >>> varOfLiteral 1
+-- 1
+--
+-- >>> varOfLiteral (-1)
+-- 1
+varOfLiteral :: Literal -> Int
+varOfLiteral = abs
+{-# INLINEABLE varOfLiteral #-}
+
+-- | Returns the value of a variable in an assignment.
+varValue :: Assignment -> Int -> Maybe Bool
+varValue assignment n = case assignment !? n of
+  Just (b, _) -> Just b
+  Nothing -> Nothing
+{-# INLINEABLE varValue #-}
+
+-- | Returns the value of a literal in an assignment.
+literalValue :: Assignment -> Literal -> Maybe Bool
+literalValue assignment l = varValue assignment (varOfLiteral l) >>= \b -> Just $ if isNegative l then not b else b
+{-# INLINEABLE literalValue #-}
+
+negateLiteral :: Literal -> Literal
+negateLiteral = negate
+{-# INLINEABLE negateLiteral #-}
+
 -- https://en.wikipedia.org/wiki/Tseytin_transformation -> look into this
 
 -- https://hackage.haskell.org/package/picologic-0.3.0/docs/src/Picologic-Tseitin.html
+
 -- | Applies the laws of De Morgan to an expression.
--- 
+--
 -- >>> deMorgansLaws (Not (Not (Var 1)))
 -- Var 1
 deMorgansLaws :: Expr a -> Expr a
@@ -59,7 +87,7 @@ deMorgansLaws (Implies e1 e2) = Or (deMorgansLaws $ Not e1) (deMorgansLaws e2)
 deMorgansLaws e = e
 
 -- | Applies the laws of distribution to an expression.
--- 
+--
 -- >>> distributiveLaws (Or (And (Var 1) (Var 2)) (Var 3))
 -- And (Or (Var 3) (Var 1)) (Or (Var 3) (Var 2))
 distributiveLaws :: Expr a -> Expr a
@@ -72,7 +100,7 @@ distributiveLaws (Implies e1 e2) = Implies (distributiveLaws e1) (distributiveLa
 distributiveLaws e = e
 
 -- | Applies the laws of distribution and De Morgan to an expression.
--- 
+--
 -- >>> applyLaws (Or (And (Var 1) (Var 2)) (Not (Var 3)))
 -- And (Or (Not (Var 3)) (Var 1)) (Or (Not (Var 3)) (Var 2))
 applyLaws :: (Eq a) => Expr a -> Expr a
@@ -83,14 +111,16 @@ applyLaws expr
     expr' = distributiveLaws $ deMorgansLaws expr
 {-# INLINEABLE applyLaws #-}
 
-
 -- | Converts an expression to CNF.
--- 
+--
 -- >>> toCNF (Or (And (Var 1) (Var 2)) (Not (Var 3)))
 -- CNF [[-3,1],[-3,2]]
 toCNF :: Expr Int -> CNF
-toCNF expr = CNF $ toClauses cnf
+toCNF expr = CNF $ map unique $ toClauses cnf
   where
+    unique :: Ord a => [a] -> [a]
+    unique = foldr (\x acc -> if x `elem` acc then acc else x : acc) []
+
     cnf :: Expr Int
     cnf = applyLaws expr
 
@@ -110,7 +140,7 @@ toCNF expr = CNF $ toClauses cnf
 
 toTseitin :: Expr Int -> CNF
 toTseitin expr = CNF clauses
-  where 
+  where
     tseitin' :: State Int (CNF, Literal)
     tseitin' = tseitin expr
 
@@ -123,7 +153,7 @@ toTseitin expr = CNF clauses
 {-# INLINEABLE toTseitin #-}
 
 -- | Adds a clause to a CNF.
--- 
+--
 -- >>> addClause (CNF [[1,2]]) [3]
 -- CNF [[3],[1,2]]
 addClause :: CNF -> Clause -> CNF
@@ -131,13 +161,13 @@ addClause (CNF clauses) clause = CNF $ pure clause <> clauses
 {-# INLINEABLE addClause #-}
 
 -- | Checks if a literal is negative.
--- 
+--
 -- >>> isNegative (-1)
 -- True
--- 
+--
 -- >>> isNegative 1
 -- False
--- 
+--
 -- prop> isNegative x == (x < 0)
 isNegative :: Literal -> Bool
 isNegative = (< 0)
