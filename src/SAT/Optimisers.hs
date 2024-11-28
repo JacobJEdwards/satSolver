@@ -15,7 +15,6 @@ module SAT.Optimisers
     eliminateLiterals,
     assign,
     partialAssignment,
-    partialAssignmentM,
     pickVariable,
     pickVariableM,
     literalPolarities,
@@ -23,15 +22,11 @@ module SAT.Optimisers
     eliminateLiteralsM,
     findUnitClause,
     unitPropagateM,
-    substituteM,
     assignM,
     removeTautologies,
-    removeTautologiesM,
-    isNotUnsatM,
     isSat,
     isSatM,
     isUnsat,
-    isUnsatM,
     backtrack,
     analyseConflict,
     addDecision,
@@ -41,6 +36,7 @@ module SAT.Optimisers
     getClauseStatus,
     findCanditateWatchedLiteral,
     ClauseStatus (..),
+    pickLiteralM
   )
 where
 
@@ -54,12 +50,10 @@ import Data.IntSet qualified as IntSet
 import Data.List (find, partition)
 import Data.Set (type Set)
 import Data.Set qualified as Set
-import Debug.Trace (traceM)
 import SAT.CNF (CNF (CNF), Clause, literalValue, varOfLiteral, type Assignment, type DecisionLevel, type Literal)
-import SAT.Monad (SolverM, SolverState (..), cnfWithLearnedClauses, getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPartialAssignment, getTrail, getVSIDS, notM, getPropagationStack, getWatchedLiterals, WatchedLiterals (WatchedLiterals, literals, clauses))
+import SAT.Monad (type SolverM, type SolverState (..), getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getTrail, getVSIDS)
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
-import SAT.VSIDS (decay, type VSIDS, adjustScores)
-import qualified Data.Vector as V
+import SAT.VSIDS (decay, type VSIDS, adjustScores, pickLiteral)
 
 -- | Collects all literals in a CNF.
 --
@@ -145,9 +139,11 @@ eliminateLiterals cnf solutions dl = (solutions', cnf')
 
 eliminateLiteralsM :: SolverM ()
 eliminateLiteralsM = do
-  SolverState {partial, assignment, decisionLevel} <- get
-  let (m, partial') = eliminateLiterals partial assignment decisionLevel
-  modify $ \s -> s {assignment = m, partial = partial'}
+  SolverState {assignment, decisionLevel} <- get
+  cnf <- ask
+  let partial = partialAssignment assignment cnf
+  let (m, _) = eliminateLiterals partial assignment decisionLevel
+  modify $ \s -> s {assignment = m }
 {-# INLINEABLE eliminateLiteralsM #-}
 
 -- | Substitutes a literal in a CNF.
@@ -175,12 +171,6 @@ substitute var val (CNF clauses) = CNF $ map (eliminateClause var val) $ filter 
     eliminateClause :: Literal -> Bool -> Clause -> Clause
     eliminateClause c p = filter (not . literalIsFalse' c p)
 {-# INLINEABLE substitute #-}
-
-substituteM :: Literal -> Bool -> SolverM ()
-substituteM c p = do
-  modify $ \s -> s {partial = substitute c p $ partial s}
-  return ()
-{-# INLINEABLE substituteM #-}
 
 -- | Finds a unit clause in a CNF (a clause with only one literal).
 --
@@ -300,7 +290,6 @@ assignM :: Literal -> Bool -> SolverM ()
 assignM c v = do
   SolverState {assignment, trail, decisionLevel} <- get
   let t = (c, decisionLevel, v) : trail
-  substituteM c v
   let m = assign assignment c v decisionLevel
   modify $ \s -> s {assignment = m, trail = t}
   return ()
@@ -328,13 +317,6 @@ partialAssignment m (CNF clauses) = CNF $ map (filter isFalseLiteral) $ filter (
       Just (True, _) -> l >= 0
       _ -> True
 {-# INLINEABLE partialAssignment #-}
-
-partialAssignmentM :: SolverM ()
-partialAssignmentM = do
-  SolverState {assignment, partial} <- get
-  let partial' = partialAssignment assignment partial
-  modify $ \s -> s {partial = partial'}
-{-# INLINEABLE partialAssignmentM #-}
 
 -- | Picks a variable.
 --
@@ -375,14 +357,6 @@ removeTautologies (CNF clauses') = CNF $ filter (not . tautology) clauses'
     tautology c = any (\x -> -x `elem` c) c
 {-# INLINEABLE removeTautologies #-}
 
-removeTautologiesM :: SolverM ()
-removeTautologiesM = do
-  partial <- getPartialAssignment
-  let partial' = removeTautologies partial
-  modify $ \s -> s {partial = partial'}
-  return ()
-{-# INLINEABLE removeTautologiesM #-}
-
 -- | Checks if a CNF is satisfied
 --
 -- >>> isSat (CNF [[1, 2], [2, 3], [3, 4]])
@@ -410,12 +384,6 @@ isSatM = do
 isUnsat :: CNF -> Bool
 isUnsat (CNF clauses) = any clauseIsUnsat clauses
 
-isUnsatM :: SolverM Bool
-isUnsatM = isUnsat <$> getPartialAssignment
-
-isNotUnsatM :: SolverM Bool
-isNotUnsatM = notM isUnsatM
-
 -- | Checks if a clause is unsatisfiable
 --
 -- >>> clauseIsUnsat [1, 2, 3]
@@ -431,14 +399,13 @@ backtrack :: DecisionLevel -> SolverM ()
 backtrack dl = do
   trail <- getTrail
   assignments <- getAssignment
-  cnf <- cnfWithLearnedClauses
   ig <- getImplicationGraph
 
   let (trail', toRemove) = partition (\(_, dl', _) -> dl' < dl) trail
-      toRemoveKeys = Set.fromList $ map (\(l, _, _) -> l) toRemove
-      assignments' = IntMap.filterWithKey (\k _ -> k `notElem` toRemoveKeys) assignments
-      ig' = IntMap.filterWithKey (\k _ -> k `notElem` toRemoveKeys) ig
-  modify $ \s -> s {trail = trail', assignment = assignments', partial = cnf, implicationGraph = ig', decisionLevel = dl}
+      toRemoveKeys = IntSet.fromList $ map (\(l, _, _) -> l) toRemove
+      assignments' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemoveKeys) assignments
+      ig' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemoveKeys) ig
+  modify $ \s -> s {trail = trail', assignment = assignments', implicationGraph = ig', decisionLevel = dl}
 
 -- partialAssignmentM
 
@@ -473,18 +440,16 @@ analyseConflict conflict = do
                 )
                 conflict
 
-      traceM $ "Literals: " ++ show literals
-
       let loop :: [Int] -> SolverM (Clause, DecisionLevel)
           loop [] = return (conflict, -1)
-          loop literals = do
+          loop ls = do
             implied <-
               filterM
                 ( \l -> case IntMap.lookup (abs l) implicationGraph of
                     Just (_, _, dl) -> return $ dl /= decisionLevel
                     Nothing -> return False
                 )
-                literals
+                ls
 
             case implied of
               [] -> return (conflict, -1)
@@ -505,7 +470,7 @@ analyseConflict conflict = do
       (conflict', _) <- loop literals
 
       let decisionLevels =
-            uniqueOnly $
+            -- uniqueOnly $
               map
                 ( \l -> case IntMap.lookup (abs l) implicationGraph of
                     Just (_, _, dl) -> dl
@@ -544,19 +509,9 @@ isSatisfied = do
     clauseIsSat m = any (\l -> literalValue m l == Just True)
 
 adjustScoresM :: Clause -> SolverM ()
-adjustScoresM clause = do 
+adjustScoresM clause = do
   vsids <- getVSIDS
   modify $ \s -> s {vsids = adjustScores clause vsids}
 
-vectorToSet :: (Ord a) => V.Vector a -> Set.Set a
-vectorToSet = V.foldr Set.insert Set.empty
-
-vectorToIntSet :: V.Vector Int -> IntSet
-vectorToIntSet = V.foldr IntSet.insert IntSet.empty
-
-intSetToVector :: IntSet.IntSet -> V.Vector Int
-intSetToVector = V.fromList . IntSet.toAscList
-
-setToVector :: Set.Set a -> V.Vector a
-setToVector = V.fromList . Set.toAscList
-
+pickLiteralM :: SolverM Literal
+pickLiteralM = pickLiteral <$> getVSIDS

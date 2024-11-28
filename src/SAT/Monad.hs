@@ -5,12 +5,12 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module SAT.Monad (SolverM, getPropagationStack, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals(..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, initWatchedLiterals, getDecisionLevel, getVSIDS, getPartialAssignment, logM, ifM, guardM, notM, getLearnedClauses, learn, cnfWithLearnedClauses, increaseDecisionLevel, ClauseState(..), getClauseDB) where
+module SAT.Monad (SolverM, getPropagationStack, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals(..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, initWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, learn, increaseDecisionLevel, getClauseDB) where
 
-import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, type DecisionLevel, varOfLiteral)
+import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, type DecisionLevel)
 import Data.IntMap (IntMap)
 import SAT.VSIDS (type VSIDS)
-import Control.Monad.RWS.Strict (RWST, tell, modify, MonadReader (ask))
+import Control.Monad.RWS.Strict (RWST, tell, modify)
 import Control.Monad.State.Strict (gets)
 import Data.Bool (bool)
 import Control.Monad (MonadPlus, guard)
@@ -29,15 +29,6 @@ type Reason = Clause
 
 -- | The implication graph (maybe turn into a more explicit graph).
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
-
--- | Clauses learnt from conflicts (CDCL).
-type LearnedClauses = [Clause]
-
-data ClauseState = ClauseState {
-  original :: Clause,
-  current :: Maybe Clause, -- ^ The clause after resolution.
-  watched :: [Literal]
-} deriving stock (Show)
 
 -- | Watched literals (literals in clauses that are being watched).
 data WatchedLiterals = WatchedLiterals {
@@ -81,8 +72,6 @@ data SolverState = SolverState {
   decisionLevel :: DecisionLevel,
   clauseDB :: ClauseDB,
   vsids :: VSIDS,
-  partial :: CNF,
-  learnedClauses :: LearnedClauses,
   variables :: IntSet,
   propagationStack :: [Literal]
 } deriving stock (Show)
@@ -131,15 +120,6 @@ getVSIDS :: SolverM VSIDS
 getVSIDS = gets vsids
 {-# INLINEABLE getVSIDS #-}
 
--- | Gets the partial assignment.
-getPartialAssignment :: SolverM CNF
-getPartialAssignment = gets partial
-{-# INLINEABLE getPartialAssignment #-}
-
-getLearnedClauses :: SolverM LearnedClauses
-getLearnedClauses = gets learnedClauses
-{-# INLINEABLE getLearnedClauses #-}
-
 getClauseDB :: SolverM ClauseDB
 getClauseDB = gets clauseDB
 {-# INLINEABLE getClauseDB #-}
@@ -156,7 +136,7 @@ def add_learnt_clause(formula, clause, assignments, lit2clauses, clause2lits):
 -}
 
 learn :: Clause -> SolverM ()
-learn clause = modify $ \s -> s { learnedClauses = clause : learnedClauses s, clauseDB = clause : clauseDB s }
+learn clause = modify $ \s -> s { clauseDB = clause : clauseDB s }
 {-# INLINEABLE learn #-}
 -- learn :: Clause -> SolverM ()
 -- learn clause = do 
@@ -196,13 +176,6 @@ learn clause = modify $ \s -> s { learnedClauses = clause : learnedClauses s, cl
 --         clauseMap = clauses wLits
 --         updatedLitMap = IntMap.insertWith (++) (varOfLiteral lit) [clause] litMap
 --     in wLits { literals = updatedLitMap, clauses = Map.insertWith (++) clause [lit] clauseMap }
-
-cnfWithLearnedClauses :: SolverM CNF
-cnfWithLearnedClauses = do
-  lc <- getLearnedClauses
-  CNF clauses' <- ask
-  return $ CNF $ clauses' ++ lc
-{-# INLINEABLE cnfWithLearnedClauses #-}
 
 -- | Logs a message.
 logM :: String -> SolverM ()

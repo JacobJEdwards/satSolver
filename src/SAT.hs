@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-missing-import-lists #-}
 {-|
 Module      : SAT
 Description : Exports the SAT solver modules.

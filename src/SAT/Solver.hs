@@ -54,12 +54,10 @@ import Data.IntSet qualified as IntSet
 import Data.Maybe (listToMaybe)
 import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
 import SAT.Expr (Expr, type Solutions)
-import SAT.Monad (SolverM, SolverState (..), WatchedLiterals, getAssignment, ifM, learn, increaseDecisionLevel, ClauseState (..), initWatchedLiterals, getVSIDS, getClauseDB)
-import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, removeTautologiesM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM, getClauseStatus, ClauseStatus (..))
-import SAT.VSIDS (initVSIDS, pickLiteral, decay)
-import Control.Monad.RWS (get, modify)
-import Debug.Trace (trace, traceM)
-import Foreign.C.String (withCString)
+import SAT.Monad (SolverM, SolverState (..), getAssignment, ifM, learn, increaseDecisionLevel, initWatchedLiterals, getClauseDB)
+import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM, getClauseStatus, type ClauseStatus (..), pickLiteralM)
+import SAT.VSIDS (initVSIDS)
+import Control.Monad.RWS (get, modify, MonadReader (ask))
 
 -- | Initializes the solver state.
 initState :: CNF -> SAT.Monad.SolverState
@@ -72,8 +70,6 @@ initState cnf@(CNF clauses) =
       decisionLevel = 0,
       vsids = initVSIDS cnf,
       clauseDB = clauses,
-      partial = cnf,
-      learnedClauses = mempty,
       variables = collectLiteralsToSet cnf,
       propagationStack = mempty
     }
@@ -101,10 +97,11 @@ solutions = solutionsFromAssignment <$> getAssignment
 
 maybeEliminateLiterals :: SolverM ()
 maybeEliminateLiterals = do
-  SolverState { assignment, partial, decisionLevel } <- get
+  SolverState { assignment, decisionLevel } <- get
   when (mod decisionLevel 100 == 0) $ do
-    let (m', partial') = eliminateLiterals partial assignment decisionLevel
-    modify $ \s -> s { partial = partial', assignment = m' }
+    partial <- ask
+    let (m', _) = eliminateLiterals partial assignment decisionLevel
+    modify $ \s -> s { assignment = m' }
     return ()
 
 simplifyM :: SolverM ()
@@ -128,7 +125,6 @@ preprocess = do
     Just c -> return (Just c)
     Nothing -> do
       eliminateLiteralsM
-      removeTautologiesM
       m' <- getAssignment
       if m == m' then return Nothing else preprocess
 
@@ -146,14 +142,12 @@ getSolutions cnf' = do
 
     solver :: SolverM (Maybe Solutions)
     solver = do
-      simplifyM
       ifM allVariablesAssigned (Just <$> solutions) branch
 
     branch :: SolverM (Maybe Solutions)
     branch = do
-      vsids <- getVSIDS
-      let lit = pickLiteral vsids
-      try lit
+      v <- pickLiteralM
+      try v
 
     try :: Literal -> SolverM (Maybe Solutions)
     try c = tryAssign c True <|> tryAssign c False
@@ -169,11 +163,10 @@ getSolutions cnf' = do
     propagate = do
       unitPropagateM >>= \case
         Just c -> handleConflict c
-        Nothing -> trace "no conflict" solver
+        Nothing ->  solver
 
     handleConflict :: Clause -> SolverM (Maybe Solutions)
     handleConflict c = do 
-      traceM "conflict"
       (clause, dl) <- analyseConflict c
       if dl < 0 then return mempty else do
         decayM
