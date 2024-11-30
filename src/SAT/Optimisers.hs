@@ -120,8 +120,8 @@ literalPolarities (CNF clauses') = foldl updatePolarity IntMap.empty (concatMap 
 -- | eliminates any literals that are either positive or negative
 -- from the CNF and updates the assignment
 -- returns the updated CNF and assignment
-eliminateLiterals :: CNF -> Assignment -> DecisionLevel -> (Assignment, CNF)
-eliminateLiterals cnf solutions dl = (solutions', cnf')
+eliminateLiterals :: CNF -> Assignment -> (Assignment, CNF)
+eliminateLiterals cnf solutions = (solutions', cnf')
   where
     literals :: IntMap Polarity
     literals = IntMap.filter (/= Mixed) $ literalPolarities cnf
@@ -131,7 +131,7 @@ eliminateLiterals cnf solutions dl = (solutions', cnf')
     getClauses :: IntMap Polarity -> CNF -> Assignment -> (CNF, Assignment)
     getClauses pols expr sols = case IntMap.minViewWithKey pols of
       Nothing -> (expr, sols)
-      Just ((c, p), pols') -> getClauses pols' (substitute c value expr) (IntMap.insert c (value, dl) sols)
+      Just ((c, p), pols') -> getClauses pols' (substitute c value expr) (IntMap.insert c value sols)
         where
           value :: Bool
           value = p == Positive
@@ -139,10 +139,10 @@ eliminateLiterals cnf solutions dl = (solutions', cnf')
 
 eliminateLiteralsM :: SolverM ()
 eliminateLiteralsM = do
-  SolverState {assignment, decisionLevel} <- get
+  SolverState {assignment} <- get
   cnf <- ask
   let partial = partialAssignment assignment cnf
-  let (m, _) = eliminateLiterals partial assignment decisionLevel
+  let (m, _) = eliminateLiterals partial assignment
   modify $ \s -> s {assignment = m }
 {-# INLINEABLE eliminateLiteralsM #-}
 
@@ -204,7 +204,7 @@ unitPropagate cnf m dl = case findUnitClause cnf of
   Nothing -> (m, cnf)
   Just (c, p) ->
     let cnf'' = substitute c p cnf
-        m' = IntMap.insert c (p, dl) m
+        m' = IntMap.insert c p m
      in unitPropagate cnf'' m' dl
 {-# INLINEABLE unitPropagate #-}
 
@@ -282,15 +282,15 @@ uniqueOnly = go mempty
 --
 -- >>> assign IntMap.empty 1 True 0
 -- fromList [(1,True)]
-assign :: Assignment -> Literal -> Bool -> DecisionLevel -> Assignment
-assign m c v dl = IntMap.insertWith (const id) (abs c) (v, dl) m
+assign :: Assignment -> Literal -> Bool -> Assignment
+assign m c v = IntMap.insertWith (const id) (abs c) v m
 {-# INLINEABLE assign #-}
 
 assignM :: Literal -> Bool -> SolverM ()
 assignM c v = do
   SolverState {assignment, trail, decisionLevel} <- get
   let t = (c, decisionLevel, v) : trail
-  let m = assign assignment c v decisionLevel
+  let m = assign assignment c v
   modify $ \s -> s {assignment = m, trail = t}
   return ()
 {-# INLINEABLE assignM #-}
@@ -307,14 +307,14 @@ partialAssignment m (CNF clauses) = CNF $ map (filter isFalseLiteral) $ filter (
 
     isTrueLiteral :: Literal -> Bool
     isTrueLiteral l = case IntMap.lookup (abs l) m of
-      Just (True, _) -> l > 0
-      Just (False, _) -> l < 0
+      Just True -> l > 0
+      Just False -> l < 0
       _ -> False
 
     isFalseLiteral :: Literal -> Bool
     isFalseLiteral l = case IntMap.lookup (abs l) m of
-      Just (False, _) -> l <= 0
-      Just (True, _) -> l >= 0
+      Just False -> l <= 0
+      Just True -> l >= 0
       _ -> True
 {-# INLINEABLE partialAssignment #-}
 

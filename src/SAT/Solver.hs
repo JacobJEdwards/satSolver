@@ -59,18 +59,19 @@ import Control.Monad.RWS.Strict qualified as RWST
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.Maybe (listToMaybe)
-import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
+import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal, initAssignment)
 import SAT.Expr (Expr, type Solutions)
 import SAT.Monad (SolverM, SolverState (..), getAssignment, ifM, learn, increaseDecisionLevel, initWatchedLiterals, getClauseDB)
-import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM, getClauseStatus, type ClauseStatus (..), pickLiteralM)
+import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM, getClauseStatus, type ClauseStatus (..), pickLiteralM, assign)
 import SAT.VSIDS (initVSIDS)
 import Control.Monad.RWS (get, modify, MonadReader (ask))
+import Data.IntSet (IntSet)
 
 -- | Initializes the solver state.
-initState :: CNF -> SAT.Monad.SolverState
+initState :: CNF -> SolverState
 initState cnf@(CNF clauses) =
   SolverState
-    { assignment = mempty,
+    { assignment = initAssignment $ collectLiteralsToSet cnf,
       trail = mempty,
       implicationGraph = mempty,
       watchedLiterals = initWatchedLiterals cnf,
@@ -112,7 +113,7 @@ checkValue = flip IntSet.member
 
 -- | Converts an assignment to a set of solutions.
 solutionsFromAssignment :: Assignment -> Solutions
-solutionsFromAssignment = IntMap.keysSet . IntMap.filter fst
+solutionsFromAssignment = IntMap.keysSet . IntMap.filter id
 {-# INLINEABLE solutionsFromAssignment #-}
 
 solutions :: SolverM Solutions
@@ -123,7 +124,7 @@ maybeEliminateLiterals = do
   SolverState { assignment, decisionLevel } <- get
   when (mod decisionLevel 100 == 0) $ do
     partial <- ask
-    let (m', _) = eliminateLiterals partial assignment decisionLevel
+    let (m', _) = eliminateLiterals partial assignment
     modify $ \s -> s { assignment = m' }
     return ()
 
@@ -233,7 +234,7 @@ bruteForce expr = let cnf = toCNF expr in go cnf mempty
       Just c -> try c True <|> try c False
       where
         try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf) (IntMap.insert c (v, 0) m)
+        try c v = go (substitute c v cnf) (assign m c v)
 
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
@@ -249,7 +250,7 @@ withUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
       Just c -> try c True <|> try c False
       where
         try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf') (IntMap.insert c (v, 0) m')
+        try c v = go (substitute c v cnf') (assign m' c v)
 
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
@@ -267,13 +268,13 @@ withPureLiteralElimination expr = let cnf = toCNF expr in go cnf mempty
       Just c -> try c True <|> try c False
       where
         try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf') (IntMap.insert c (v, 0) m')
+        try c v = go (substitute c v cnf') (assign m' c v)
 
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
 
         cnf' :: CNF
-        (m', cnf') = eliminateLiterals cnf m 0
+        (m', cnf') = eliminateLiterals cnf m
 {-# INLINEABLE withPureLiteralElimination #-}
 
 withPureLiteralAndUnitPropagation :: Expr Int -> Maybe Solutions
@@ -285,13 +286,13 @@ withPureLiteralAndUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
       Just c -> try c True <|> try c False
       where
         try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf'') (IntMap.insert c (v, 0) m'')
+        try c v = go (substitute c v cnf'') (assign m'' c v)
 
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
 
         cnf' :: CNF
-        (m', cnf') = eliminateLiterals cnf m 0
+        (m', cnf') = eliminateLiterals cnf m
 
         cnf'' :: CNF
         (m'', cnf'') = unitPropagate cnf' m' 0
@@ -301,7 +302,7 @@ pureLitOnlyAsPreprocess :: Expr Int -> Maybe Solutions
 pureLitOnlyAsPreprocess expr = go cnf' m
   where
     cnf = toCNF expr
-    (m, cnf') = eliminateLiterals cnf mempty 0
+    (m, cnf') = eliminateLiterals cnf mempty
 
     go :: CNF -> Assignment -> Maybe Solutions
     go cnf'' m' = case findFreeVariable cnf'' of
@@ -309,7 +310,7 @@ pureLitOnlyAsPreprocess expr = go cnf' m
       Just c -> try c True <|> try c False
       where
         try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf''') (IntMap.insert c (v, 0) m'')
+        try c v = go (substitute c v cnf''') (assign m'' c v)
 
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
@@ -321,7 +322,7 @@ literalEvery100 :: Expr Int -> Maybe Solutions
 literalEvery100 expr = go cnf' m 0
   where
     cnf = toCNF expr
-    (m, cnf') = eliminateLiterals cnf mempty 0
+    (m, cnf') = eliminateLiterals cnf mempty
 
     go :: CNF -> Assignment -> Int -> Maybe Solutions
     go cnf'' m' i = case findFreeVariable cnf'''' of
@@ -329,20 +330,20 @@ literalEvery100 expr = go cnf' m 0
       Just c -> try c True <|> try c False
       where
         try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf'''') (IntMap.insert c (v, 0) m''') (i + 1)
+        try c v = go (substitute c v cnf'''') (assign m'' c v) (i + 1)
 
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
 
         (m'', cnf''') = unitPropagate cnf'' m' 0
-        (m''', cnf'''') = if i `mod` 100 == 0 then eliminateLiterals cnf''' m'' 0 else (m'', cnf''')
+        (m''', cnf'''') = if i `mod` 100 == 0 then eliminateLiterals cnf''' m'' else (m'', cnf''')
 {-# INLINEABLE literalEvery100 #-}
 
 withTautologyElimination :: Expr Int -> Maybe Solutions
 withTautologyElimination expr = go init' m''
   where
     cnf'' = toCNF expr
-    (m'', i) = eliminateLiterals cnf'' mempty 0
+    (m'', i) = eliminateLiterals cnf'' mempty
     init' = removeTautologies i
 
     go :: CNF -> Assignment -> Maybe Solutions
@@ -351,7 +352,7 @@ withTautologyElimination expr = go init' m''
       Just c -> try c True <|> try c False
       where
         try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf') (IntMap.insert c (v, 0) m')
+        try c v = go (substitute c v cnf') (assign m' c v)
 
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
@@ -360,10 +361,13 @@ withTautologyElimination expr = go init' m''
         (m', cnf') = unitPropagate cnf m 0
 {-# INLINEABLE withTautologyElimination #-}
 
+allAssignments :: Assignment -> IntSet
+allAssignments = IntMap.keysSet
+
 allVariablesAssigned :: SolverM Bool
 allVariablesAssigned = do
   SolverState { variables, assignment } <- get
-  return $ IntSet.null $ variables `IntSet.difference` IntMap.keysSet assignment
+  return $ IntSet.null $ variables `IntSet.difference` allAssignments assignment
 
 removeTautologies :: CNF -> CNF
 removeTautologies (CNF cs) = CNF $ filter (not . isTautology) cs

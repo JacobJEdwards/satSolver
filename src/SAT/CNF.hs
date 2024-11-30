@@ -9,17 +9,22 @@
 -- |
 -- Module      : SAT.CNF
 -- Description : Exports the CNF module.
-module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative, tseitin, toTseitin, varOfLiteral, varValue, literalValue, negateLiteral) where
+module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative, tseitin, toTseitin, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
 
 import Control.Monad.State.Strict (State, get, put, runState)
 import Control.Parallel.Strategies (NFData)
 import Data.IntMap ((!?), type IntMap)
 import GHC.Generics (Generic)
 import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
+import Data.IntSet (IntSet)
 
 type DecisionLevel = Int
 
-type Assignment = IntMap (Bool, DecisionLevel)
+type Assignment = IntMap Bool
+
+initAssignment :: IntSet -> Assignment
+initAssignment =  mempty
+
 
 -- data cnf is list of clauses
 
@@ -53,9 +58,7 @@ varOfLiteral = abs
 
 -- | Returns the value of a variable in an assignment.
 varValue :: Assignment -> Int -> Maybe Bool
-varValue assignment n = case assignment !? n of
-  Just (b, _) -> Just b
-  Nothing -> Nothing
+varValue assignment n = assignment !? n
 {-# INLINEABLE varValue #-}
 
 -- | Returns the value of a literal in an assignment.
