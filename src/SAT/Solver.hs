@@ -30,6 +30,13 @@
 -- simplify simplify simpify
 --
 -- issue with using partial assignment to check for isSat is learned clauses
+
+
+-- TODO: check luby restarts
+-- TODO: check more preprocessing
+-- TODO: watch literals
+-- TODO: dsa
+
 module SAT.Solver
   ( satisfiable,
     type Solutions,
@@ -71,13 +78,29 @@ initState cnf@(CNF clauses) =
       vsids = initVSIDS cnf,
       clauseDB = clauses,
       variables = collectLiteralsToSet cnf,
-      propagationStack = mempty
+      propagationStack = mempty,
+      lubyCount = 0,
+      lubyThreshold = 1
     }
 
 -- | Finds a free variable at random.
 findFreeVariable :: CNF -> Maybe Literal
 findFreeVariable = listToMaybe . collectLiterals
 {-# INLINEABLE findFreeVariable #-}
+
+computeNextLubyThreshold :: Int -> Int
+computeNextLubyThreshold count =
+  let scale = 10
+  in scale * luby count
+
+luby :: Int -> Int
+luby k = go k 1 1
+  where
+    go 1 _ _ = 1
+    go n power level
+      | n == power + level - 1 = level
+      | n < power + level - 1  = go n power (level `div` 2)
+      | otherwise              = go n (power * 2) (level * 2)
 
 -- | Checks if a value is in the solutions.
 --
@@ -172,8 +195,25 @@ getSolutions cnf' = do
         decayM
         adjustScoresM clause
         learn clause
-        backtrack dl
-        solver
+        increaseLubyCount
+        ifM shouldRestart restart $ do 
+          backtrack dl
+          solver
+
+    increaseLubyCount :: SolverM ()
+    increaseLubyCount = modify $ \s -> s { lubyCount = lubyCount s + 1 }
+
+    shouldRestart :: SolverM Bool
+    shouldRestart = do
+      s <- get
+      let currentCount = lubyCount s
+          nextThreshold = computeNextLubyThreshold (currentCount + 1)
+      return (currentCount >= nextThreshold)
+
+    restart :: SolverM (Maybe Solutions)
+    restart = do
+      modify $ \s -> s { assignment = mempty, decisionLevel = 0, trail = mempty, implicationGraph = mempty }
+      solver
 
 {-# INLINEABLE getSolutions #-}
 

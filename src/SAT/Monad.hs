@@ -62,6 +62,8 @@ initWatchedLiterals (CNF cs) = do
 -- | The clause database.
 type ClauseDB = [Clause]
 
+type LubyCount = Int
+
 -- | The solver state.
 -- Contains information for solving and any optimisations.
 data SolverState = SolverState {
@@ -73,7 +75,9 @@ data SolverState = SolverState {
   clauseDB :: ClauseDB,
   vsids :: VSIDS,
   variables :: IntSet,
-  propagationStack :: [Literal]
+  propagationStack :: [Literal],
+  lubyCount :: LubyCount,
+  lubyThreshold :: Int
 } deriving stock (Show)
 
 
