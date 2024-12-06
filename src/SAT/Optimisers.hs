@@ -25,7 +25,6 @@ module SAT.Optimisers
     assignM,
     removeTautologies,
     isSat,
-    isSatM,
     isUnsat,
     backtrack,
     analyseConflict,
@@ -83,7 +82,7 @@ literalPolarities (CNF clauses') = foldl updatePolarity IntMap.empty (concatMap 
   where
     clausePolarities clause = [(unLit lit, literalPolarity lit) | lit <- clause]
 
-    -- \| Unwraps a literal.
+    -- | Unwraps a literal.
     --
     -- >>> unLit 1
     -- 1
@@ -93,7 +92,7 @@ literalPolarities (CNF clauses') = foldl updatePolarity IntMap.empty (concatMap 
     unLit :: Literal -> Int
     unLit = abs
 
-    -- \| Finds the polarity of a literal.
+    -- | Finds the polarity of a literal.
     --
     -- >>> literalPolarity 1
     -- Positive
@@ -110,7 +109,7 @@ literalPolarities (CNF clauses') = foldl updatePolarity IntMap.empty (concatMap 
       | p > 0 = Positive
       | otherwise = Mixed
 
-    -- \| Updates the polarities.
+    -- | Updates the polarities.
     -- >>> updatePolarity (IntMap.fromList [(1, Positive)]) (2, Mixed)
     -- fromList [(1,Positive),(2,Mixed)]
     updatePolarity :: IntMap Polarity -> (Int, Polarity) -> IntMap Polarity
@@ -366,13 +365,6 @@ removeTautologies (CNF clauses') = CNF $ filter (not . tautology) clauses'
 -- True
 isSat :: CNF -> Bool
 isSat (CNF clauses) = null clauses
-
-isSatM :: SolverM Bool
-isSatM = do
-  cnf <- ask
-  assignment <- getAssignment
-  let p = partialAssignment assignment cnf
-  return $ isSat p
 
 -- | Checks if a CNF is unsatisfiable
 --

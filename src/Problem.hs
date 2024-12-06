@@ -65,6 +65,7 @@ instance Problem Sudoku where
 
   example :: Sudoku
   example = Sudoku.sudokuSixteen
+  -- example = Sudoku.sudokuEmpty
   {-# INLINEABLE example #-}
 
 -- | Nonogram problem.

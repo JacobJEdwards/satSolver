@@ -54,7 +54,7 @@ type Literal = Int
 -- 1
 varOfLiteral :: Literal -> Int
 varOfLiteral = abs
-{-# INLINEABLE varOfLiteral #-}
+{-# INLINE varOfLiteral #-}
 
 -- | Returns the value of a variable in an assignment.
 varValue :: Assignment -> Int -> Maybe Bool

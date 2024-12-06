@@ -47,6 +47,8 @@ library
       SAT.Optimisers
       SAT.Parser
       SAT.Polarity
+      SAT.Preprocessing
+      SAT.Restarts
       SAT.Solver
       SAT.VSIDS
       Sudoku
@@ -84,7 +86,7 @@ executable satSolver-exe
       Paths_satSolver
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wmissing-import-lists -Wredundant-constraints -Wnoncanonical-monad-instances -threaded -rtsopts -with-rtsopts=-N -O2
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wmissing-import-lists -Wredundant-constraints -Wnoncanonical-monad-instances -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
     , base >=4.7 && <5

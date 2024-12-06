@@ -28,11 +28,12 @@ module Sudoku.Solver
     decodeSolution,
     encodeVar,
     type Board,
+    sudokuEmpty
   )
 where
 
 import Data.Kind (type Type)
-import SAT (checkValue, uniqueOnly, type Solutions)
+import SAT (checkValue, type Solutions)
 import SAT.DIMACS qualified as DIMACS
 import GHC.Generics (Generic)
 import Control.Parallel.Strategies (NFData)
@@ -69,7 +70,7 @@ deriving anyclass instance NFData Variable
 
 -- | The Size of the Sudoku
 type Size :: Type
-data Size = FourByFour | NineByNine | SixteenBySixteen | TwentyFiveByTwentyFive deriving stock (Eq, Show, Ord, Generic)
+data Size = TwoByTwo | FourByFour | NineByNine | SixteenBySixteen | TwentyFiveByTwentyFive deriving stock (Eq, Show, Ord, Generic)
 
 deriving anyclass instance NFData Size
 
@@ -85,12 +86,14 @@ deriving anyclass instance NFData Size
 -- 16
 instance Enum Size where
   fromEnum :: Size -> Int
+  fromEnum TwoByTwo = 2
   fromEnum FourByFour = 4
   fromEnum NineByNine = 9
   fromEnum SixteenBySixteen = 16
   fromEnum TwentyFiveByTwentyFive = 25
 
   toEnum :: Int -> Size
+  toEnum 2 = TwoByTwo
   toEnum 4 = FourByFour
   toEnum 9 = NineByNine
   toEnum 16 = SixteenBySixteen
@@ -106,7 +109,7 @@ instance Enum Size where
 -- SixteenBySixteen
 instance Bounded Size where
   minBound :: Size
-  minBound = FourByFour
+  minBound = TwoByTwo
 
   maxBound :: Size
   maxBound = TwentyFiveByTwentyFive
@@ -122,6 +125,7 @@ instance Bounded Size where
 -- >>> blockSize SixteenBySixteen
 -- 4
 blockSize :: Size -> Int
+blockSize TwoByTwo = 1
 blockSize FourByFour = 2
 blockSize NineByNine = 3
 blockSize SixteenBySixteen = 4
@@ -270,6 +274,18 @@ sudokuNine =
           [0, 0, 0, 0, 8, 0, 0, 7, 9]
         ],
       size = NineByNine
+    }
+
+sudokuEmpty :: Sudoku
+sudokuEmpty = 
+  Sudoku
+    {
+      board = 
+        [
+          [0,0],
+          [0,0]
+        ],
+        size = TwoByTwo
     }
 
 -- | A 16x16 Sudoku puzzle

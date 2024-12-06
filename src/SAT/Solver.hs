@@ -54,18 +54,19 @@ module SAT.Solver
 where
 
 import Control.Applicative ((<|>))
-import Control.Monad (when, filterM)
 import Control.Monad.RWS.Strict qualified as RWST
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.Maybe (listToMaybe)
 import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal, initAssignment)
 import SAT.Expr (Expr, type Solutions)
-import SAT.Monad (SolverM, SolverState (..), getAssignment, ifM, learn, increaseDecisionLevel, initWatchedLiterals, getClauseDB)
-import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, eliminateLiteralsM, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM, getClauseStatus, type ClauseStatus (..), pickLiteralM, assign)
+import SAT.Monad (SolverM, SolverState (SolverState, assignment, trail, implicationGraph, watchedLiterals, decisionLevel, vsids, clauseDB, variables, propagationStack, lubyCount, lubyThreshold) , getAssignment, ifM, learn, increaseDecisionLevel, initWatchedLiterals)
+import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM, pickLiteralM, assign)
 import SAT.VSIDS (initVSIDS)
-import Control.Monad.RWS (get, modify, MonadReader (ask))
+import Control.Monad.RWS (get, modify)
 import Data.IntSet (IntSet)
+import SAT.Preprocessing (preprocess)
+import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
 
 -- | Initializes the solver state.
 initState :: CNF -> SolverState
@@ -89,19 +90,6 @@ findFreeVariable :: CNF -> Maybe Literal
 findFreeVariable = listToMaybe . collectLiterals
 {-# INLINEABLE findFreeVariable #-}
 
-computeNextLubyThreshold :: Int -> Int
-computeNextLubyThreshold count =
-  let scale = 10
-  in scale * luby count
-
-luby :: Int -> Int
-luby k = go k 1 1
-  where
-    go 1 _ _ = 1
-    go n power level
-      | n == power + level - 1 = level
-      | n < power + level - 1  = go n power (level `div` 2)
-      | otherwise              = go n (power * 2) (level * 2)
 
 -- | Checks if a value is in the solutions.
 --
@@ -119,39 +107,6 @@ solutionsFromAssignment = IntMap.keysSet . IntMap.filter id
 solutions :: SolverM Solutions
 solutions = solutionsFromAssignment <$> getAssignment
 
-maybeEliminateLiterals :: SolverM ()
-maybeEliminateLiterals = do
-  SolverState { assignment, decisionLevel } <- get
-  when (mod decisionLevel 100 == 0) $ do
-    partial <- ask
-    let (m', _) = eliminateLiterals partial assignment
-    modify $ \s -> s { assignment = m' }
-    return ()
-
-simplifyM :: SolverM ()
-simplifyM = do 
-  maybeEliminateLiterals
-  clauseDB <- getClauseDB
-  clauses <- filterM clauseIsSat clauseDB
-  modify $ \s -> s { clauseDB = clauses }
-
-clauseIsSat :: Clause -> SolverM Bool
-clauseIsSat c = do
-  status <- getClauseStatus c
-  return $ status == SAT
-
--- removeTautologiesM
-
-preprocess :: SolverM (Maybe Clause)
-preprocess = do
-  m <- getAssignment
-  unitPropagateM >>= \case
-    Just c -> return (Just c)
-    Nothing -> do
-      eliminateLiteralsM
-      m' <- getAssignment
-      if m == m' then return Nothing else preprocess
-
 -- i think this is close, slightly wrong, but close ! (maybe)
 getSolutions :: CNF -> Maybe Solutions
 getSolutions cnf' = do
@@ -166,12 +121,10 @@ getSolutions cnf' = do
 
     solver :: SolverM (Maybe Solutions)
     solver = do
-      ifM allVariablesAssigned (Just <$> solutions) branch
+      ifM allVariablesAssigned (return <$> solutions) branch
 
     branch :: SolverM (Maybe Solutions)
-    branch = do
-      v <- pickLiteralM
-      try v
+    branch = pickLiteralM >>= try
 
     try :: Literal -> SolverM (Maybe Solutions)
     try c = tryAssign c True <|> tryAssign c False
@@ -201,15 +154,12 @@ getSolutions cnf' = do
           backtrack dl
           solver
 
-    increaseLubyCount :: SolverM ()
-    increaseLubyCount = modify $ \s -> s { lubyCount = lubyCount s + 1 }
 
     shouldRestart :: SolverM Bool
     shouldRestart = do
-      s <- get
-      let currentCount = lubyCount s
-          nextThreshold = computeNextLubyThreshold (currentCount + 1)
-      return (currentCount >= nextThreshold)
+      SolverState { lubyCount } <- get
+      let nextThreshold = computeNextLubyThreshold $ lubyCount + 1
+      return $ lubyCount >= nextThreshold
 
     restart :: SolverM (Maybe Solutions)
     restart = do

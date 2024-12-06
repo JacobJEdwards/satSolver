@@ -9,6 +9,7 @@ module SAT
     module SAT.Parser,
     module SAT.CNF,
     module SAT.Optimisers,
+    module SAT.Preprocessing,
   )
 where
 
@@ -17,3 +18,4 @@ import SAT.Expr
 import SAT.Optimisers
 import SAT.Parser
 import SAT.Solver
+import SAT.Preprocessing
