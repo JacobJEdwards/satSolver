@@ -1,0 +1,480 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE ExplicitNamespaces #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DerivingStrategies #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE TupleSections #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric #-}</span><span>
+</span><span id="line-5"></span><span class="hs-pragma">{-# LANGUAGE DeriveAnyClass #-}</span><span>
+</span><span id="line-6"></span><span class="hs-pragma">{-# LANGUAGE StandaloneDeriving #-}</span><span>
+</span><span id="line-7"></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SAT.Monad</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier">SolverM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getPropagationStack"><span class="hs-identifier">getPropagationStack</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier">SolverState</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverLog"><span class="hs-identifier">SolverLog</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#Trail"><span class="hs-identifier">Trail</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#Reason"><span class="hs-identifier">Reason</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#ImplicationGraph"><span class="hs-identifier">ImplicationGraph</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#WatchedLiterals"><span class="hs-identifier">WatchedLiterals</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getAssignment"><span class="hs-identifier">getAssignment</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getTrail"><span class="hs-identifier">getTrail</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getImplicationGraph"><span class="hs-identifier">getImplicationGraph</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getWatchedLiterals"><span class="hs-identifier">getWatchedLiterals</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#initWatchedLiterals"><span class="hs-identifier">initWatchedLiterals</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getDecisionLevel"><span class="hs-identifier">getDecisionLevel</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getVSIDS"><span class="hs-identifier">getVSIDS</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#logM"><span class="hs-identifier">logM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#ifM"><span class="hs-identifier">ifM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#guardM"><span class="hs-identifier">guardM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#notM"><span class="hs-identifier">notM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#learn"><span class="hs-identifier">learn</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#increaseDecisionLevel"><span class="hs-identifier">increaseDecisionLevel</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getClauseDB"><span class="hs-identifier">getClauseDB</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.CNF.html"><span class="hs-identifier">SAT.CNF</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier">CNF</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier">CNF</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier">Clause</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier">Literal</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier">Assignment</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#DecisionLevel"><span class="hs-identifier">DecisionLevel</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.IntMap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IntMap</span></span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.VSIDS.html"><span class="hs-identifier">SAT.VSIDS</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier">VSIDS</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.RWS.Strict</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">RWST</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">tell</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">modify</span></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.State.Strict</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">gets</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Bool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">bool</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">MonadPlus</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">guard</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.IntSet</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IntSet</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Map</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.IntMap</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">IntMap</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Parallel.Strategies</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NFData</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="annot"><span class="hs-comment">-- | The trail type (the previous assignments).</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">type</span><span> </span><span id="Trail"><span class="annot"><a href="SAT.Monad.html#Trail"><span class="hs-identifier hs-var">Trail</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.CNF.html#DecisionLevel"><span class="hs-identifier hs-type">DecisionLevel</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="annot"><span class="hs-comment">-- | The reason for a conflict or assignment.</span></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">type</span><span> </span><span id="Reason"><span class="annot"><a href="SAT.Monad.html#Reason"><span class="hs-identifier hs-var">Reason</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="annot"><span class="hs-comment">-- | The implication graph (maybe turn into a more explicit graph).</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">type</span><span> </span><span id="ImplicationGraph"><span class="annot"><a href="SAT.Monad.html#ImplicationGraph"><span class="hs-identifier hs-var">ImplicationGraph</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IntMap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Monad.html#Reason"><span class="hs-identifier hs-type">Reason</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.CNF.html#DecisionLevel"><span class="hs-identifier hs-type">DecisionLevel</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="annot"><span class="hs-comment">-- | Watched literals (literals in clauses that are being watched).</span></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">data</span><span> </span><span id="WatchedLiterals"><span class="annot"><a href="SAT.Monad.html#WatchedLiterals"><span class="hs-identifier hs-var">WatchedLiterals</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="WatchedLiterals"><span class="annot"><a href="SAT.Monad.html#WatchedLiterals"><span class="hs-identifier hs-var">WatchedLiterals</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-35"></span><span>  </span><span id="literals"><span class="annot"><span class="annottext">WatchedLiterals -&gt; IntMap [Clause]
+</span><a href="SAT.Monad.html#literals"><span class="hs-identifier hs-var hs-var">literals</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IntMap</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-36"></span><span>  </span><span id="clauses"><span class="annot"><span class="annottext">WatchedLiterals -&gt; Map Clause Clause
+</span><a href="SAT.Monad.html#clauses"><span class="hs-identifier hs-var hs-var">clauses</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-37"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679098791"><span id="local-6989586621679098801"><span id="local-6989586621679098805"><span class="annot"><span class="annottext">DecisionLevel -&gt; WatchedLiterals -&gt; ShowS
+[WatchedLiterals] -&gt; ShowS
+WatchedLiterals -&gt; String
+(DecisionLevel -&gt; WatchedLiterals -&gt; ShowS)
+-&gt; (WatchedLiterals -&gt; String)
+-&gt; ([WatchedLiterals] -&gt; ShowS)
+-&gt; Show WatchedLiterals
+forall a.
+(DecisionLevel -&gt; a -&gt; ShowS)
+-&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: DecisionLevel -&gt; WatchedLiterals -&gt; ShowS
+showsPrec :: DecisionLevel -&gt; WatchedLiterals -&gt; ShowS
+$cshow :: WatchedLiterals -&gt; String
+show :: WatchedLiterals -&gt; String
+$cshowList :: [WatchedLiterals] -&gt; ShowS
+showList :: [WatchedLiterals] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098812"><span id="local-6989586621679098820"><span class="annot"><span class="annottext">WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+(WatchedLiterals -&gt; WatchedLiterals -&gt; Bool)
+-&gt; (WatchedLiterals -&gt; WatchedLiterals -&gt; Bool)
+-&gt; Eq WatchedLiterals
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+== :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+$c/= :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+/= :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098830"><span id="local-6989586621679098838"><span id="local-6989586621679098844"><span id="local-6989586621679098848"><span id="local-6989586621679098851"><span id="local-6989586621679098854"><span id="local-6989586621679098857"><span class="annot"><span class="annottext">Eq WatchedLiterals
+Eq WatchedLiterals =&gt;
+(WatchedLiterals -&gt; WatchedLiterals -&gt; Ordering)
+-&gt; (WatchedLiterals -&gt; WatchedLiterals -&gt; Bool)
+-&gt; (WatchedLiterals -&gt; WatchedLiterals -&gt; Bool)
+-&gt; (WatchedLiterals -&gt; WatchedLiterals -&gt; Bool)
+-&gt; (WatchedLiterals -&gt; WatchedLiterals -&gt; Bool)
+-&gt; (WatchedLiterals -&gt; WatchedLiterals -&gt; WatchedLiterals)
+-&gt; (WatchedLiterals -&gt; WatchedLiterals -&gt; WatchedLiterals)
+-&gt; Ord WatchedLiterals
+WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+WatchedLiterals -&gt; WatchedLiterals -&gt; Ordering
+WatchedLiterals -&gt; WatchedLiterals -&gt; WatchedLiterals
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+$ccompare :: WatchedLiterals -&gt; WatchedLiterals -&gt; Ordering
+compare :: WatchedLiterals -&gt; WatchedLiterals -&gt; Ordering
+$c&lt; :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+&lt; :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+$c&lt;= :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+&lt;= :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+$c&gt; :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+&gt; :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+$c&gt;= :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+&gt;= :: WatchedLiterals -&gt; WatchedLiterals -&gt; Bool
+$cmax :: WatchedLiterals -&gt; WatchedLiterals -&gt; WatchedLiterals
+max :: WatchedLiterals -&gt; WatchedLiterals -&gt; WatchedLiterals
+$cmin :: WatchedLiterals -&gt; WatchedLiterals -&gt; WatchedLiterals
+min :: WatchedLiterals -&gt; WatchedLiterals -&gt; WatchedLiterals
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098864"><span id="local-6989586621679098868"><span id="local-6989586621679098871"><span id="local-6989586621679098888"><span class="annot"><span class="annottext">ReadPrec [WatchedLiterals]
+ReadPrec WatchedLiterals
+DecisionLevel -&gt; ReadS WatchedLiterals
+ReadS [WatchedLiterals]
+(DecisionLevel -&gt; ReadS WatchedLiterals)
+-&gt; ReadS [WatchedLiterals]
+-&gt; ReadPrec WatchedLiterals
+-&gt; ReadPrec [WatchedLiterals]
+-&gt; Read WatchedLiterals
+forall a.
+(DecisionLevel -&gt; ReadS a)
+-&gt; ReadS [a] -&gt; ReadPrec a -&gt; ReadPrec [a] -&gt; Read a
+$creadsPrec :: DecisionLevel -&gt; ReadS WatchedLiterals
+readsPrec :: DecisionLevel -&gt; ReadS WatchedLiterals
+$creadList :: ReadS [WatchedLiterals]
+readList :: ReadS [WatchedLiterals]
+$creadPrec :: ReadPrec WatchedLiterals
+readPrec :: ReadPrec WatchedLiterals
+$creadListPrec :: ReadPrec [WatchedLiterals]
+readListPrec :: ReadPrec [WatchedLiterals]
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Read</span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098896"><span id="local-6989586621679098898"><span class="annot"><span class="annottext">(forall x. WatchedLiterals -&gt; Rep WatchedLiterals x)
+-&gt; (forall x. Rep WatchedLiterals x -&gt; WatchedLiterals)
+-&gt; Generic WatchedLiterals
+forall x. Rep WatchedLiterals x -&gt; WatchedLiterals
+forall x. WatchedLiterals -&gt; Rep WatchedLiterals x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. WatchedLiterals -&gt; Rep WatchedLiterals x
+from :: forall x. WatchedLiterals -&gt; Rep WatchedLiterals x
+$cto :: forall x. Rep WatchedLiterals x -&gt; WatchedLiterals
+to :: forall x. Rep WatchedLiterals x -&gt; WatchedLiterals
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span id="local-6989586621679098902"><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">anyclass</span></span><span> </span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="annot"><a href="SAT.Monad.html#WatchedLiterals"><span class="hs-identifier hs-type">WatchedLiterals</span></a></span></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="annot"><a href="SAT.Monad.html#initWatchedLiterals"><span class="hs-identifier hs-type">initWatchedLiterals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Monad.html#WatchedLiterals"><span class="hs-identifier hs-type">WatchedLiterals</span></a></span><span>
+</span><span id="line-42"></span><span id="initWatchedLiterals"><span class="annot"><span class="annottext">initWatchedLiterals :: CNF -&gt; WatchedLiterals
+</span><a href="SAT.Monad.html#initWatchedLiterals"><span class="hs-identifier hs-var hs-var">initWatchedLiterals</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679098927"><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098927"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span>
+</span><span id="line-43"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679098928"><span class="annot"><span class="annottext">getWatched :: [a] -&gt; [a]
+</span><a href="#local-6989586621679098928"><span class="hs-identifier hs-var hs-var">getWatched</span></a></span></span><span> </span><span id="local-6989586621679098929"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679098929"><span class="hs-identifier hs-var">clause</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span>
+</span><span id="line-44"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679098929"><span class="hs-identifier hs-var">clause</span></a></span><span> </span><span class="hs-keyword">of</span><span> </span><span>
+</span><span id="line-45"></span><span>          </span><span class="hs-special">[</span><span id="local-6989586621679098930"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098930"><span class="hs-identifier hs-var">l</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098930"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-46"></span><span>          </span><span id="local-6989586621679098931"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098931"><span class="hs-identifier hs-var">l1</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679098932"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098932"><span class="hs-identifier hs-var">l2</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098931"><span class="hs-identifier hs-var">l1</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098932"><span class="hs-identifier hs-var">l2</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-47"></span><span>          </span><span class="annot"><span class="annottext">[a]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679098933"><span class="annot"><span class="annottext">getDS :: Clause -&gt; (IntMap [Clause], Map Clause Clause)
+</span><a href="#local-6989586621679098933"><span class="hs-identifier hs-var hs-var">getDS</span></a></span></span><span> </span><span id="local-6989586621679098934"><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098934"><span class="hs-identifier hs-var">clause</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span>
+</span><span id="line-50"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679098935"><span class="annot"><span class="annottext">lits :: Clause
+</span><a href="#local-6989586621679098935"><span class="hs-identifier hs-var hs-var">lits</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Clause -&gt; Clause
+forall {a}. [a] -&gt; [a]
+</span><a href="#local-6989586621679098928"><span class="hs-identifier hs-var">getWatched</span></a></span><span> </span><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098934"><span class="hs-identifier hs-var">clause</span></a></span><span>
+</span><span id="line-51"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679098936"><span class="annot"><span class="annottext">litMap :: IntMap [Clause]
+</span><a href="#local-6989586621679098936"><span class="hs-identifier hs-var hs-var">litMap</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(DecisionLevel, [Clause])] -&gt; IntMap [Clause]
+forall a. [(DecisionLevel, a)] -&gt; IntMap a
+</span><span class="hs-identifier hs-var">IntMap.fromList</span></span><span> </span><span class="annot"><span class="annottext">([(DecisionLevel, [Clause])] -&gt; IntMap [Clause])
+-&gt; [(DecisionLevel, [Clause])] -&gt; IntMap [Clause]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(DecisionLevel -&gt; (DecisionLevel, [Clause]))
+-&gt; Clause -&gt; [(DecisionLevel, [Clause])]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098934"><span class="hs-identifier hs-var">clause</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098935"><span class="hs-identifier hs-var">lits</span></a></span><span>
+</span><span id="line-52"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679098940"><span class="annot"><span class="annottext">clauseMap :: Map Clause Clause
+</span><a href="#local-6989586621679098940"><span class="hs-identifier hs-var hs-var">clauseMap</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(Clause, Clause)] -&gt; Map Clause Clause
+forall k a. Ord k =&gt; [(k, a)] -&gt; Map k a
+</span><span class="hs-identifier hs-var">Map.fromList</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098934"><span class="hs-identifier hs-var">clause</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098935"><span class="hs-identifier hs-var">lits</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-53"></span><span>        </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IntMap [Clause]
+</span><a href="#local-6989586621679098936"><span class="hs-identifier hs-var">litMap</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Map Clause Clause
+</span><a href="#local-6989586621679098940"><span class="hs-identifier hs-var">clauseMap</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679098950"><span class="annot"><span class="annottext">IntMap [Clause]
+</span><a href="#local-6989586621679098950"><span class="hs-identifier hs-var">l</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098951"><span class="annot"><span class="annottext">Map Clause Clause
+</span><a href="#local-6989586621679098951"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Clause
+ -&gt; (IntMap [Clause], Map Clause Clause)
+ -&gt; (IntMap [Clause], Map Clause Clause))
+-&gt; (IntMap [Clause], Map Clause Clause)
+-&gt; [Clause]
+-&gt; (IntMap [Clause], Map Clause Clause)
+forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; [a] -&gt; b
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679098953"><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098953"><span class="hs-identifier hs-var">clause</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679098954"><span class="annot"><span class="annottext">IntMap [Clause]
+</span><a href="#local-6989586621679098954"><span class="hs-identifier hs-var">lits</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098955"><span class="annot"><span class="annottext">Map Clause Clause
+</span><a href="#local-6989586621679098955"><span class="hs-identifier hs-var">cls</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-56"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679098956"><span class="annot"><span class="annottext">IntMap [Clause]
+</span><a href="#local-6989586621679098956"><span class="hs-identifier hs-var">l'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098957"><span class="annot"><span class="annottext">Map Clause Clause
+</span><a href="#local-6989586621679098957"><span class="hs-identifier hs-var">c'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Clause -&gt; (IntMap [Clause], Map Clause Clause)
+</span><a href="#local-6989586621679098933"><span class="hs-identifier hs-var">getDS</span></a></span><span> </span><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098953"><span class="hs-identifier hs-var">clause</span></a></span><span>
+</span><span id="line-57"></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="annottext">([Clause] -&gt; [Clause] -&gt; [Clause])
+-&gt; IntMap [Clause] -&gt; IntMap [Clause] -&gt; IntMap [Clause]
+forall a. (a -&gt; a -&gt; a) -&gt; IntMap a -&gt; IntMap a -&gt; IntMap a
+</span><span class="hs-identifier hs-var">IntMap.unionWith</span></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; [Clause] -&gt; [Clause]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">(++)</span></span><span> </span><span class="annot"><span class="annottext">IntMap [Clause]
+</span><a href="#local-6989586621679098954"><span class="hs-identifier hs-var">lits</span></a></span><span> </span><span class="annot"><span class="annottext">IntMap [Clause]
+</span><a href="#local-6989586621679098956"><span class="hs-identifier hs-var">l'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(Clause -&gt; Clause -&gt; Clause)
+-&gt; Map Clause Clause -&gt; Map Clause Clause -&gt; Map Clause Clause
+forall k a. Ord k =&gt; (a -&gt; a -&gt; a) -&gt; Map k a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">Map.unionWith</span></span><span> </span><span class="annot"><span class="annottext">Clause -&gt; Clause -&gt; Clause
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">(++)</span></span><span> </span><span class="annot"><span class="annottext">Map Clause Clause
+</span><a href="#local-6989586621679098955"><span class="hs-identifier hs-var">cls</span></a></span><span> </span><span class="annot"><span class="annottext">Map Clause Clause
+</span><a href="#local-6989586621679098957"><span class="hs-identifier hs-var">c'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>        </span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">IntMap [Clause]
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Map Clause Clause
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098927"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span>  </span><span class="annot"><span class="annottext">IntMap [Clause] -&gt; Map Clause Clause -&gt; WatchedLiterals
+</span><a href="SAT.Monad.html#WatchedLiterals"><span class="hs-identifier hs-var">WatchedLiterals</span></a></span><span> </span><span class="annot"><span class="annottext">IntMap [Clause]
+</span><a href="#local-6989586621679098950"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">Map Clause Clause
+</span><a href="#local-6989586621679098951"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="annot"><span class="hs-comment">-- | The clause database.</span></span><span>
+</span><span id="line-63"></span><span class="hs-keyword">type</span><span> </span><span id="ClauseDB"><span class="annot"><a href="SAT.Monad.html#ClauseDB"><span class="hs-identifier hs-var">ClauseDB</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- | The solver state.</span><span>
+</span><span id="line-66"></span><span class="hs-comment">-- Contains information for solving and any optimisations.</span><span>
+</span><span id="line-67"></span><span class="hs-keyword">data</span><span> </span><span id="SolverState"><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier hs-var">SolverState</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="SolverState"><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier hs-var">SolverState</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-68"></span><span>  </span><span id="assignment"><span class="annot"><span class="annottext">SolverState -&gt; Assignment
+</span><a href="SAT.Monad.html#assignment"><span class="hs-identifier hs-var hs-var">assignment</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-69"></span><span>  </span><span id="trail"><span class="annot"><span class="annottext">SolverState -&gt; Trail
+</span><a href="SAT.Monad.html#trail"><span class="hs-identifier hs-var hs-var">trail</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#Trail"><span class="hs-identifier hs-type">Trail</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-70"></span><span>  </span><span id="implicationGraph"><span class="annot"><span class="annottext">SolverState -&gt; ImplicationGraph
+</span><a href="SAT.Monad.html#implicationGraph"><span class="hs-identifier hs-var hs-var">implicationGraph</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#ImplicationGraph"><span class="hs-identifier hs-type">ImplicationGraph</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-71"></span><span>  </span><span id="watchedLiterals"><span class="annot"><span class="annottext">SolverState -&gt; WatchedLiterals
+</span><a href="SAT.Monad.html#watchedLiterals"><span class="hs-identifier hs-var hs-var">watchedLiterals</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#WatchedLiterals"><span class="hs-identifier hs-type">WatchedLiterals</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-72"></span><span>  </span><span id="decisionLevel"><span class="annot"><span class="annottext">SolverState -&gt; DecisionLevel
+</span><a href="SAT.Monad.html#decisionLevel"><span class="hs-identifier hs-var hs-var">decisionLevel</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#DecisionLevel"><span class="hs-identifier hs-type">DecisionLevel</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-73"></span><span>  </span><span id="clauseDB"><span class="annot"><span class="annottext">SolverState -&gt; [Clause]
+</span><a href="SAT.Monad.html#clauseDB"><span class="hs-identifier hs-var hs-var">clauseDB</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#ClauseDB"><span class="hs-identifier hs-type">ClauseDB</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-74"></span><span>  </span><span id="vsids"><span class="annot"><span class="annottext">SolverState -&gt; VSIDS
+</span><a href="SAT.Monad.html#vsids"><span class="hs-identifier hs-var hs-var">vsids</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-75"></span><span>  </span><span id="variables"><span class="annot"><span class="annottext">SolverState -&gt; IntSet
+</span><a href="SAT.Monad.html#variables"><span class="hs-identifier hs-var hs-var">variables</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IntSet</span></span><span class="hs-special">,</span><span>
+</span><span id="line-76"></span><span>  </span><span id="propagationStack"><span class="annot"><span class="annottext">SolverState -&gt; Clause
+</span><a href="SAT.Monad.html#propagationStack"><span class="hs-identifier hs-var hs-var">propagationStack</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-77"></span><span>  </span><span id="lubyCount"><span class="annot"><span class="annottext">SolverState -&gt; DecisionLevel
+</span><a href="SAT.Monad.html#lubyCount"><span class="hs-identifier hs-var hs-var">lubyCount</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span>
+</span><span id="line-78"></span><span>  </span><span id="lubyThreshold"><span class="annot"><span class="annottext">SolverState -&gt; DecisionLevel
+</span><a href="SAT.Monad.html#lubyThreshold"><span class="hs-identifier hs-var hs-var">lubyThreshold</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-79"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679098974"><span id="local-6989586621679098995"><span id="local-6989586621679098999"><span class="annot"><span class="annottext">DecisionLevel -&gt; SolverState -&gt; ShowS
+[SolverState] -&gt; ShowS
+SolverState -&gt; String
+(DecisionLevel -&gt; SolverState -&gt; ShowS)
+-&gt; (SolverState -&gt; String)
+-&gt; ([SolverState] -&gt; ShowS)
+-&gt; Show SolverState
+forall a.
+(DecisionLevel -&gt; a -&gt; ShowS)
+-&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: DecisionLevel -&gt; SolverState -&gt; ShowS
+showsPrec :: DecisionLevel -&gt; SolverState -&gt; ShowS
+$cshow :: SolverState -&gt; String
+show :: SolverState -&gt; String
+$cshowList :: [SolverState] -&gt; ShowS
+showList :: [SolverState] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="annot"><span class="hs-comment">-- | The solver log.</span></span><span>
+</span><span id="line-83"></span><span class="hs-keyword">type</span><span> </span><span id="SolverLog"><span class="annot"><a href="SAT.Monad.html#SolverLog"><span class="hs-identifier hs-var">SolverLog</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span>
+</span><span id="line-84"></span><span class="annot"><span class="hs-comment">-- | The solver monad.</span></span><span>
+</span><span id="line-85"></span><span class="hs-keyword">type</span><span> </span><span id="SolverM"><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-var">SolverM</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RWST</span></span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverLog"><span class="hs-identifier hs-type">SolverLog</span></a></span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier hs-type">SolverState</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span class="annot"><span class="hs-comment">-- | State methods</span></span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span class="annot"><span class="hs-comment">-- | Gets the propagation stack.</span></span><span>
+</span><span id="line-91"></span><span class="annot"><a href="SAT.Monad.html#getPropagationStack"><span class="hs-identifier hs-type">getPropagationStack</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-92"></span><span id="getPropagationStack"><span class="annot"><span class="annottext">getPropagationStack :: SolverM Clause
+</span><a href="SAT.Monad.html#getPropagationStack"><span class="hs-identifier hs-var hs-var">getPropagationStack</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; Clause) -&gt; SolverM Clause
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">SolverState -&gt; Clause
+</span><a href="SAT.Monad.html#propagationStack"><span class="hs-identifier hs-var">propagationStack</span></a></span><span>
+</span><span id="line-93"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#getPropagationStack"><span class="hs-pragma hs-type">getPropagationStack</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-94"></span><span>
+</span><span id="line-95"></span><span class="annot"><span class="hs-comment">-- | Gets the assignment.</span></span><span>
+</span><span id="line-96"></span><span class="annot"><a href="SAT.Monad.html#getAssignment"><span class="hs-identifier hs-type">getAssignment</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span>
+</span><span id="line-97"></span><span id="getAssignment"><span class="annot"><span class="annottext">getAssignment :: SolverM Assignment
+</span><a href="SAT.Monad.html#getAssignment"><span class="hs-identifier hs-var hs-var">getAssignment</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; Assignment) -&gt; SolverM Assignment
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">SolverState -&gt; Assignment
+</span><a href="SAT.Monad.html#assignment"><span class="hs-identifier hs-var">assignment</span></a></span><span>
+</span><span id="line-98"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#getAssignment"><span class="hs-pragma hs-type">getAssignment</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="annot"><span class="hs-comment">-- | Gets the trail.</span></span><span>
+</span><span id="line-101"></span><span class="annot"><a href="SAT.Monad.html#getTrail"><span class="hs-identifier hs-type">getTrail</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><a href="SAT.Monad.html#Trail"><span class="hs-identifier hs-type">Trail</span></a></span><span>
+</span><span id="line-102"></span><span id="getTrail"><span class="annot"><span class="annottext">getTrail :: SolverM Trail
+</span><a href="SAT.Monad.html#getTrail"><span class="hs-identifier hs-var hs-var">getTrail</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; Trail) -&gt; SolverM Trail
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">SolverState -&gt; Trail
+</span><a href="SAT.Monad.html#trail"><span class="hs-identifier hs-var">trail</span></a></span><span>
+</span><span id="line-103"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#getTrail"><span class="hs-pragma hs-type">getTrail</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span class="annot"><span class="hs-comment">-- | Gets the implication graph.</span></span><span>
+</span><span id="line-106"></span><span class="annot"><a href="SAT.Monad.html#getImplicationGraph"><span class="hs-identifier hs-type">getImplicationGraph</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><a href="SAT.Monad.html#ImplicationGraph"><span class="hs-identifier hs-type">ImplicationGraph</span></a></span><span>
+</span><span id="line-107"></span><span id="getImplicationGraph"><span class="annot"><span class="annottext">getImplicationGraph :: SolverM ImplicationGraph
+</span><a href="SAT.Monad.html#getImplicationGraph"><span class="hs-identifier hs-var hs-var">getImplicationGraph</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; ImplicationGraph) -&gt; SolverM ImplicationGraph
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">SolverState -&gt; ImplicationGraph
+</span><a href="SAT.Monad.html#implicationGraph"><span class="hs-identifier hs-var">implicationGraph</span></a></span><span>
+</span><span id="line-108"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#getImplicationGraph"><span class="hs-pragma hs-type">getImplicationGraph</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="annot"><span class="hs-comment">-- | Gets the watched literals.</span></span><span>
+</span><span id="line-111"></span><span class="annot"><a href="SAT.Monad.html#getWatchedLiterals"><span class="hs-identifier hs-type">getWatchedLiterals</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><a href="SAT.Monad.html#WatchedLiterals"><span class="hs-identifier hs-type">WatchedLiterals</span></a></span><span>
+</span><span id="line-112"></span><span id="getWatchedLiterals"><span class="annot"><span class="annottext">getWatchedLiterals :: SolverM WatchedLiterals
+</span><a href="SAT.Monad.html#getWatchedLiterals"><span class="hs-identifier hs-var hs-var">getWatchedLiterals</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; WatchedLiterals) -&gt; SolverM WatchedLiterals
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">SolverState -&gt; WatchedLiterals
+</span><a href="SAT.Monad.html#watchedLiterals"><span class="hs-identifier hs-var">watchedLiterals</span></a></span><span>
+</span><span id="line-113"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#getWatchedLiterals"><span class="hs-pragma hs-type">getWatchedLiterals</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span class="annot"><span class="hs-comment">-- | Gets the decision level.</span></span><span>
+</span><span id="line-116"></span><span class="annot"><a href="SAT.Monad.html#getDecisionLevel"><span class="hs-identifier hs-type">getDecisionLevel</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><a href="SAT.CNF.html#DecisionLevel"><span class="hs-identifier hs-type">DecisionLevel</span></a></span><span>
+</span><span id="line-117"></span><span id="getDecisionLevel"><span class="annot"><span class="annottext">getDecisionLevel :: SolverM DecisionLevel
+</span><a href="SAT.Monad.html#getDecisionLevel"><span class="hs-identifier hs-var hs-var">getDecisionLevel</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; DecisionLevel) -&gt; SolverM DecisionLevel
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">SolverState -&gt; DecisionLevel
+</span><a href="SAT.Monad.html#decisionLevel"><span class="hs-identifier hs-var">decisionLevel</span></a></span><span>
+</span><span id="line-118"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#getDecisionLevel"><span class="hs-pragma hs-type">getDecisionLevel</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span class="annot"><span class="hs-comment">-- | Gets the VSIDS.</span></span><span>
+</span><span id="line-121"></span><span class="annot"><a href="SAT.Monad.html#getVSIDS"><span class="hs-identifier hs-type">getVSIDS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span>
+</span><span id="line-122"></span><span id="getVSIDS"><span class="annot"><span class="annottext">getVSIDS :: SolverM VSIDS
+</span><a href="SAT.Monad.html#getVSIDS"><span class="hs-identifier hs-var hs-var">getVSIDS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; VSIDS) -&gt; SolverM VSIDS
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">SolverState -&gt; VSIDS
+</span><a href="SAT.Monad.html#vsids"><span class="hs-identifier hs-var">vsids</span></a></span><span>
+</span><span id="line-123"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#getVSIDS"><span class="hs-pragma hs-type">getVSIDS</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="annot"><a href="SAT.Monad.html#getClauseDB"><span class="hs-identifier hs-type">getClauseDB</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><a href="SAT.Monad.html#ClauseDB"><span class="hs-identifier hs-type">ClauseDB</span></a></span><span>
+</span><span id="line-126"></span><span id="getClauseDB"><span class="annot"><span class="annottext">getClauseDB :: SolverM [Clause]
+</span><a href="SAT.Monad.html#getClauseDB"><span class="hs-identifier hs-var hs-var">getClauseDB</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; [Clause]) -&gt; SolverM [Clause]
+forall s (m :: * -&gt; *) a. MonadState s m =&gt; (s -&gt; a) -&gt; m a
+</span><span class="hs-identifier hs-var">gets</span></span><span> </span><span class="annot"><span class="annottext">SolverState -&gt; [Clause]
+</span><a href="SAT.Monad.html#clauseDB"><span class="hs-identifier hs-var">clauseDB</span></a></span><span>
+</span><span id="line-127"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#getClauseDB"><span class="hs-pragma hs-type">getClauseDB</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-128"></span><span>
+</span><span id="line-129"></span><span class="hs-comment">{-
+def add_learnt_clause(formula, clause, assignments, lit2clauses, clause2lits):
+    formula.clauses.append(clause)
+    for lit in sorted(clause, key=lambda lit: -assignments[lit.variable].dl):
+        if len(clause2lits[clause]) &lt; 2:
+            clause2lits[clause].append(lit)
+            lit2clauses[lit].append(clause)
+        else:
+            break
+-}</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="annot"><a href="SAT.Monad.html#learn"><span class="hs-identifier hs-type">learn</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-141"></span><span id="learn"><span class="annot"><span class="annottext">learn :: Clause -&gt; SolverM ()
+</span><a href="SAT.Monad.html#learn"><span class="hs-identifier hs-var hs-var">learn</span></a></span></span><span> </span><span id="local-6989586621679099007"><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679099007"><span class="hs-identifier hs-var">clause</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; SolverState) -&gt; SolverM ()
+forall s (m :: * -&gt; *). MonadState s m =&gt; (s -&gt; s) -&gt; m ()
+</span><span class="hs-identifier hs-var">modify</span></span><span> </span><span class="annot"><span class="annottext">((SolverState -&gt; SolverState) -&gt; SolverM ())
+-&gt; (SolverState -&gt; SolverState) -&gt; SolverM ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099008"><span class="annot"><span class="annottext">SolverState
+</span><a href="#local-6989586621679099008"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SolverState
+</span><a href="#local-6989586621679099008"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="SAT.Monad.html#clauseDB"><span class="hs-identifier hs-var">clauseDB</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="#local-6989586621679099007"><span class="hs-identifier hs-type">clause</span></a></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><a href="SAT.Monad.html#clauseDB"><span class="hs-identifier hs-var">clauseDB</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099008"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-142"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#learn"><span class="hs-pragma hs-type">learn</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-143"></span><span class="hs-comment">-- learn :: Clause -&gt; SolverM ()</span><span>
+</span><span id="line-144"></span><span class="hs-comment">-- learn clause = do </span><span>
+</span><span id="line-145"></span><span class="hs-comment">--   learned &lt;- getLearnedClauses</span><span>
+</span><span id="line-146"></span><span class="hs-comment">--   clauses &lt;- getClauseDB</span><span>
+</span><span id="line-147"></span><span class="hs-comment">--   assignments &lt;- getAssignment</span><span>
+</span><span id="line-148"></span><span class="hs-comment">--   let learned' = clause : learned</span><span>
+</span><span id="line-149"></span><span class="hs-comment">--   wLits &lt;- getWatchedLiterals</span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span class="hs-comment">--   let updatedClauses = clause : clauses</span><span>
+</span><span id="line-152"></span><span class="hs-comment">--   let sortedLiterals = sortBy (compareDecisionLevel assignments) clause</span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span class="hs-comment">--   let (watchedLits, _) = splitAt 2 sortedLiterals</span><span>
+</span><span id="line-155"></span><span class="hs-comment">--   let updatedWatched = foldl (updateWatched clause) wLits watchedLits</span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span class="hs-comment">--   modify (\s -&gt; s {</span><span>
+</span><span id="line-158"></span><span class="hs-comment">--         clauseDB = updatedClauses,</span><span>
+</span><span id="line-159"></span><span class="hs-comment">--         watchedLiterals = updatedWatched,</span><span>
+</span><span id="line-160"></span><span class="hs-comment">--         learnedClauses = learned'</span><span>
+</span><span id="line-161"></span><span class="hs-comment">--     })</span><span>
+</span><span id="line-162"></span><span>  </span><span>
+</span><span id="line-163"></span><span class="hs-comment">--   modify $ \s -&gt; s { learnedClauses = clause : learnedClauses s, clauseDB = clause : clauseDB s }</span><span>
+</span><span id="line-164"></span><span class="hs-comment">-- {-# INLINEABLE learn #-}</span><span>
+</span><span id="line-165"></span><span>
+</span><span id="line-166"></span><span class="hs-comment">-- compareDecisionLevel :: Assignment -&gt; Literal -&gt; Literal -&gt; Ordering</span><span>
+</span><span id="line-167"></span><span class="hs-comment">-- compareDecisionLevel assignments lit1 lit2 =</span><span>
+</span><span id="line-168"></span><span class="hs-comment">--     compare (getDL lit2) (getDL lit1)</span><span>
+</span><span id="line-169"></span><span class="hs-comment">--   where</span><span>
+</span><span id="line-170"></span><span class="hs-comment">--     getDL lit = fromMaybe 0 $ do</span><span>
+</span><span id="line-171"></span><span class="hs-comment">--       (b, dl) &lt;- IntMap.lookup (varOfLiteral lit) assignments</span><span>
+</span><span id="line-172"></span><span class="hs-comment">--       if b then Just dl else Nothing</span><span>
+</span><span id="line-173"></span><span>
+</span><span id="line-174"></span><span class="hs-comment">-- -- Update watched literals for a given literal</span><span>
+</span><span id="line-175"></span><span class="hs-comment">-- updateWatched :: Clause -&gt; WatchedLiterals -&gt; Literal -&gt; WatchedLiterals</span><span>
+</span><span id="line-176"></span><span class="hs-comment">-- updateWatched clause wLits lit =</span><span>
+</span><span id="line-177"></span><span class="hs-comment">--     let litMap = literals wLits</span><span>
+</span><span id="line-178"></span><span class="hs-comment">--         clauseMap = clauses wLits</span><span>
+</span><span id="line-179"></span><span class="hs-comment">--         updatedLitMap = IntMap.insertWith (++) (varOfLiteral lit) [clause] litMap</span><span>
+</span><span id="line-180"></span><span class="hs-comment">--     in wLits { literals = updatedLitMap, clauses = Map.insertWith (++) clause [lit] clauseMap }</span><span>
+</span><span id="line-181"></span><span>
+</span><span id="line-182"></span><span class="annot"><span class="hs-comment">-- | Logs a message.</span></span><span>
+</span><span id="line-183"></span><span class="annot"><a href="SAT.Monad.html#logM"><span class="hs-identifier hs-type">logM</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-184"></span><span id="logM"><span class="annot"><span class="annottext">logM :: String -&gt; SolverM ()
+</span><a href="SAT.Monad.html#logM"><span class="hs-identifier hs-var hs-var">logM</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SolverLog -&gt; SolverM ()
+forall w (m :: * -&gt; *). MonadWriter w m =&gt; w -&gt; m ()
+</span><span class="hs-identifier hs-var">tell</span></span><span> </span><span class="annot"><span class="annottext">(SolverLog -&gt; SolverM ())
+-&gt; (String -&gt; SolverLog) -&gt; String -&gt; SolverM ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; SolverLog
+forall a. a -&gt; [a]
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span>
+</span><span id="line-185"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#logM"><span class="hs-pragma hs-type">logM</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-186"></span><span>
+</span><span id="line-187"></span><span id="local-6989586621679098723"><span id="local-6989586621679098724"><span class="annot"><a href="SAT.Monad.html#ifM"><span class="hs-identifier hs-type">ifM</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Monad</span></span><span> </span><span class="annot"><a href="#local-6989586621679098723"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098723"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098723"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098724"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098723"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098724"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098723"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098724"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-188"></span><span id="ifM"><span class="annot"><span class="annottext">ifM :: forall (m :: * -&gt; *) a. Monad m =&gt; m Bool -&gt; m a -&gt; m a -&gt; m a
+</span><a href="SAT.Monad.html#ifM"><span class="hs-identifier hs-var hs-var">ifM</span></a></span></span><span> </span><span id="local-6989586621679099012"><span class="annot"><span class="annottext">m Bool
+</span><a href="#local-6989586621679099012"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679099013"><span class="annot"><span class="annottext">m a
+</span><a href="#local-6989586621679099013"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679099014"><span class="annot"><span class="annottext">m a
+</span><a href="#local-6989586621679099014"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">m Bool
+</span><a href="#local-6989586621679099012"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">m Bool -&gt; (Bool -&gt; m a) -&gt; m a
+forall a b. m a -&gt; (a -&gt; m b) -&gt; m b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">m a -&gt; m a -&gt; Bool -&gt; m a
+forall a. a -&gt; a -&gt; Bool -&gt; a
+</span><span class="hs-identifier hs-var">bool</span></span><span> </span><span class="annot"><span class="annottext">m a
+</span><a href="#local-6989586621679099014"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">m a
+</span><a href="#local-6989586621679099013"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-189"></span><span>
+</span><span id="line-190"></span><span id="local-6989586621679098731"><span class="annot"><a href="SAT.Monad.html#guardM"><span class="hs-identifier hs-type">guardM</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadPlus</span></span><span> </span><span class="annot"><a href="#local-6989586621679098731"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098731"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098731"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span></span><span>
+</span><span id="line-191"></span><span id="guardM"><span class="annot"><span class="annottext">guardM :: forall (m :: * -&gt; *). MonadPlus m =&gt; m Bool -&gt; m ()
+</span><a href="SAT.Monad.html#guardM"><span class="hs-identifier hs-var hs-var">guardM</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">m Bool -&gt; (Bool -&gt; m ()) -&gt; m ()
+forall a b. m a -&gt; (a -&gt; m b) -&gt; m b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; m ()
+forall (f :: * -&gt; *). Alternative f =&gt; Bool -&gt; f ()
+</span><span class="hs-identifier hs-var">guard</span></span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span>
+</span><span id="line-193"></span><span id="local-6989586621679098737"><span class="annot"><a href="SAT.Monad.html#notM"><span class="hs-identifier hs-type">notM</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Monad</span></span><span> </span><span class="annot"><a href="#local-6989586621679098737"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098737"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098737"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span></span><span>
+</span><span id="line-194"></span><span id="notM"><span class="annot"><span class="annottext">notM :: forall (m :: * -&gt; *). Monad m =&gt; m Bool -&gt; m Bool
+</span><a href="SAT.Monad.html#notM"><span class="hs-identifier hs-var hs-var">notM</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; m Bool -&gt; m Bool
+forall a b. (a -&gt; b) -&gt; m a -&gt; m b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span class="annot"><a href="SAT.Monad.html#increaseDecisionLevel"><span class="hs-identifier hs-type">increaseDecisionLevel</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-197"></span><span id="increaseDecisionLevel"><span class="annot"><span class="annottext">increaseDecisionLevel :: SolverM ()
+</span><a href="SAT.Monad.html#increaseDecisionLevel"><span class="hs-identifier hs-var hs-var">increaseDecisionLevel</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; SolverState) -&gt; SolverM ()
+forall s (m :: * -&gt; *). MonadState s m =&gt; (s -&gt; s) -&gt; m ()
+</span><span class="hs-identifier hs-var">modify</span></span><span> </span><span class="annot"><span class="annottext">((SolverState -&gt; SolverState) -&gt; SolverM ())
+-&gt; (SolverState -&gt; SolverState) -&gt; SolverM ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099029"><span class="annot"><span class="annottext">SolverState
+</span><a href="#local-6989586621679099029"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SolverState
+</span><a href="#local-6989586621679099029"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="SAT.Monad.html#decisionLevel"><span class="hs-identifier hs-var">decisionLevel</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="SAT.Monad.html#decisionLevel"><span class="hs-identifier hs-var">decisionLevel</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099029"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">+</span></span><span> </span><span class="annot"><span class="hs-number">1</span></span><span class="hs-special">}</span><span>
+</span><span id="line-198"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Monad.html#increaseDecisionLevel"><span class="hs-pragma hs-type">increaseDecisionLevel</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-199"></span></pre></body></html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE LambdaCase #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE ExplicitNamespaces #-}</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SAT.Preprocessing</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Preprocessing.html#preprocess"><span class="hs-identifier">preprocess</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Monad.html"><span class="hs-identifier">SAT.Monad</span></a></span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier">SolverM</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.CNF.html"><span class="hs-identifier">SAT.CNF</span></a></span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier">Clause</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Optimisers.html"><span class="hs-identifier">SAT.Optimisers</span></a></span><span class="hs-special">(</span><span class="annot"><a href="SAT.Optimisers.html#unitPropagateM"><span class="hs-identifier">unitPropagateM</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="annot"><a href="SAT.Preprocessing.html#preprocess"><span class="hs-identifier hs-type">preprocess</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span id="preprocess"><span class="annot"><span class="annottext">preprocess :: SolverM (Maybe Clause)
+</span><a href="SAT.Preprocessing.html#preprocess"><span class="hs-identifier hs-var hs-var">preprocess</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-comment">-- m &lt;- getAssignment</span><span>
+</span><span id="line-12"></span><span>  </span><span class="annot"><span class="annottext">SolverM (Maybe Clause)
+</span><a href="SAT.Optimisers.html#unitPropagateM"><span class="hs-identifier hs-var">unitPropagateM</span></a></span><span> </span><span class="annot"><span class="annottext">SolverM (Maybe Clause)
+-&gt; (Maybe Clause -&gt; SolverM (Maybe Clause))
+-&gt; SolverM (Maybe Clause)
+forall a b.
+RWST CNF SolverLog SolverState Maybe a
+-&gt; (a -&gt; RWST CNF SolverLog SolverState Maybe b)
+-&gt; RWST CNF SolverLog SolverState Maybe b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679099748"><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679099748"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Clause -&gt; SolverM (Maybe Clause)
+forall a. a -&gt; RWST CNF SolverLog SolverState Maybe a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Clause -&gt; Maybe Clause
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679099748"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><span class="annottext">Maybe Clause
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-15"></span><span>      </span><span class="hs-comment">-- eliminateLiteralsM</span><span>
+</span><span id="line-16"></span><span>      </span><span class="annot"><span class="annottext">Maybe Clause -&gt; SolverM (Maybe Clause)
+forall a. a -&gt; RWST CNF SolverLog SolverState Maybe a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Maybe Clause
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-17"></span><span>      </span><span class="hs-comment">-- m' &lt;- getAssignment</span><span>
+</span><span id="line-18"></span><span>      </span><span class="hs-comment">-- if m == m' then return Nothing else preprocess</span></pre></body></html>

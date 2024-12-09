@@ -1,0 +1,115 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SAT.Old.Optimisers</span><span class="hs-special">(</span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-2"></span><span class="hs-comment">--</span><span>
+</span><span id="line-3"></span><span class="hs-comment">--{-# LANGUAGE ExplicitNamespaces #-}</span><span>
+</span><span id="line-4"></span><span class="hs-comment">--{-# LANGUAGE ImportQualifiedPost #-}</span><span>
+</span><span id="line-5"></span><span class="hs-comment">--{-# LANGUAGE Safe #-}</span><span>
+</span><span id="line-6"></span><span class="hs-comment">--{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-7"></span><span class="hs-comment">--</span><span>
+</span><span id="line-8"></span><span class="hs-comment">--module SAT.Old.Optimisers (collectLiterals, unitClause, eliminateLiteral, eliminateLiterals, literalElimination, unitPropagate) </span><span>
+</span><span id="line-9"></span><span class="hs-comment">--where</span><span>
+</span><span id="line-10"></span><span class="hs-comment">--</span><span>
+</span><span id="line-11"></span><span class="hs-comment">--import Control.Monad (ap)</span><span>
+</span><span id="line-12"></span><span class="hs-comment">--import Data.Bifunctor (type Bifunctor (first))</span><span>
+</span><span id="line-13"></span><span class="hs-comment">--import Data.Maybe (fromMaybe, mapMaybe)</span><span>
+</span><span id="line-14"></span><span class="hs-comment">--import Data.Set (type Set)</span><span>
+</span><span id="line-15"></span><span class="hs-comment">--import Data.Set qualified as Set</span><span>
+</span><span id="line-16"></span><span class="hs-comment">--import SAT.Expr (type Expr (And, Not, Or, Val, Var), type Solutions)</span><span>
+</span><span id="line-17"></span><span class="hs-comment">--import SAT.Polarity (flipPolarity, type Polarity (Negative, Positive))</span><span>
+</span><span id="line-18"></span><span class="hs-comment">--</span><span>
+</span><span id="line-19"></span><span class="hs-comment">---- large optimisation would be using int map or int set when expr a a is int. is this possible ?</span><span>
+</span><span id="line-20"></span><span class="hs-comment">--</span><span>
+</span><span id="line-21"></span><span class="hs-comment">---- BIG O NOTATION: O(n log n)? (I think)</span><span>
+</span><span id="line-22"></span><span class="hs-comment">--collectLiterals :: Expr a -&gt; [a]</span><span>
+</span><span id="line-23"></span><span class="hs-comment">--collectLiterals = foldMap pure</span><span>
+</span><span id="line-24"></span><span class="hs-comment">--{-# INLINEABLE collectLiterals #-}</span><span>
+</span><span id="line-25"></span><span class="hs-comment">--</span><span>
+</span><span id="line-26"></span><span class="hs-comment">---- BIG O NOTATION: O(n log n)</span><span>
+</span><span id="line-27"></span><span class="hs-comment">---- this quicker or union sets ?</span><span>
+</span><span id="line-28"></span><span class="hs-comment">--collectLiteralsToSet :: (Ord a) =&gt; Expr a -&gt; Set a</span><span>
+</span><span id="line-29"></span><span class="hs-comment">--collectLiteralsToSet = Set.fromList . collectLiterals</span><span>
+</span><span id="line-30"></span><span class="hs-comment">--{-# INLINEABLE collectLiteralsToSet #-}</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--literalPolarity :: forall a. (Ord a) =&gt; a -&gt; Expr a -&gt; (Maybe Polarity, Solutions a)</span><span>
+</span><span id="line-33"></span><span class="hs-comment">--literalPolarity = go mempty</span><span>
+</span><span id="line-34"></span><span class="hs-comment">--  where</span><span>
+</span><span id="line-35"></span><span class="hs-comment">--    go :: Solutions a -&gt; a -&gt; Expr a -&gt; (Maybe Polarity, Solutions a)</span><span>
+</span><span id="line-36"></span><span class="hs-comment">--    go m c e = case e of</span><span>
+</span><span id="line-37"></span><span class="hs-comment">--      (Var v) -&gt; handleVar v Positive</span><span>
+</span><span id="line-38"></span><span class="hs-comment">--      (Not (Var v)) -&gt; handleVar v Negative</span><span>
+</span><span id="line-39"></span><span class="hs-comment">--      -- pair is monoid by when elems are monoids, Map is monoid under union, Polarity is monoid</span><span>
+</span><span id="line-40"></span><span class="hs-comment">--      (And e1 e2) -&gt; go m c e1 &lt;&gt; go m c e2</span><span>
+</span><span id="line-41"></span><span class="hs-comment">--      (Or e1 e2) -&gt; go m c e1 &lt;&gt; go m c e2</span><span>
+</span><span id="line-42"></span><span class="hs-comment">--      -- is this correct ?</span><span>
+</span><span id="line-43"></span><span class="hs-comment">--      (Not e') -&gt; first (fmap flipPolarity) $ go m c e'</span><span>
+</span><span id="line-44"></span><span class="hs-comment">--      (Val _) -&gt; (Nothing, m)</span><span>
+</span><span id="line-45"></span><span class="hs-comment">--      where</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--        handleVar :: a -&gt; Polarity -&gt; (Maybe Polarity, Solutions a)</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--        handleVar v polarity</span><span>
+</span><span id="line-48"></span><span class="hs-comment">--          | c == v = (Just polarity, if polarity == Positive then Set.insert v m else m)</span><span>
+</span><span id="line-49"></span><span class="hs-comment">--          | otherwise = (Nothing, m)</span><span>
+</span><span id="line-50"></span><span class="hs-comment">--{-# INLINEABLE literalPolarity #-}</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--</span><span>
+</span><span id="line-52"></span><span class="hs-comment">---- BIG O NOTATION: O(n log n)</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--eliminateLiteral :: forall a. (Ord a) =&gt; a -&gt; Expr a -&gt; Polarity -&gt; (Expr a, Solutions a)</span><span>
+</span><span id="line-54"></span><span class="hs-comment">--eliminateLiteral = go mempty</span><span>
+</span><span id="line-55"></span><span class="hs-comment">--  where</span><span>
+</span><span id="line-56"></span><span class="hs-comment">--    go :: Solutions a -&gt; a -&gt; Expr a -&gt; Polarity -&gt; (Expr a, Solutions a)</span><span>
+</span><span id="line-57"></span><span class="hs-comment">--    go sol c e p = case e of</span><span>
+</span><span id="line-58"></span><span class="hs-comment">--      (Var v) -&gt; handleVar v p</span><span>
+</span><span id="line-59"></span><span class="hs-comment">--      (Not (Var v)) -&gt; handleVar v $ flipPolarity p</span><span>
+</span><span id="line-60"></span><span class="hs-comment">--      (And e1 e2) -&gt; applyToBoth And e1 e2</span><span>
+</span><span id="line-61"></span><span class="hs-comment">--      (Or e1 e2) -&gt; applyToBoth Or e1 e2</span><span>
+</span><span id="line-62"></span><span class="hs-comment">--      (Not e') -&gt; first Not $ go sol c e' $ flipPolarity p</span><span>
+</span><span id="line-63"></span><span class="hs-comment">--      (Val _) -&gt; (e, sol)</span><span>
+</span><span id="line-64"></span><span class="hs-comment">--      where</span><span>
+</span><span id="line-65"></span><span class="hs-comment">--        applyToBoth :: (Expr a -&gt; Expr a -&gt; Expr a) -&gt; Expr a -&gt; Expr a -&gt; (Expr a, Solutions a)</span><span>
+</span><span id="line-66"></span><span class="hs-comment">--        applyToBoth constructor e1 e2 =</span><span>
+</span><span id="line-67"></span><span class="hs-comment">--          let (e1', s1) = go sol c e1 p</span><span>
+</span><span id="line-68"></span><span class="hs-comment">--              (e2', s2) = go sol c e2 p</span><span>
+</span><span id="line-69"></span><span class="hs-comment">--           in (constructor e1' e2', s1 &lt;&gt; s2)</span><span>
+</span><span id="line-70"></span><span class="hs-comment">--</span><span>
+</span><span id="line-71"></span><span class="hs-comment">--        handleVar :: a -&gt; Polarity -&gt; (Expr a, Solutions a)</span><span>
+</span><span id="line-72"></span><span class="hs-comment">--        handleVar v polarity</span><span>
+</span><span id="line-73"></span><span class="hs-comment">--          | c == v &amp;&amp; polarity == Positive = (Val True, Set.insert v sol)</span><span>
+</span><span id="line-74"></span><span class="hs-comment">--          | c == v &amp;&amp; polarity == Negative = (Val False, sol)</span><span>
+</span><span id="line-75"></span><span class="hs-comment">--          | otherwise = (e, sol)</span><span>
+</span><span id="line-76"></span><span class="hs-comment">--{-# INLINEABLE eliminateLiteral #-}</span><span>
+</span><span id="line-77"></span><span class="hs-comment">--</span><span>
+</span><span id="line-78"></span><span class="hs-comment">--</span><span>
+</span><span id="line-79"></span><span class="hs-comment">---- BIG O NOTATION: O(n log n)</span><span>
+</span><span id="line-80"></span><span class="hs-comment">--eliminateLiterals :: forall a. (Ord a) =&gt; Expr a -&gt; Set a -&gt; Expr a</span><span>
+</span><span id="line-81"></span><span class="hs-comment">--eliminateLiterals = foldr go</span><span>
+</span><span id="line-82"></span><span class="hs-comment">--  where</span><span>
+</span><span id="line-83"></span><span class="hs-comment">--    go :: a -&gt; Expr a -&gt; Expr a</span><span>
+</span><span id="line-84"></span><span class="hs-comment">--    go c e' = fst . eliminateLiteral c e' $ fromMaybe (error &quot;Literal not found&quot;) (fst $ literalPolarity c e')</span><span>
+</span><span id="line-85"></span><span class="hs-comment">--{-# INLINEABLE eliminateLiterals #-}</span><span>
+</span><span id="line-86"></span><span class="hs-comment">--</span><span>
+</span><span id="line-87"></span><span class="hs-comment">--literalElimination :: (Ord a) =&gt; Expr a -&gt; Expr a</span><span>
+</span><span id="line-88"></span><span class="hs-comment">--literalElimination = ap eliminateLiterals collectLiteralsToSet</span><span>
+</span><span id="line-89"></span><span class="hs-comment">--{-# INLINEABLE literalElimination #-}</span><span>
+</span><span id="line-90"></span><span class="hs-comment">--</span><span>
+</span><span id="line-91"></span><span class="hs-comment">---- BIG O NOTATION: O(1)</span><span>
+</span><span id="line-92"></span><span class="hs-comment">--unitClause :: Expr a -&gt; Maybe (a, Bool)</span><span>
+</span><span id="line-93"></span><span class="hs-comment">--unitClause (Var c) = Just (c, True)</span><span>
+</span><span id="line-94"></span><span class="hs-comment">--unitClause (Not (Var c)) = Just (c, False)</span><span>
+</span><span id="line-95"></span><span class="hs-comment">--unitClause _ = Nothing</span><span>
+</span><span id="line-96"></span><span class="hs-comment">--</span><span>
+</span><span id="line-97"></span><span class="hs-comment">---- finds all of the or clauses -&gt; when in cnf form is a list of ORd ANDs, so this collects all the ors</span><span>
+</span><span id="line-98"></span><span class="hs-comment">--clauses :: Expr a -&gt; [Expr a]</span><span>
+</span><span id="line-99"></span><span class="hs-comment">--clauses (And e1 e2) = clauses e1 &lt;&gt; clauses e2</span><span>
+</span><span id="line-100"></span><span class="hs-comment">--clauses e = [e]</span><span>
+</span><span id="line-101"></span><span class="hs-comment">--</span><span>
+</span><span id="line-102"></span><span class="hs-comment">---- this finds all the clauses with just one variable, and propagates</span><span>
+</span><span id="line-103"></span><span class="hs-comment">--allUnitClauses :: Expr a -&gt; [(a, Bool)]</span><span>
+</span><span id="line-104"></span><span class="hs-comment">--allUnitClauses = mapMaybe unitClause . clauses</span><span>
+</span><span id="line-105"></span><span class="hs-comment">--</span><span>
+</span><span id="line-106"></span><span class="hs-comment">--unitPropagate :: forall a. (Ord a) =&gt; Expr a -&gt; (Expr a, Solutions a)</span><span>
+</span><span id="line-107"></span><span class="hs-comment">--unitPropagate = go mempty</span><span>
+</span><span id="line-108"></span><span class="hs-comment">--  where</span><span>
+</span><span id="line-109"></span><span class="hs-comment">--    go :: Solutions a -&gt; Expr a -&gt; (Expr a, Solutions a)</span><span>
+</span><span id="line-110"></span><span class="hs-comment">--    go sol e = case allUnitClauses e of</span><span>
+</span><span id="line-111"></span><span class="hs-comment">--      [] -&gt; (e, sol)</span><span>
+</span><span id="line-112"></span><span class="hs-comment">--      (c', b') : _ -&gt;</span><span>
+</span><span id="line-113"></span><span class="hs-comment">--        let (newExpr, newSol) = eliminateLiteral c' e $ if b' then Positive else Negative</span><span>
+</span><span id="line-114"></span><span class="hs-comment">--         in go (sol &lt;&gt; newSol) newExpr</span><span>
+</span><span id="line-115"></span><span class="hs-comment">--{-# INLINEABLE unitPropagate #-}</span></pre></body></html>

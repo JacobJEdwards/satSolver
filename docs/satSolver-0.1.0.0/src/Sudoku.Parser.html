@@ -1,0 +1,128 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="annot"><span class="hs-comment">{-|
+Module      : Sudoku.Parser
+Description : Exports the Sudoku parser module.
+-}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-pragma">{-# LANGUAGE ExplicitNamespaces #-}</span><span>
+</span><span id="line-7"></span><span class="hs-pragma">{-# LANGUAGE ImportQualifiedPost #-}</span><span>
+</span><span id="line-8"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Sudoku.Parser</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Sudoku.Parser.html#parse"><span class="hs-identifier">parse</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Parser.Parsec.html"><span class="hs-identifier">Parser.Parsec</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Parser.Parsec.html#digit"><span class="hs-identifier">digit</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">many</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Parser.Parsec.html#runParser"><span class="hs-identifier">runParser</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">some</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Parser.Parsec.html#space"><span class="hs-identifier">space</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Parser.Parsec.html#symbol"><span class="hs-identifier">symbol</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="Parser.Parsec.html#Parser"><span class="hs-identifier">Parser</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="Parser.Result.html#Result"><span class="hs-identifier">Result</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Parser.Result.html#Errors"><span class="hs-identifier">Errors</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Parser.Result.html#Result"><span class="hs-identifier">Result</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.DIMACS.html"><span class="hs-identifier">SAT.DIMACS</span></a></span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">DIMACS</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Sudoku.Solver.html"><span class="hs-identifier">Sudoku.Solver</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="Sudoku.Solver.html#Size"><span class="hs-identifier">Size</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="Sudoku.Solver.html#Sudoku"><span class="hs-identifier">Sudoku</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Sudoku.Solver.html#Sudoku"><span class="hs-identifier">Sudoku</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- | Parses a literal from a string.</span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- &gt;&gt;&gt; parseLiteral &quot;1&quot;</span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- 1</span><span>
+</span><span id="line-21"></span><span class="annot"><a href="Sudoku.Parser.html#parseLiteral"><span class="hs-identifier hs-type">parseLiteral</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Parser.Parsec.html#Parser"><span class="hs-identifier hs-type">Parser</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">DIMACS.Literal</span></a></span><span>
+</span><span id="line-22"></span><span id="parseLiteral"><span class="annot"><span class="annottext">parseLiteral :: Parser Text Text Literal
+</span><a href="Sudoku.Parser.html#parseLiteral"><span class="hs-identifier hs-var hs-var">parseLiteral</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Literal
+forall a. Read a =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">read</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Literal) -&gt; (Char -&gt; String) -&gt; Char -&gt; Literal
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Literal)
+-&gt; Parser Text Text Char -&gt; Parser Text Text Literal
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text Char
+forall i e. (Input i, Token i ~ Char) =&gt; Parser i e Char
+</span><a href="Parser.Parsec.html#digit"><span class="hs-identifier hs-var">digit</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text Text Literal
+-&gt; Parser Text Text String -&gt; Parser Text Text Literal
+forall a b.
+Parser Text Text a -&gt; Parser Text Text b -&gt; Parser Text Text a
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text Char -&gt; Parser Text Text String
+forall a. Parser Text Text a -&gt; Parser Text Text [a]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">many</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text Char
+forall i e. (Input i, Token i ~ Char) =&gt; Parser i e Char
+</span><a href="Parser.Parsec.html#space"><span class="hs-identifier hs-var">space</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- | Parses a line from a string.</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- &gt;&gt;&gt; parseLine &quot;1 2 3 -&quot;</span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- [1, 2, 3]</span><span>
+</span><span id="line-28"></span><span class="annot"><a href="Sudoku.Parser.html#parseLine"><span class="hs-identifier hs-type">parseLine</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Parser.Parsec.html#Parser"><span class="hs-identifier hs-type">Parser</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">DIMACS.Clause</span></a></span><span>
+</span><span id="line-29"></span><span id="parseLine"><span class="annot"><span class="annottext">parseLine :: Parser Text Text Clause
+</span><a href="Sudoku.Parser.html#parseLine"><span class="hs-identifier hs-var hs-var">parseLine</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser Text Text Literal -&gt; Parser Text Text Clause
+forall a. Parser Text Text a -&gt; Parser Text Text [a]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">some</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text Literal
+</span><a href="Sudoku.Parser.html#parseLiteral"><span class="hs-identifier hs-var">parseLiteral</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text Text Clause
+-&gt; Parser Text Text Text -&gt; Parser Text Text Clause
+forall a b.
+Parser Text Text a -&gt; Parser Text Text b -&gt; Parser Text Text a
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;*</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Parser Text Text Text
+forall i e. (Input i, Token i ~ Char) =&gt; i -&gt; Parser i e i
+</span><a href="Parser.Parsec.html#symbol"><span class="hs-identifier hs-var">symbol</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;-&quot;</span></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Parses a sudoku from a string.</span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- &gt;&gt;&gt; parse &quot;1 2 3 -\n4 5 6 -\n7 8 9 -&quot;</span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Sudoku.Parser.html#parseSudoku"><span class="hs-identifier hs-type">parseSudoku</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Parser.Parsec.html#Parser"><span class="hs-identifier hs-type">Parser</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><a href="Sudoku.Solver.html#Sudoku"><span class="hs-identifier hs-type">Sudoku</span></a></span><span>
+</span><span id="line-35"></span><span id="parseSudoku"><span class="annot"><span class="annottext">parseSudoku :: Parser Text Text Sudoku
+</span><a href="Sudoku.Parser.html#parseSudoku"><span class="hs-identifier hs-var hs-var">parseSudoku</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-36"></span><span>  </span><span id="local-6989586621679101388"><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679101388"><span class="hs-identifier hs-var">rows</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parser Text Text Clause -&gt; Parser Text Text [Clause]
+forall a. Parser Text Text a -&gt; Parser Text Text [a]
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f [a]
+</span><span class="hs-identifier hs-var">some</span></span><span> </span><span class="annot"><span class="annottext">Parser Text Text Clause
+</span><a href="Sudoku.Parser.html#parseLine"><span class="hs-identifier hs-var">parseLine</span></a></span><span>
+</span><span id="line-37"></span><span>  </span><span class="annot"><span class="annottext">Sudoku -&gt; Parser Text Text Sudoku
+forall a. a -&gt; Parser Text Text a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Sudoku -&gt; Parser Text Text Sudoku)
+-&gt; Sudoku -&gt; Parser Text Text Sudoku
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; Size -&gt; Sudoku
+</span><a href="Sudoku.Solver.html#Sudoku"><span class="hs-identifier hs-var">Sudoku</span></a></span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679101388"><span class="hs-identifier hs-var">rows</span></a></span><span> </span><span class="annot"><span class="annottext">(Size -&gt; Sudoku) -&gt; Size -&gt; Sudoku
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; Size
+forall a. [[a]] -&gt; Size
+</span><a href="#local-6989586621679101389"><span class="hs-identifier hs-var">size'</span></a></span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679101388"><span class="hs-identifier hs-var">rows</span></a></span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-39"></span><span>    </span><span id="local-6989586621679101335"><span class="annot"><a href="#local-6989586621679101389"><span class="hs-identifier hs-type">size'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679101335"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Sudoku.Solver.html#Size"><span class="hs-identifier hs-type">Size</span></a></span></span><span>
+</span><span id="line-40"></span><span>    </span><span id="local-6989586621679101389"><span class="annot"><span class="annottext">size' :: forall a. [[a]] -&gt; Size
+</span><a href="#local-6989586621679101389"><span class="hs-identifier hs-var hs-var">size'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Literal -&gt; Size
+forall a. Enum a =&gt; Literal -&gt; a
+</span><span class="hs-identifier hs-var">toEnum</span></span><span> </span><span class="annot"><span class="annottext">(Literal -&gt; Size) -&gt; ([[a]] -&gt; Literal) -&gt; [[a]] -&gt; Size
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[[a]] -&gt; Literal
+forall a. [a] -&gt; Literal
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Literal
+</span><span class="hs-identifier hs-var">length</span></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- | Parses a sudoku from a string.</span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- Returns 'Nothing' if the input is invalid.</span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- Returns 'Just' the sudoku otherwise.</span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- &gt;&gt;&gt; parse &quot;1 2 3 -\n4 5 6 -\n7 8 9 -&quot;</span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- Just (Sudoku [[1, 2, 3], [4, 5, 6], [7, 8, 9]] 3)</span><span>
+</span><span id="line-48"></span><span class="annot"><a href="Sudoku.Parser.html#parse"><span class="hs-identifier hs-type">parse</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Sudoku.Solver.html#Sudoku"><span class="hs-identifier hs-type">Sudoku</span></a></span><span>
+</span><span id="line-49"></span><span id="parse"><span class="annot"><span class="annottext">parse :: Text -&gt; Maybe Sudoku
+</span><a href="Sudoku.Parser.html#parse"><span class="hs-identifier hs-var hs-var">parse</span></a></span></span><span> </span><span id="local-6989586621679101396"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679101396"><span class="hs-identifier hs-var">input</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Parser Text Text Sudoku -&gt; Text -&gt; Result Text Text (Text, Sudoku)
+forall i e o. Parser i e o -&gt; i -&gt; Result i e (i, o)
+</span><a href="Parser.Parsec.html#runParser"><span class="hs-identifier hs-var">runParser</span></a></span><span> </span><span class="annot"><span class="annottext">Parser Text Text Sudoku
+</span><a href="Sudoku.Parser.html#parseSudoku"><span class="hs-identifier hs-var">parseSudoku</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679101396"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-50"></span><span>  </span><span class="annot"><a href="Parser.Result.html#Result"><span class="hs-identifier hs-type">Result</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679101397"><span class="annot"><span class="annottext">Sudoku
+</span><a href="#local-6989586621679101397"><span class="hs-identifier hs-var">sudoku</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Sudoku -&gt; Maybe Sudoku
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Sudoku
+</span><a href="#local-6989586621679101397"><span class="hs-identifier hs-var">sudoku</span></a></span><span>
+</span><span id="line-51"></span><span>  </span><span class="annot"><a href="Parser.Result.html#Errors"><span class="hs-identifier hs-type">Errors</span></a></span><span> </span><span class="annot"><span class="annottext">[Error Text Text]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Sudoku
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-52"></span></pre></body></html>

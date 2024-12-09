@@ -1,0 +1,397 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="annot"><span class="hs-comment">{-|
+Module      : SAT.DIMACS.CNF
+Description : Exports the CNF module.
+-}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-pragma">{-# LANGUAGE DataKinds #-}</span><span>
+</span><span id="line-7"></span><span class="hs-pragma">{-# LANGUAGE DerivingStrategies #-}</span><span>
+</span><span id="line-8"></span><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-9"></span><span class="hs-pragma">{-# LANGUAGE OverloadedLists #-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-11"></span><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-12"></span><span class="hs-pragma">{-# LANGUAGE StandaloneKindSignatures #-}</span><span>
+</span><span id="line-13"></span><span class="hs-pragma">{-# LANGUAGE TypeFamilies #-}</span><span>
+</span><span id="line-14"></span><span class="hs-pragma">{-# LANGUAGE ImportQualifiedPost #-}</span><span>
+</span><span id="line-15"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric #-}</span><span>
+</span><span id="line-16"></span><span class="hs-pragma">{-# LANGUAGE StandaloneDeriving #-}</span><span>
+</span><span id="line-17"></span><span class="hs-pragma">{-# LANGUAGE DeriveAnyClass #-}</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SAT.DIMACS.CNF</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.DIMACS.CNF.html#toExpr"><span class="hs-identifier">toExpr</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#fromExpr"><span class="hs-identifier">fromExpr</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier">Clause</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier">DIMACS</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#exampleDIMACS"><span class="hs-identifier">exampleDIMACS</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier">Literal</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#toCNF"><span class="hs-identifier">toCNF</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#fromCNF"><span class="hs-identifier">fromCNF</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Kind</span></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">Type</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Expr.html"><span class="hs-identifier">SAT.Expr</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier">Expr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Expr.html#And"><span class="hs-identifier">And</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Expr.html#Not"><span class="hs-identifier">Not</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Expr.html#Or"><span class="hs-identifier">Or</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Expr.html#Var"><span class="hs-identifier">Var</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Expr.html#Implies"><span class="hs-identifier">Implies</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.CNF.html"><span class="hs-identifier">SAT.CNF</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier">CNF</span></a></span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier">CNF</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.CNF.html"><span class="hs-identifier">SAT.CNF</span></a></span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">CNF</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Set</span></span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Set</span></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Parallel.Strategies</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NFData</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="annot"><span class="hs-comment">-- | The literal type.</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Type</span></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">type</span><span> </span><span id="Literal"><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-var">Literal</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="annot"><span class="hs-comment">-- | The clause type.</span></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Type</span></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">type</span><span> </span><span id="Clause"><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-var">Clause</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span class="annot"><span class="hs-comment">-- | The DIMACS type.</span></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-type">DIMACS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Type</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">data</span><span> </span><span id="DIMACS"><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-var">DIMACS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="DIMACS"><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-var">DIMACS</span></a></span></span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="numVars"><span class="annot"><span class="annottext">DIMACS -&gt; Integer
+</span><a href="SAT.DIMACS.CNF.html#numVars"><span class="hs-identifier hs-var hs-var">numVars</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span class="hs-special">,</span><span>
+</span><span id="line-42"></span><span>    </span><span id="numClauses"><span class="annot"><span class="annottext">DIMACS -&gt; Integer
+</span><a href="SAT.DIMACS.CNF.html#numClauses"><span class="hs-identifier hs-var hs-var">numClauses</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span class="hs-special">,</span><span>
+</span><span id="line-43"></span><span>    </span><span id="clauses"><span class="annot"><span class="annottext">DIMACS -&gt; [Clause]
+</span><a href="SAT.DIMACS.CNF.html#clauses"><span class="hs-identifier hs-var hs-var">clauses</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-44"></span><span>    </span><span id="comments"><span class="annot"><span class="annottext">DIMACS -&gt; [Text]
+</span><a href="SAT.DIMACS.CNF.html#comments"><span class="hs-identifier hs-var hs-var">comments</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-46"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679097925"><span id="local-6989586621679097935"><span class="annot"><span class="annottext">DIMACS -&gt; DIMACS -&gt; Bool
+(DIMACS -&gt; DIMACS -&gt; Bool)
+-&gt; (DIMACS -&gt; DIMACS -&gt; Bool) -&gt; Eq DIMACS
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: DIMACS -&gt; DIMACS -&gt; Bool
+== :: DIMACS -&gt; DIMACS -&gt; Bool
+$c/= :: DIMACS -&gt; DIMACS -&gt; Bool
+/= :: DIMACS -&gt; DIMACS -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679097943"><span id="local-6989586621679097954"><span id="local-6989586621679097958"><span class="annot"><span class="annottext">Int -&gt; DIMACS -&gt; ShowS
+[DIMACS] -&gt; ShowS
+DIMACS -&gt; String
+(Int -&gt; DIMACS -&gt; ShowS)
+-&gt; (DIMACS -&gt; String) -&gt; ([DIMACS] -&gt; ShowS) -&gt; Show DIMACS
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; DIMACS -&gt; ShowS
+showsPrec :: Int -&gt; DIMACS -&gt; ShowS
+$cshow :: DIMACS -&gt; String
+show :: DIMACS -&gt; String
+$cshowList :: [DIMACS] -&gt; ShowS
+showList :: [DIMACS] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679097965"><span id="local-6989586621679097967"><span class="annot"><span class="annottext">(forall x. DIMACS -&gt; Rep DIMACS x)
+-&gt; (forall x. Rep DIMACS x -&gt; DIMACS) -&gt; Generic DIMACS
+forall x. Rep DIMACS x -&gt; DIMACS
+forall x. DIMACS -&gt; Rep DIMACS x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. DIMACS -&gt; Rep DIMACS x
+from :: forall x. DIMACS -&gt; Rep DIMACS x
+$cto :: forall x. Rep DIMACS x -&gt; DIMACS
+to :: forall x. Rep DIMACS x -&gt; DIMACS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span id="local-6989586621679097971"><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">anyclass</span></span><span> </span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-type">DIMACS</span></a></span></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="annot"><span class="hs-comment">-- | Converts a list of clauses to an expression.</span></span><span>
+</span><span id="line-51"></span><span class="annot"><a href="SAT.DIMACS.CNF.html#toExpr"><span class="hs-identifier hs-type">toExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span>
+</span><span id="line-52"></span><span id="toExpr"><span class="annot"><span class="annottext">toExpr :: [Clause] -&gt; Expr Int
+</span><a href="SAT.DIMACS.CNF.html#toExpr"><span class="hs-identifier hs-var hs-var">toExpr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Expr Int -&gt; Expr Int -&gt; Expr Int) -&gt; [Expr Int] -&gt; Expr Int
+forall a. (a -&gt; a -&gt; a) -&gt; [a] -&gt; a
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; a -&gt; a) -&gt; t a -&gt; a
+</span><span class="hs-identifier hs-var">foldr1</span></span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; Expr Int -&gt; Expr Int
+forall a. Expr a -&gt; Expr a -&gt; Expr a
+</span><a href="SAT.Expr.html#And"><span class="hs-identifier hs-var">And</span></a></span><span> </span><span class="annot"><span class="annottext">([Expr Int] -&gt; Expr Int)
+-&gt; ([Clause] -&gt; [Expr Int]) -&gt; [Clause] -&gt; Expr Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Clause -&gt; Expr Int) -&gt; [Clause] -&gt; [Expr Int]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Clause -&gt; Expr Int
+</span><a href="#local-6989586621679098004"><span class="hs-identifier hs-var">toOr</span></a></span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><a href="#local-6989586621679098004"><span class="hs-identifier hs-type">toOr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span>
+</span><span id="line-55"></span><span>    </span><span id="local-6989586621679098004"><span class="annot"><span class="annottext">toOr :: Clause -&gt; Expr Int
+</span><a href="#local-6989586621679098004"><span class="hs-identifier hs-var hs-var">toOr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Expr Int -&gt; Expr Int -&gt; Expr Int) -&gt; [Expr Int] -&gt; Expr Int
+forall a. (a -&gt; a -&gt; a) -&gt; [a] -&gt; a
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; a -&gt; a) -&gt; t a -&gt; a
+</span><span class="hs-identifier hs-var">foldr1</span></span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; Expr Int -&gt; Expr Int
+forall a. Expr a -&gt; Expr a -&gt; Expr a
+</span><a href="SAT.Expr.html#Or"><span class="hs-identifier hs-var">Or</span></a></span><span> </span><span class="annot"><span class="annottext">([Expr Int] -&gt; Expr Int)
+-&gt; (Clause -&gt; [Expr Int]) -&gt; Clause -&gt; Expr Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Expr Int) -&gt; Clause -&gt; [Expr Int]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Expr Int
+</span><a href="#local-6989586621679098005"><span class="hs-identifier hs-var">toLiteral</span></a></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span>    </span><span class="annot"><a href="#local-6989586621679098005"><span class="hs-identifier hs-type">toLiteral</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span>
+</span><span id="line-58"></span><span>    </span><span id="local-6989586621679098005"><span class="annot"><span class="annottext">toLiteral :: Int -&gt; Expr Int
+</span><a href="#local-6989586621679098005"><span class="hs-identifier hs-var hs-var">toLiteral</span></a></span></span><span> </span><span id="local-6989586621679098006"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679098006"><span class="hs-identifier hs-var">n</span></a></span></span><span>
+</span><span id="line-59"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679098006"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; Expr Int
+forall a. Expr a -&gt; Expr a
+</span><a href="SAT.Expr.html#Not"><span class="hs-identifier hs-var">Not</span></a></span><span> </span><span class="annot"><span class="annottext">(Expr Int -&gt; Expr Int) -&gt; Expr Int -&gt; Expr Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Expr Int
+forall a. a -&gt; Expr a
+</span><a href="SAT.Expr.html#Var"><span class="hs-identifier hs-var">Var</span></a></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Expr Int) -&gt; Int -&gt; Expr Int
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679098006"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-60"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Expr Int
+forall a. a -&gt; Expr a
+</span><a href="SAT.Expr.html#Var"><span class="hs-identifier hs-var">Var</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679098006"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- | Converts an expression to dimacs.</span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-64"></span><span class="hs-comment">-- &gt;&gt;&gt; fromExpr (Or (Var 1) (Var 2))</span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- DIMACS {numVars = 2, numClauses = 1, clauses = [[1,2]], comments = [&quot;This is a CNF formula generated from an expression.&quot;]}</span><span>
+</span><span id="line-66"></span><span class="annot"><a href="SAT.DIMACS.CNF.html#fromExpr"><span class="hs-identifier hs-type">fromExpr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-type">DIMACS</span></a></span><span>
+</span><span id="line-67"></span><span id="fromExpr"><span class="annot"><span class="annottext">fromExpr :: Expr Int -&gt; DIMACS
+</span><a href="SAT.DIMACS.CNF.html#fromExpr"><span class="hs-identifier hs-var hs-var">fromExpr</span></a></span></span><span> </span><span id="local-6989586621679098009"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098009"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-68"></span><span>  </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-type">DIMACS</span></a></span><span>
+</span><span id="line-69"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">numVars :: Integer
+</span><a href="SAT.DIMACS.CNF.html#numVars"><span class="hs-identifier hs-var">numVars</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Integer
+</span><a href="#local-6989586621679098010"><span class="hs-identifier hs-var">numVars'</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-70"></span><span>      </span><span class="annot"><span class="annottext">numClauses :: Integer
+</span><a href="SAT.DIMACS.CNF.html#numClauses"><span class="hs-identifier hs-var">numClauses</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Integer
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Integer) -&gt; Int -&gt; Integer
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; Int
+forall a. [a] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098012"><span class="hs-identifier hs-var">clauseList</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-71"></span><span>      </span><span class="annot"><span class="annottext">clauses :: [Clause]
+</span><a href="SAT.DIMACS.CNF.html#clauses"><span class="hs-identifier hs-var">clauses</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098012"><span class="hs-identifier hs-var">clauseList</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-72"></span><span>      </span><span class="annot"><span class="annottext">comments :: [Text]
+</span><a href="SAT.DIMACS.CNF.html#comments"><span class="hs-identifier hs-var">comments</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+Item [Text]
+</span><span class="hs-string">&quot;This is a CNF formula generated from an expression.&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-73"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-74"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-comment">-- | The list of clauses.</span><span>
+</span><span id="line-76"></span><span>    </span><span class="annot"><a href="#local-6989586621679098012"><span class="hs-identifier hs-type">clauseList</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span>    </span><span id="local-6989586621679098012"><span class="annot"><span class="annottext">clauseList :: [Clause]
+</span><a href="#local-6989586621679098012"><span class="hs-identifier hs-var hs-var">clauseList</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; [Clause]
+</span><a href="#local-6989586621679098013"><span class="hs-identifier hs-var">fromAnd</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098009"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span>    </span><span class="hs-comment">-- | Converts an expression to a list of clauses.</span><span>
+</span><span id="line-80"></span><span>    </span><span class="annot"><a href="#local-6989586621679098013"><span class="hs-identifier hs-type">fromAnd</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-81"></span><span>    </span><span id="local-6989586621679098013"><span class="annot"><span class="annottext">fromAnd :: Expr Int -&gt; [Clause]
+</span><a href="#local-6989586621679098013"><span class="hs-identifier hs-var hs-var">fromAnd</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Expr.html#And"><span class="hs-identifier hs-type">And</span></a></span><span> </span><span id="local-6989586621679098014"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098014"><span class="hs-identifier hs-var">e1</span></a></span></span><span> </span><span id="local-6989586621679098015"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098015"><span class="hs-identifier hs-var">e2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; [Clause]
+</span><a href="#local-6989586621679098013"><span class="hs-identifier hs-var">fromAnd</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098014"><span class="hs-identifier hs-var">e1</span></a></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; [Clause] -&gt; [Clause]
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; [Clause]
+</span><a href="#local-6989586621679098013"><span class="hs-identifier hs-var">fromAnd</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098015"><span class="hs-identifier hs-var">e2</span></a></span><span>
+</span><span id="line-82"></span><span>    </span><span class="annot"><a href="#local-6989586621679098013"><span class="hs-identifier hs-var">fromAnd</span></a></span><span> </span><span id="local-6989586621679098016"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098016"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Expr Int -&gt; Clause
+</span><a href="#local-6989586621679098017"><span class="hs-identifier hs-var">fromOr</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098016"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span>    </span><span class="hs-comment">-- | Converts an expression to a clause.</span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><a href="#local-6989586621679098017"><span class="hs-identifier hs-type">fromOr</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span>
+</span><span id="line-86"></span><span>    </span><span id="local-6989586621679098017"><span class="annot"><span class="annottext">fromOr :: Expr Int -&gt; Clause
+</span><a href="#local-6989586621679098017"><span class="hs-identifier hs-var hs-var">fromOr</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Expr.html#Or"><span class="hs-identifier hs-type">Or</span></a></span><span> </span><span id="local-6989586621679098018"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098018"><span class="hs-identifier hs-var">e1</span></a></span></span><span> </span><span id="local-6989586621679098019"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098019"><span class="hs-identifier hs-var">e2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; Clause
+</span><a href="#local-6989586621679098017"><span class="hs-identifier hs-var">fromOr</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098018"><span class="hs-identifier hs-var">e1</span></a></span><span> </span><span class="annot"><span class="annottext">Clause -&gt; Clause -&gt; Clause
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; Clause
+</span><a href="#local-6989586621679098017"><span class="hs-identifier hs-var">fromOr</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098019"><span class="hs-identifier hs-var">e2</span></a></span><span>
+</span><span id="line-87"></span><span>    </span><span class="annot"><a href="#local-6989586621679098017"><span class="hs-identifier hs-var">fromOr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Expr.html#Implies"><span class="hs-identifier hs-type">Implies</span></a></span><span> </span><span id="local-6989586621679098020"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098020"><span class="hs-identifier hs-var">e1</span></a></span></span><span> </span><span id="local-6989586621679098021"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098021"><span class="hs-identifier hs-var">e2</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Int -&gt; Clause
+</span><a href="#local-6989586621679098017"><span class="hs-identifier hs-var">fromOr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Expr Int -&gt; Expr Int -&gt; Expr Int
+forall a. Expr a -&gt; Expr a -&gt; Expr a
+</span><a href="SAT.Expr.html#Or"><span class="hs-identifier hs-var">Or</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Expr Int -&gt; Expr Int
+forall a. Expr a -&gt; Expr a
+</span><a href="SAT.Expr.html#Not"><span class="hs-identifier hs-var">Not</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098020"><span class="hs-identifier hs-var">e1</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098021"><span class="hs-identifier hs-var">e2</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>    </span><span class="annot"><a href="#local-6989586621679098017"><span class="hs-identifier hs-var">fromOr</span></a></span><span> </span><span id="local-6989586621679098022"><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098022"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Expr Int -&gt; Int
+</span><a href="#local-6989586621679098023"><span class="hs-identifier hs-var">fromLiteral</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><a href="#local-6989586621679098022"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span>    </span><span class="hs-comment">-- | Converts an expression to a literal.</span><span>
+</span><span id="line-91"></span><span>    </span><span class="annot"><a href="#local-6989586621679098023"><span class="hs-identifier hs-type">fromLiteral</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span>
+</span><span id="line-92"></span><span>    </span><span id="local-6989586621679098023"><span class="annot"><span class="annottext">fromLiteral :: Expr Int -&gt; Int
+</span><a href="#local-6989586621679098023"><span class="hs-identifier hs-var hs-var">fromLiteral</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Expr.html#Not"><span class="hs-identifier hs-type">Not</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Expr.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span id="local-6989586621679098024"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679098024"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">negate</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679098024"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-93"></span><span>    </span><span class="annot"><a href="#local-6989586621679098023"><span class="hs-identifier hs-var">fromLiteral</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Expr.html#Var"><span class="hs-identifier hs-type">Var</span></a></span><span> </span><span id="local-6989586621679098025"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679098025"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679098025"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-94"></span><span>    </span><span class="annot"><a href="#local-6989586621679098023"><span class="hs-identifier hs-var">fromLiteral</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Int
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Invalid literal&quot;</span></span><span>
+</span><span id="line-95"></span><span>    </span><span>
+</span><span id="line-96"></span><span>    </span><span class="hs-comment">-- | The number of variables.</span><span>
+</span><span id="line-97"></span><span>    </span><span class="annot"><a href="#local-6989586621679098010"><span class="hs-identifier hs-type">numVars'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span>
+</span><span id="line-98"></span><span>    </span><span id="local-6989586621679098010"><span class="annot"><span class="annottext">numVars' :: Integer
+</span><a href="#local-6989586621679098010"><span class="hs-identifier hs-var hs-var">numVars'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Integer
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Integer) -&gt; (Clause -&gt; Int) -&gt; Clause -&gt; Integer
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Set Int -&gt; Int
+forall a. Set a -&gt; Int
+</span><span class="hs-identifier hs-var">Set.size</span></span><span> </span><span class="annot"><span class="annottext">(Set Int -&gt; Int) -&gt; (Clause -&gt; Set Int) -&gt; Clause -&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Clause -&gt; Set Int
+forall a. Ord a =&gt; [a] -&gt; Set a
+</span><span class="hs-identifier hs-var">Set.fromList</span></span><span> </span><span class="annot"><span class="annottext">(Clause -&gt; Set Int) -&gt; (Clause -&gt; Clause) -&gt; Clause -&gt; Set Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Int) -&gt; Clause -&gt; Clause
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="annot"><span class="annottext">(Clause -&gt; Integer) -&gt; Clause -&gt; Integer
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; Clause
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098012"><span class="hs-identifier hs-var">clauseList</span></a></span><span>
+</span><span id="line-99"></span><span>    </span><span>
+</span><span id="line-100"></span><span class="hs-comment">-- | Converts a DIMACS formula to CNF.</span><span>
+</span><span id="line-101"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-102"></span><span class="hs-comment">-- &gt;&gt;&gt; toCNF exampleDIMACS</span><span>
+</span><span id="line-103"></span><span class="hs-comment">-- CNF {clauses = [[1,2],[-1,3]]}</span><span>
+</span><span id="line-104"></span><span class="annot"><a href="SAT.DIMACS.CNF.html#toCNF"><span class="hs-identifier hs-type">toCNF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-type">DIMACS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span>
+</span><span id="line-105"></span><span id="toCNF"><span class="annot"><span class="annottext">toCNF :: DIMACS -&gt; CNF
+</span><a href="SAT.DIMACS.CNF.html#toCNF"><span class="hs-identifier hs-var hs-var">toCNF</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; CNF
+</span><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-var">CNF</span></a></span><span> </span><span class="annot"><span class="annottext">([Clause] -&gt; CNF) -&gt; (DIMACS -&gt; [Clause]) -&gt; DIMACS -&gt; CNF
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; [Clause]
+</span><a href="#local-6989586621679098030"><span class="hs-identifier hs-var">toCNF'</span></a></span><span> </span><span class="annot"><span class="annottext">([Clause] -&gt; [Clause])
+-&gt; (DIMACS -&gt; [Clause]) -&gt; DIMACS -&gt; [Clause]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">DIMACS -&gt; [Clause]
+</span><a href="SAT.DIMACS.CNF.html#clauses"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-106"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-107"></span><span>    </span><span class="annot"><a href="#local-6989586621679098030"><span class="hs-identifier hs-type">toCNF'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">CNF.Clause</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-108"></span><span>    </span><span id="local-6989586621679098030"><span class="annot"><span class="annottext">toCNF' :: [Clause] -&gt; [Clause]
+</span><a href="#local-6989586621679098030"><span class="hs-identifier hs-var hs-var">toCNF'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Clause -&gt; Clause) -&gt; [Clause] -&gt; [Clause]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Clause -&gt; Clause
+</span><a href="#local-6989586621679098032"><span class="hs-identifier hs-var">toClause</span></a></span><span>
+</span><span id="line-109"></span><span>    </span><span>
+</span><span id="line-110"></span><span>    </span><span class="annot"><a href="#local-6989586621679098032"><span class="hs-identifier hs-type">toClause</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">CNF.Clause</span></a></span><span>
+</span><span id="line-111"></span><span>    </span><span id="local-6989586621679098032"><span class="annot"><span class="annottext">toClause :: Clause -&gt; Clause
+</span><a href="#local-6989586621679098032"><span class="hs-identifier hs-var hs-var">toClause</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Int) -&gt; Clause -&gt; Clause
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+</span><a href="#local-6989586621679098033"><span class="hs-identifier hs-var">toLiteral</span></a></span><span>
+</span><span id="line-112"></span><span>    </span><span>
+</span><span id="line-113"></span><span>    </span><span class="annot"><a href="#local-6989586621679098033"><span class="hs-identifier hs-type">toLiteral</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">CNF.Literal</span></a></span><span>
+</span><span id="line-114"></span><span>    </span><span id="local-6989586621679098033"><span class="annot"><span class="annottext">toLiteral :: Int -&gt; Int
+</span><a href="#local-6989586621679098033"><span class="hs-identifier hs-var hs-var">toLiteral</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-115"></span><span>
+</span><span id="line-116"></span><span class="hs-comment">-- | Converts a CNF formula to DIMACS.</span><span>
+</span><span id="line-117"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-118"></span><span class="hs-comment">-- &gt;&gt;&gt; fromCNF (CNF [[1,2],[-1,3]])</span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- DIMACS {numVars = 3, numClauses = 2, clauses = [[1,2],[-1,3]], comments = [&quot;This is a CNF formula generated from a CNF formula.&quot;]}</span><span>
+</span><span id="line-120"></span><span class="annot"><a href="SAT.DIMACS.CNF.html#fromCNF"><span class="hs-identifier hs-type">fromCNF</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-type">DIMACS</span></a></span><span>
+</span><span id="line-121"></span><span id="fromCNF"><span class="annot"><span class="annottext">fromCNF :: CNF -&gt; DIMACS
+</span><a href="SAT.DIMACS.CNF.html#fromCNF"><span class="hs-identifier hs-var hs-var">fromCNF</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679098036"><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098036"><span class="hs-identifier hs-var">clauses'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-122"></span><span>  </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-type">DIMACS</span></a></span><span>
+</span><span id="line-123"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">numVars :: Integer
+</span><a href="SAT.DIMACS.CNF.html#numVars"><span class="hs-identifier hs-var">numVars</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Integer
+</span><a href="#local-6989586621679098037"><span class="hs-identifier hs-var">numVars'</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-124"></span><span>      </span><span class="annot"><span class="annottext">numClauses :: Integer
+</span><a href="SAT.DIMACS.CNF.html#numClauses"><span class="hs-identifier hs-var">numClauses</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Integer
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Integer) -&gt; Int -&gt; Integer
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; Int
+forall a. [a] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098036"><span class="hs-identifier hs-var">clauses'</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-125"></span><span>      </span><span class="annot"><span class="annottext">clauses :: [Clause]
+</span><a href="SAT.DIMACS.CNF.html#clauses"><span class="hs-identifier hs-var">clauses</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098038"><span class="hs-identifier hs-var">clauseList</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-126"></span><span>      </span><span class="annot"><span class="annottext">comments :: [Text]
+</span><a href="SAT.DIMACS.CNF.html#comments"><span class="hs-identifier hs-var">comments</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+Item [Text]
+</span><span class="hs-string">&quot;This is a CNF formula generated from a CNF formula.&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-127"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-128"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-129"></span><span>    </span><span class="annot"><a href="#local-6989586621679098038"><span class="hs-identifier hs-type">clauseList</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-130"></span><span>    </span><span id="local-6989586621679098038"><span class="annot"><span class="annottext">clauseList :: [Clause]
+</span><a href="#local-6989586621679098038"><span class="hs-identifier hs-var hs-var">clauseList</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Clause -&gt; Clause) -&gt; [Clause] -&gt; [Clause]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Clause -&gt; Clause
+</span><a href="#local-6989586621679098039"><span class="hs-identifier hs-var">fromClause</span></a></span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098036"><span class="hs-identifier hs-var">clauses'</span></a></span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span>    </span><span class="annot"><a href="#local-6989586621679098039"><span class="hs-identifier hs-type">fromClause</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">CNF.Clause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span>
+</span><span id="line-133"></span><span>    </span><span id="local-6989586621679098039"><span class="annot"><span class="annottext">fromClause :: Clause -&gt; Clause
+</span><a href="#local-6989586621679098039"><span class="hs-identifier hs-var hs-var">fromClause</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Int) -&gt; Clause -&gt; Clause
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+</span><a href="#local-6989586621679098040"><span class="hs-identifier hs-var">fromLiteral</span></a></span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span>    </span><span class="annot"><a href="#local-6989586621679098040"><span class="hs-identifier hs-type">fromLiteral</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">CNF.Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span>
+</span><span id="line-136"></span><span>    </span><span id="local-6989586621679098040"><span class="annot"><span class="annottext">fromLiteral :: Int -&gt; Int
+</span><a href="#local-6989586621679098040"><span class="hs-identifier hs-var hs-var">fromLiteral</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span>    </span><span class="annot"><a href="#local-6989586621679098037"><span class="hs-identifier hs-type">numVars'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span>
+</span><span id="line-139"></span><span>    </span><span id="local-6989586621679098037"><span class="annot"><span class="annottext">numVars' :: Integer
+</span><a href="#local-6989586621679098037"><span class="hs-identifier hs-var hs-var">numVars'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Integer
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Integer) -&gt; (Clause -&gt; Int) -&gt; Clause -&gt; Integer
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Set Int -&gt; Int
+forall a. Set a -&gt; Int
+</span><span class="hs-identifier hs-var">Set.size</span></span><span> </span><span class="annot"><span class="annottext">(Set Int -&gt; Int) -&gt; (Clause -&gt; Set Int) -&gt; Clause -&gt; Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Clause -&gt; Set Int
+forall a. Ord a =&gt; [a] -&gt; Set a
+</span><span class="hs-identifier hs-var">Set.fromList</span></span><span> </span><span class="annot"><span class="annottext">(Clause -&gt; Set Int) -&gt; (Clause -&gt; Clause) -&gt; Clause -&gt; Set Int
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Int -&gt; Int) -&gt; Clause -&gt; Clause
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="annot"><span class="annottext">(Clause -&gt; Integer) -&gt; Clause -&gt; Integer
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Clause] -&gt; Clause
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098038"><span class="hs-identifier hs-var">clauseList</span></a></span><span>
+</span><span id="line-140"></span><span>   </span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span class="annot"><span class="hs-comment">-- | An example DIMACS formula.</span></span><span>
+</span><span id="line-143"></span><span class="annot"><a href="SAT.DIMACS.CNF.html#exampleDIMACS"><span class="hs-identifier hs-type">exampleDIMACS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-type">DIMACS</span></a></span><span>
+</span><span id="line-144"></span><span id="exampleDIMACS"><span class="annot"><span class="annottext">exampleDIMACS :: DIMACS
+</span><a href="SAT.DIMACS.CNF.html#exampleDIMACS"><span class="hs-identifier hs-var hs-var">exampleDIMACS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Integer -&gt; [Clause] -&gt; [Text] -&gt; DIMACS
+</span><a href="SAT.DIMACS.CNF.html#DIMACS"><span class="hs-identifier hs-var">DIMACS</span></a></span><span> </span><span class="annot"><span class="annottext">Integer
+</span><span class="hs-number">3</span></span><span> </span><span class="annot"><span class="annottext">Integer
+</span><span class="hs-number">2</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+Item Clause
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+Item Clause
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-glyph">-</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+Item Clause
+</span><span class="hs-number">3</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Text
+Item [Text]
+</span><span class="hs-string">&quot;This is an example CNF formula.&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-145"></span></pre></body></html>

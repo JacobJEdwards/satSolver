@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="annot"><span class="hs-comment">{-|
+Module      : SAT.VSIDS
+Description : Exports the VSIDS module.
+-}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-pragma">{-# LANGUAGE ExplicitNamespaces #-}</span><span>
+</span><span id="line-7"></span><span class="hs-pragma">{-# LANGUAGE ImportQualifiedPost #-}</span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SAT.VSIDS</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier">VSIDS</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#initVSIDS"><span class="hs-identifier">initVSIDS</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#decay"><span class="hs-identifier">decay</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#adjustScore"><span class="hs-identifier">adjustScore</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#updateScore"><span class="hs-identifier">updateScore</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#decayFactor"><span class="hs-identifier">decayFactor</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#adjustScores"><span class="hs-identifier">adjustScores</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#pickLiteral"><span class="hs-identifier">pickLiteral</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.IntMap</span></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">IntMap</span></span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.IntMap</span></span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">IntMap</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.CNF.html"><span class="hs-identifier">SAT.CNF</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier">CNF</span></a></span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier">CNF</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier">Clause</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier">Literal</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">foldl'</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="annot"><span class="hs-comment">-- | The VSIDS type.</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">type</span><span> </span><span id="VSIDS"><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-var">VSIDS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IntMap</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="annot"><span class="hs-comment">-- | The decay factor.</span></span><span>
+</span><span id="line-20"></span><span class="annot"><a href="SAT.VSIDS.html#decayFactor"><span class="hs-identifier hs-type">decayFactor</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span>
+</span><span id="line-21"></span><span id="decayFactor"><span class="annot"><span class="annottext">decayFactor :: Double
+</span><a href="SAT.VSIDS.html#decayFactor"><span class="hs-identifier hs-var hs-var">decayFactor</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0.96</span></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- | Decays the scores.</span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- &gt;&gt;&gt; decay (IntMap.fromList [(1, 1), (2, 2), (3, 3)])</span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- WAS fromList [(1,0.99),(2,1.98),(3,2.97)]</span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- NOW fromList [(1,0.99),(2,1.98),(3,2.9699999999999998)]</span><span>
+</span><span id="line-28"></span><span class="annot"><a href="SAT.VSIDS.html#decay"><span class="hs-identifier hs-type">decay</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span>
+</span><span id="line-29"></span><span id="decay"><span class="annot"><span class="annottext">decay :: VSIDS -&gt; VSIDS
+</span><a href="SAT.VSIDS.html#decay"><span class="hs-identifier hs-var hs-var">decay</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double) -&gt; VSIDS -&gt; VSIDS
+forall a b. (a -&gt; b) -&gt; IntMap a -&gt; IntMap b
+</span><span class="hs-identifier hs-var">IntMap.map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="SAT.VSIDS.html#decayFactor"><span class="hs-identifier hs-var">decayFactor</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | Initializes the VSIDS.</span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- &gt;&gt;&gt; initVSIDS (CNF [[1, 2], [2, 3], [3, 4]])</span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- fromList [(1,1.0),(2,2.0),(3,2.0),(4,1.0)]</span><span>
+</span><span id="line-35"></span><span class="annot"><a href="SAT.VSIDS.html#initVSIDS"><span class="hs-identifier hs-type">initVSIDS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span>
+</span><span id="line-36"></span><span id="initVSIDS"><span class="annot"><span class="annottext">initVSIDS :: CNF -&gt; VSIDS
+</span><a href="SAT.VSIDS.html#initVSIDS"><span class="hs-identifier hs-var hs-var">initVSIDS</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679098598"><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098598"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(VSIDS -&gt; Clause -&gt; VSIDS) -&gt; VSIDS -&gt; [Clause] -&gt; VSIDS
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; [a] -&gt; b
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="annot"><span class="annottext">VSIDS -&gt; Clause -&gt; VSIDS
+</span><a href="#local-6989586621679098599"><span class="hs-identifier hs-var">updateVSIDS</span></a></span><span> </span><span class="annot"><span class="annottext">VSIDS
+forall a. IntMap a
+</span><span class="hs-identifier hs-var">IntMap.empty</span></span><span> </span><span class="annot"><span class="annottext">[Clause]
+</span><a href="#local-6989586621679098598"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-38"></span><span>    </span><span class="annot"><a href="#local-6989586621679098599"><span class="hs-identifier hs-type">updateVSIDS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span>
+</span><span id="line-39"></span><span>    </span><span id="local-6989586621679098599"><span class="annot"><span class="annottext">updateVSIDS :: VSIDS -&gt; Clause -&gt; VSIDS
+</span><a href="#local-6989586621679098599"><span class="hs-identifier hs-var hs-var">updateVSIDS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(VSIDS -&gt; Key -&gt; VSIDS) -&gt; VSIDS -&gt; Clause -&gt; VSIDS
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; [a] -&gt; b
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679098601"><span class="annot"><span class="annottext">VSIDS
+</span><a href="#local-6989586621679098601"><span class="hs-identifier hs-var">vsids'</span></a></span></span><span> </span><span id="local-6989586621679098602"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679098602"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double -&gt; Double) -&gt; Key -&gt; Double -&gt; VSIDS -&gt; VSIDS
+forall a. (a -&gt; a -&gt; a) -&gt; Key -&gt; a -&gt; IntMap a -&gt; IntMap a
+</span><span class="hs-identifier hs-var">IntMap.insertWith</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">(+)</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Key
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679098602"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">VSIDS
+</span><a href="#local-6989586621679098601"><span class="hs-identifier hs-var">vsids'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-comment">-- updateVSIDS = foldl' (\vsids' l -&gt; IntMap.insert (abs l) 1 vsids')</span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- | Adjusts the score of a variable.</span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- &gt;&gt;&gt; adjustScore 1 (IntMap.fromList [(1, 1), (2, 2), (3, 3)])</span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- fromList [(1,2.0),(2,2.0),(3,3.0)]</span><span>
+</span><span id="line-47"></span><span class="annot"><a href="SAT.VSIDS.html#adjustScore"><span class="hs-identifier hs-type">adjustScore</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span>
+</span><span id="line-48"></span><span id="adjustScore"><span class="annot"><span class="annottext">adjustScore :: Key -&gt; VSIDS -&gt; VSIDS
+</span><a href="SAT.VSIDS.html#adjustScore"><span class="hs-identifier hs-var hs-var">adjustScore</span></a></span></span><span> </span><span id="local-6989586621679098606"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679098606"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Double -&gt; Double -&gt; Double) -&gt; Key -&gt; Double -&gt; VSIDS -&gt; VSIDS
+forall a. (a -&gt; a -&gt; a) -&gt; Key -&gt; a -&gt; IntMap a -&gt; IntMap a
+</span><span class="hs-identifier hs-var">IntMap.insertWith</span></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Double
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">(+)</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Key
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679098606"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-49"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#adjustScore"><span class="hs-pragma hs-type">adjustScore</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- | Updates the score of a variable.</span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- &gt;&gt;&gt; updateScore 1 2 (IntMap.fromList [(1, 1), (2, 2), (3, 3)])</span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- fromList [(1,2.0),(2,2.0),(3,3.0)]</span><span>
+</span><span id="line-55"></span><span class="annot"><a href="SAT.VSIDS.html#updateScore"><span class="hs-identifier hs-type">updateScore</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span>
+</span><span id="line-56"></span><span id="updateScore"><span class="annot"><span class="annottext">updateScore :: Key -&gt; Double -&gt; VSIDS -&gt; VSIDS
+</span><a href="SAT.VSIDS.html#updateScore"><span class="hs-identifier hs-var hs-var">updateScore</span></a></span></span><span> </span><span id="local-6989586621679098607"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679098607"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Double -&gt; VSIDS -&gt; VSIDS
+forall a. Key -&gt; a -&gt; IntMap a -&gt; IntMap a
+</span><span class="hs-identifier hs-var">IntMap.insert</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Key
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">abs</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679098607"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#updateScore"><span class="hs-pragma hs-type">updateScore</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="annot"><a href="SAT.VSIDS.html#adjustScores"><span class="hs-identifier hs-type">adjustScores</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span>
+</span><span id="line-60"></span><span id="adjustScores"><span class="annot"><span class="annottext">adjustScores :: Clause -&gt; VSIDS -&gt; VSIDS
+</span><a href="SAT.VSIDS.html#adjustScores"><span class="hs-identifier hs-var hs-var">adjustScores</span></a></span></span><span> </span><span id="local-6989586621679098609"><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098609"><span class="hs-identifier hs-var">clause</span></a></span></span><span> </span><span id="local-6989586621679098610"><span class="annot"><span class="annottext">VSIDS
+</span><a href="#local-6989586621679098610"><span class="hs-identifier hs-var">vsids</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(VSIDS -&gt; Key -&gt; VSIDS) -&gt; VSIDS -&gt; Clause -&gt; VSIDS
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; [a] -&gt; b
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Key -&gt; VSIDS -&gt; VSIDS) -&gt; VSIDS -&gt; Key -&gt; VSIDS
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; VSIDS -&gt; VSIDS
+</span><a href="SAT.VSIDS.html#adjustScore"><span class="hs-identifier hs-var">adjustScore</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">VSIDS
+</span><a href="#local-6989586621679098610"><span class="hs-identifier hs-var">vsids</span></a></span><span> </span><span class="annot"><span class="annottext">Clause
+</span><a href="#local-6989586621679098609"><span class="hs-identifier hs-var">clause</span></a></span><span>
+</span><span id="line-61"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#adjustScores"><span class="hs-pragma hs-type">adjustScores</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="annot"><a href="SAT.VSIDS.html#pickLiteral"><span class="hs-identifier hs-type">pickLiteral</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#VSIDS"><span class="hs-identifier hs-type">VSIDS</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span>
+</span><span id="line-64"></span><span id="pickLiteral"><span class="annot"><span class="annottext">pickLiteral :: VSIDS -&gt; Key
+</span><a href="SAT.VSIDS.html#pickLiteral"><span class="hs-identifier hs-var hs-var">pickLiteral</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Key, Double) -&gt; Key
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">((Key, Double) -&gt; Key) -&gt; (VSIDS -&gt; (Key, Double)) -&gt; VSIDS -&gt; Key
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">VSIDS -&gt; (Key, Double)
+forall a. IntMap a -&gt; (Key, a)
+</span><span class="hs-identifier hs-var">IntMap.findMax</span></span><span>
+</span><span id="line-65"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.VSIDS.html#pickLiteral"><span class="hs-pragma hs-type">pickLiteral</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-66"></span></pre></body></html>

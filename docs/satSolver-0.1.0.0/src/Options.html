@@ -1,0 +1,278 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="annot"><span class="hs-comment">{-|
+Module      : Options
+Description : Exports the command line options parser module.
+-}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-pragma">{-# LANGUAGE BlockArguments #-}</span><span>
+</span><span id="line-7"></span><span class="hs-pragma">{-# LANGUAGE DeriveDataTypeable #-}</span><span>
+</span><span id="line-8"></span><span class="hs-pragma">{-# LANGUAGE DerivingStrategies #-}</span><span>
+</span><span id="line-9"></span><span class="hs-pragma">{-# LANGUAGE ExplicitNamespaces #-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-11"></span><span class="hs-pragma">{-# LANGUAGE ImportQualifiedPost #-}</span><span>
+</span><span id="line-12"></span><span class="hs-pragma">{-# LANGUAGE KindSignatures #-}</span><span>
+</span><span id="line-13"></span><span class="hs-pragma">{-# LANGUAGE Safe #-}</span><span>
+</span><span id="line-14"></span><span class="hs-pragma">{-# LANGUAGE StandaloneDeriving #-}</span><span>
+</span><span id="line-15"></span><span class="hs-pragma">{-# LANGUAGE StandaloneKindSignatures #-}</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Options</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier">Flag</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Options.html#parseArgs"><span class="hs-identifier">parseArgs</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unless</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Data</span></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">Data</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Kind</span></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">Type</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">List</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.String</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromString</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.Console.GetOpt</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">getOpt</span></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">ArgDescr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NoArg</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">OptArg</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">ReqArg</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">ArgOrder</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Permute</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">OptDescr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Option</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.Exit</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">exitFailure</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span class="annot"><span class="hs-comment">-- | Command line options.</span></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Type</span></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">data</span><span> </span><span id="Flag"><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-var">Flag</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Type</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-31"></span><span>  </span><span class="annot"><span class="hs-comment">-- | Run in interactive mode.</span></span><span>
+</span><span id="line-32"></span><span>  </span><span id="Interactive"><span class="annot"><a href="Options.html#Interactive"><span class="hs-identifier hs-var">Interactive</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span>
+</span><span id="line-33"></span><span>  </span><span class="annot"><span class="hs-comment">-- | Run in default demo mode.</span></span><span>
+</span><span id="line-34"></span><span>  </span><span id="Demo"><span class="annot"><a href="Options.html#Demo"><span class="hs-identifier hs-var">Demo</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span>
+</span><span id="line-35"></span><span>  </span><span class="annot"><span class="hs-comment">-- | Run the given expression.</span></span><span>
+</span><span id="line-36"></span><span>  </span><span id="RunImmediate"><span class="annot"><a href="Options.html#RunImmediate"><span class="hs-identifier hs-var">RunImmediate</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span>
+</span><span id="line-37"></span><span>  </span><span class="annot"><span class="hs-comment">-- | Run the given file.</span></span><span>
+</span><span id="line-38"></span><span>  </span><span id="File"><span class="annot"><a href="Options.html#File"><span class="hs-identifier hs-var">File</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="annot"><span class="hs-comment">-- | Run sudoku.</span></span><span>
+</span><span id="line-40"></span><span>  </span><span id="Sudoku"><span class="annot"><a href="Options.html#Sudoku"><span class="hs-identifier hs-var">Sudoku</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span>
+</span><span id="line-41"></span><span>  </span><span class="annot"><span class="hs-comment">-- | Run nonogram.</span></span><span>
+</span><span id="line-42"></span><span>  </span><span id="Nonogram"><span class="annot"><a href="Options.html#Nonogram"><span class="hs-identifier hs-var">Nonogram</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span id="local-6989586621679095243"><span id="local-6989586621679095256"><span id="local-6989586621679095260"><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span></span></span></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span id="local-6989586621679095264"><span id="local-6989586621679095272"><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Eq</span></span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span></span></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span id="local-6989586621679095279"><span id="local-6989586621679095287"><span id="local-6989586621679095291"><span id="local-6989586621679095294"><span id="local-6989586621679095297"><span id="local-6989586621679095300"><span id="local-6989586621679095303"><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Ord</span></span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span></span></span></span></span></span></span></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span id="local-6989586621679095309"><span id="local-6989586621679095317"><span id="local-6989586621679095323"><span id="local-6989586621679095325"><span id="local-6989586621679095327"><span id="local-6989586621679095333"><span id="local-6989586621679095338"><span id="local-6989586621679095341"><span id="local-6989586621679095344"><span id="local-6989586621679095347"><span id="local-6989586621679095350"><span id="local-6989586621679095353"><span id="local-6989586621679095358"><span id="local-6989586621679095363"><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Data</span></span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="annot"><span class="hs-comment">-- | Command line options.</span></span><span>
+</span><span id="line-53"></span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="Options.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Type</span></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">newtype</span><span> </span><span id="Options"><span class="annot"><a href="Options.html#Options"><span class="hs-identifier hs-var">Options</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Options"><span class="annot"><a href="Options.html#Options"><span class="hs-identifier hs-var">Options</span></a></span></span><span>
+</span><span id="line-55"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="optMode"><span class="annot"><span class="annottext">Options -&gt; Flag
+</span><a href="Options.html#optMode"><span class="hs-identifier hs-var hs-var">optMode</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span> </span><span class="annot"><span class="hs-comment">-- ^ The mode to run in.</span></span><span>
+</span><span id="line-56"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-57"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679095371"><span id="local-6989586621679095375"><span id="local-6989586621679095379"><span class="annot"><span class="annottext">Int -&gt; Options -&gt; ShowS
+[Options] -&gt; ShowS
+Options -&gt; String
+(Int -&gt; Options -&gt; ShowS)
+-&gt; (Options -&gt; String) -&gt; ([Options] -&gt; ShowS) -&gt; Show Options
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; Options -&gt; ShowS
+showsPrec :: Int -&gt; Options -&gt; ShowS
+$cshow :: Options -&gt; String
+show :: Options -&gt; String
+$cshowList :: [Options] -&gt; ShowS
+showList :: [Options] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="annot"><span class="hs-comment">-- | Default command line options.</span></span><span>
+</span><span id="line-60"></span><span class="annot"><a href="Options.html#defaultOptions"><span class="hs-identifier hs-type">defaultOptions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Options.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span>
+</span><span id="line-61"></span><span id="defaultOptions"><span class="annot"><span class="annottext">defaultOptions :: Options
+</span><a href="Options.html#defaultOptions"><span class="hs-identifier hs-var hs-var">defaultOptions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-62"></span><span>  </span><span class="annot"><a href="Options.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span>
+</span><span id="line-63"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">optMode :: Flag
+</span><a href="Options.html#optMode"><span class="hs-identifier hs-var">optMode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Text -&gt; Flag
+</span><a href="Options.html#Nonogram"><span class="hs-identifier hs-var">Nonogram</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Text
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-64"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span class="annot"><span class="hs-comment">-- | Command line options.</span></span><span>
+</span><span id="line-67"></span><span class="annot"><a href="Options.html#options"><span class="hs-identifier hs-type">options</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">OptDescr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Options.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Options.html#Options"><span class="hs-identifier hs-type">Options</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-68"></span><span id="options"><span class="annot"><span class="annottext">options :: [OptDescr (Options -&gt; Options)]
+</span><a href="Options.html#options"><span class="hs-identifier hs-var hs-var">options</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-69"></span><span>  </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">String
+-&gt; [String]
+-&gt; ArgDescr (Options -&gt; Options)
+-&gt; String
+-&gt; OptDescr (Options -&gt; Options)
+forall a. String -&gt; [String] -&gt; ArgDescr a -&gt; String -&gt; OptDescr a
+</span><span class="hs-identifier hs-var">Option</span></span><span>
+</span><span id="line-70"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'i'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-71"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;interactive&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-72"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Options -&gt; Options) -&gt; ArgDescr (Options -&gt; Options)
+forall a. a -&gt; ArgDescr a
+</span><span class="hs-identifier hs-var">NoArg</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679095383"><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095383"><span class="hs-identifier hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095383"><span class="hs-identifier hs-var">opts</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><a href="Options.html#optMode"><span class="hs-identifier hs-var">optMode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Options.html#Interactive"><span class="hs-identifier hs-type">Interactive</span></a></span><span class="hs-special">}</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Run in interactive mode&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-74"></span><span>    </span><span class="annot"><span class="annottext">String
+-&gt; [String]
+-&gt; ArgDescr (Options -&gt; Options)
+-&gt; String
+-&gt; OptDescr (Options -&gt; Options)
+forall a. String -&gt; [String] -&gt; ArgDescr a -&gt; String -&gt; OptDescr a
+</span><span class="hs-identifier hs-var">Option</span></span><span>
+</span><span id="line-75"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'d'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-76"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;demo&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Options -&gt; Options) -&gt; ArgDescr (Options -&gt; Options)
+forall a. a -&gt; ArgDescr a
+</span><span class="hs-identifier hs-var">NoArg</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679095384"><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095384"><span class="hs-identifier hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095384"><span class="hs-identifier hs-var">opts</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><a href="Options.html#optMode"><span class="hs-identifier hs-var">optMode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Options.html#Demo"><span class="hs-identifier hs-type">Demo</span></a></span><span class="hs-special">}</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Run in default demo mode (default)&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-79"></span><span>    </span><span class="annot"><span class="annottext">String
+-&gt; [String]
+-&gt; ArgDescr (Options -&gt; Options)
+-&gt; String
+-&gt; OptDescr (Options -&gt; Options)
+forall a. String -&gt; [String] -&gt; ArgDescr a -&gt; String -&gt; OptDescr a
+</span><span class="hs-identifier hs-var">Option</span></span><span>
+</span><span id="line-80"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'r'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-81"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;run&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-82"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(String -&gt; Options -&gt; Options)
+-&gt; String -&gt; ArgDescr (Options -&gt; Options)
+forall a. (String -&gt; a) -&gt; String -&gt; ArgDescr a
+</span><span class="hs-identifier hs-var">ReqArg</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679095385"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679095385"><span class="hs-identifier hs-var">arg</span></a></span></span><span> </span><span id="local-6989586621679095386"><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095386"><span class="hs-identifier hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095386"><span class="hs-identifier hs-var">opts</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><a href="Options.html#optMode"><span class="hs-identifier hs-var">optMode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Options.html#RunImmediate"><span class="hs-identifier hs-type">RunImmediate</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">fromString</span></span><span> </span><span class="annot"><a href="#local-6989586621679095385"><span class="hs-identifier hs-type">arg</span></a></span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;EXPR&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-83"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Run the given expression&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-84"></span><span>    </span><span class="annot"><span class="annottext">String
+-&gt; [String]
+-&gt; ArgDescr (Options -&gt; Options)
+-&gt; String
+-&gt; OptDescr (Options -&gt; Options)
+forall a. String -&gt; [String] -&gt; ArgDescr a -&gt; String -&gt; OptDescr a
+</span><span class="hs-identifier hs-var">Option</span></span><span>
+</span><span id="line-85"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'f'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-86"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;file&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-87"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(String -&gt; Options -&gt; Options)
+-&gt; String -&gt; ArgDescr (Options -&gt; Options)
+forall a. (String -&gt; a) -&gt; String -&gt; ArgDescr a
+</span><span class="hs-identifier hs-var">ReqArg</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679095387"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679095387"><span class="hs-identifier hs-var">arg</span></a></span></span><span> </span><span id="local-6989586621679095388"><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095388"><span class="hs-identifier hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095388"><span class="hs-identifier hs-var">opts</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><a href="Options.html#optMode"><span class="hs-identifier hs-var">optMode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Options.html#File"><span class="hs-identifier hs-type">File</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">fromString</span></span><span> </span><span class="annot"><a href="#local-6989586621679095387"><span class="hs-identifier hs-type">arg</span></a></span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;FILE&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Run the given file&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-89"></span><span>    </span><span class="annot"><span class="annottext">String
+-&gt; [String]
+-&gt; ArgDescr (Options -&gt; Options)
+-&gt; String
+-&gt; OptDescr (Options -&gt; Options)
+forall a. String -&gt; [String] -&gt; ArgDescr a -&gt; String -&gt; OptDescr a
+</span><span class="hs-identifier hs-var">Option</span></span><span>
+</span><span id="line-90"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'s'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-91"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;sudoku&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-92"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe String -&gt; Options -&gt; Options)
+-&gt; String -&gt; ArgDescr (Options -&gt; Options)
+forall a. (Maybe String -&gt; a) -&gt; String -&gt; ArgDescr a
+</span><span class="hs-identifier hs-var">OptArg</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679095389"><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679095389"><span class="hs-identifier hs-var">arg</span></a></span></span><span> </span><span id="local-6989586621679095390"><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095390"><span class="hs-identifier hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095390"><span class="hs-identifier hs-var">opts</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><a href="Options.html#optMode"><span class="hs-identifier hs-var">optMode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Options.html#Sudoku"><span class="hs-identifier hs-type">Sudoku</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">fmap</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">fromString</span></span><span> </span><span class="annot"><a href="#local-6989586621679095389"><span class="hs-identifier hs-type">arg</span></a></span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;FILE&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Run sudoku&quot;</span></span><span class="hs-special">,</span><span>
+</span><span id="line-94"></span><span>    </span><span class="annot"><span class="annottext">String
+-&gt; [String]
+-&gt; ArgDescr (Options -&gt; Options)
+-&gt; String
+-&gt; OptDescr (Options -&gt; Options)
+forall a. String -&gt; [String] -&gt; ArgDescr a -&gt; String -&gt; OptDescr a
+</span><span class="hs-identifier hs-var">Option</span></span><span>
+</span><span id="line-95"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'n'</span></span><span class="hs-special">]</span><span>
+</span><span id="line-96"></span><span>      </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;nonogram&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-97"></span><span>      </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe String -&gt; Options -&gt; Options)
+-&gt; String -&gt; ArgDescr (Options -&gt; Options)
+forall a. (Maybe String -&gt; a) -&gt; String -&gt; ArgDescr a
+</span><span class="hs-identifier hs-var">OptArg</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679095391"><span class="annot"><span class="annottext">Maybe String
+</span><a href="#local-6989586621679095391"><span class="hs-identifier hs-var">arg</span></a></span></span><span> </span><span id="local-6989586621679095392"><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095392"><span class="hs-identifier hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679095392"><span class="hs-identifier hs-var">opts</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><a href="Options.html#optMode"><span class="hs-identifier hs-var">optMode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Options.html#Nonogram"><span class="hs-identifier hs-type">Nonogram</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">fmap</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">fromString</span></span><span> </span><span class="annot"><a href="#local-6989586621679095391"><span class="hs-identifier hs-type">arg</span></a></span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;FILE&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-98"></span><span>      </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Run nonogram&quot;</span></span><span>
+</span><span id="line-99"></span><span>  </span><span class="hs-special">]</span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="hs-comment">-- | Parse command line arguments.</span><span>
+</span><span id="line-102"></span><span class="hs-comment">-- Returns the parsed command line options.</span><span>
+</span><span id="line-103"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- &gt;&gt;&gt; parseArgs [&quot;-i&quot;]</span><span>
+</span><span id="line-105"></span><span class="hs-comment">-- Interactive</span><span>
+</span><span id="line-106"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- &gt;&gt;&gt; parseArgs [&quot;-d&quot;]</span><span>
+</span><span id="line-108"></span><span class="hs-comment">-- Demo</span><span>
+</span><span id="line-109"></span><span class="annot"><a href="Options.html#parseArgs"><span class="hs-identifier hs-type">parseArgs</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="Options.html#Flag"><span class="hs-identifier hs-type">Flag</span></a></span><span>
+</span><span id="line-110"></span><span id="parseArgs"><span class="annot"><span class="annottext">parseArgs :: [String] -&gt; IO Flag
+</span><a href="Options.html#parseArgs"><span class="hs-identifier hs-var hs-var">parseArgs</span></a></span></span><span> </span><span id="local-6989586621679095393"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679095393"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-111"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679095394"><span class="annot"><span class="annottext">[Options -&gt; Options]
+</span><a href="#local-6989586621679095394"><span class="hs-identifier hs-var">opts</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[String]
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679095395"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679095395"><span class="hs-identifier hs-var">errs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ArgOrder (Options -&gt; Options)
+-&gt; [OptDescr (Options -&gt; Options)]
+-&gt; [String]
+-&gt; ([Options -&gt; Options], [String], [String])
+forall a.
+ArgOrder a -&gt; [OptDescr a] -&gt; [String] -&gt; ([a], [String], [String])
+</span><span class="hs-identifier hs-var">getOpt</span></span><span> </span><span class="annot"><span class="annottext">ArgOrder (Options -&gt; Options)
+forall a. ArgOrder a
+</span><span class="hs-identifier hs-var">Permute</span></span><span> </span><span class="annot"><span class="annottext">[OptDescr (Options -&gt; Options)]
+</span><a href="Options.html#options"><span class="hs-identifier hs-var">options</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679095393"><span class="hs-identifier hs-var">args</span></a></span><span>
+</span><span id="line-112"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">unless</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[String] -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">List.null</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679095395"><span class="hs-identifier hs-var">errs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-113"></span><span>    </span><span class="annot"><span class="annottext">(String -&gt; IO ()) -&gt; [String] -&gt; IO ()
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Foldable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m ()
+</span><span class="hs-identifier hs-var">mapM_</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679095395"><span class="hs-identifier hs-var">errs</span></a></span><span>
+</span><span id="line-114"></span><span>    </span><span class="annot"><span class="annottext">IO ()
+forall a. IO a
+</span><span class="hs-identifier hs-var">exitFailure</span></span><span>
+</span><span id="line-115"></span><span>  </span><span class="annot"><span class="annottext">Flag -&gt; IO Flag
+forall a. a -&gt; IO a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Flag -&gt; IO Flag) -&gt; Flag -&gt; IO Flag
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Options -&gt; Flag
+</span><a href="Options.html#optMode"><span class="hs-identifier hs-var">optMode</span></a></span><span> </span><span class="annot"><span class="annottext">(Options -&gt; Flag) -&gt; Options -&gt; Flag
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Options -&gt; (Options -&gt; Options) -&gt; Options)
+-&gt; Options -&gt; [Options -&gt; Options] -&gt; Options
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; [a] -&gt; b
+forall (t :: * -&gt; *) b a.
+Foldable t =&gt;
+(b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldl</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">((Options -&gt; Options) -&gt; Options -&gt; Options)
+-&gt; Options -&gt; (Options -&gt; Options) -&gt; Options
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="annot"><span class="annottext">(Options -&gt; Options) -&gt; Options -&gt; Options
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Options
+</span><a href="Options.html#defaultOptions"><span class="hs-identifier hs-var">defaultOptions</span></a></span><span> </span><span class="annot"><span class="annottext">[Options -&gt; Options]
+</span><a href="#local-6989586621679095394"><span class="hs-identifier hs-var">opts</span></a></span><span>
+</span><span id="line-116"></span></pre></body></html>

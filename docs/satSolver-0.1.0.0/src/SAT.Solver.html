@@ -1,0 +1,1056 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE ExplicitNamespaces #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE ImportQualifiedPost #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE LambdaCase #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-5"></span><span class="hs-pragma">{-# LANGUAGE Strict #-}</span><span>
+</span><span id="line-6"></span><span class="hs-pragma">{-# LANGUAGE NamedFieldPuns #-}</span><span>
+</span><span id="line-7"></span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Module      : SAT.Solver</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- Description : Exports the SAT solver module.</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- https://kienyew.github.io/CDCL-SAT-Solver-from-Scratch/Two-Watched-Literals.html</span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- https://www.cs.upc.edu/~oliveras/LAI/cdcl.pdf</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- simplify for now, don't use partials, don't worry about inefficiencies</span><span>
+</span><span id="line-14"></span><span class="hs-comment">-- that is what watch literals aim to solve</span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- or i could have my partial list of maybe clause, which i can index on the main clauses to get them</span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- but must compare that to watched literals when i implement that</span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- watched literals can also be checked for tautolofy</span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- should wathced literals be stored as the abs value or either ?</span><span>
+</span><span id="line-19"></span><span class="hs-comment">--</span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- so for now, when finding units just compare the main cnf against the assignment</span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- follow the tutorial (but with ig)</span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- experiment with the use of pure literals, not sure how they fit in with the watched literals (maybe tautlogies could be useful too)</span><span>
+</span><span id="line-23"></span><span class="hs-comment">--</span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- maybe worth dragging the cnf around in state to add learned clauses iwht little hassle</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- consider not using vsids for now, just bare minimum</span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- biggest issue is that i need the conflicting clause to learn from it, hence lack of partials</span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- another issue is if my solver is dramatically more inefficient due to partials lacking, how can i know if cdcl is working ??</span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- i suppose i check the learned clauses against other solvers</span><span>
+</span><span id="line-29"></span><span class="hs-comment">--</span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- simplify simplify simpify</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--</span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- issue with using partial assignment to check for isSat is learned clauses</span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- TODO: check luby restarts</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- TODO: check more preprocessing</span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- TODO: watch literals</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- TODO: dsa</span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SAT.Solver</span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="SAT.Solver.html#satisfiable"><span class="hs-identifier">satisfiable</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-42"></span><span>    </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier">Solutions</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-43"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#checkValue"><span class="hs-identifier">checkValue</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-44"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier">findFreeVariable</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-45"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#getSolutions"><span class="hs-identifier">getSolutions</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-46"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#bruteForce"><span class="hs-identifier">bruteForce</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-47"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#withUnitPropagation"><span class="hs-identifier">withUnitPropagation</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-48"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#withPureLiteralElimination"><span class="hs-identifier">withPureLiteralElimination</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-49"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#withPureLiteralAndUnitPropagation"><span class="hs-identifier">withPureLiteralAndUnitPropagation</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#pureLitOnlyAsPreprocess"><span class="hs-identifier">pureLitOnlyAsPreprocess</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-51"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#literalEvery100"><span class="hs-identifier">literalEvery100</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-52"></span><span>    </span><span class="annot"><a href="SAT.Solver.html#withTautologyElimination"><span class="hs-identifier">withTautologyElimination</span></a></span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-54"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Applicative</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;|&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.RWS.Strict</span></span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RWST</span></span><span>
+</span><span id="line-58"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.IntMap</span></span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">IntMap</span></span><span>
+</span><span id="line-59"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.IntSet</span></span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">IntSet</span></span><span>
+</span><span id="line-60"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">listToMaybe</span></span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.CNF.html"><span class="hs-identifier">SAT.CNF</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#toCNF"><span class="hs-identifier">toCNF</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier">Assignment</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier">CNF</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier">CNF</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier">Clause</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier">Literal</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.CNF.html#initAssignment"><span class="hs-identifier">initAssignment</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Expr.html"><span class="hs-identifier">SAT.Expr</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier">Expr</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Monad.html"><span class="hs-identifier">SAT.Monad</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier">SolverM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier">SolverState</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier">SolverState</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#assignment"><span class="hs-identifier">assignment</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#trail"><span class="hs-identifier">trail</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#implicationGraph"><span class="hs-identifier">implicationGraph</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#watchedLiterals"><span class="hs-identifier">watchedLiterals</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#decisionLevel"><span class="hs-identifier">decisionLevel</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#vsids"><span class="hs-identifier">vsids</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#clauseDB"><span class="hs-identifier">clauseDB</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#variables"><span class="hs-identifier">variables</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#propagationStack"><span class="hs-identifier">propagationStack</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#lubyCount"><span class="hs-identifier">lubyCount</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#lubyThreshold"><span class="hs-identifier">lubyThreshold</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#getAssignment"><span class="hs-identifier">getAssignment</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#ifM"><span class="hs-identifier">ifM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#learn"><span class="hs-identifier">learn</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#increaseDecisionLevel"><span class="hs-identifier">increaseDecisionLevel</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#initWatchedLiterals"><span class="hs-identifier">initWatchedLiterals</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-64"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Optimisers.html"><span class="hs-identifier">SAT.Optimisers</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Optimisers.html#assignM"><span class="hs-identifier">assignM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#collectLiterals"><span class="hs-identifier">collectLiterals</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#eliminateLiterals"><span class="hs-identifier">eliminateLiterals</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#substitute"><span class="hs-identifier">substitute</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#unitPropagate"><span class="hs-identifier">unitPropagate</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#unitPropagateM"><span class="hs-identifier">unitPropagateM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#analyseConflict"><span class="hs-identifier">analyseConflict</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#backtrack"><span class="hs-identifier">backtrack</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#addDecision"><span class="hs-identifier">addDecision</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#collectLiteralsToSet"><span class="hs-identifier">collectLiteralsToSet</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#decayM"><span class="hs-identifier">decayM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#adjustScoresM"><span class="hs-identifier">adjustScoresM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#pickLiteralM"><span class="hs-identifier">pickLiteralM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Optimisers.html#assign"><span class="hs-identifier">assign</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.VSIDS.html"><span class="hs-identifier">SAT.VSIDS</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.VSIDS.html#initVSIDS"><span class="hs-identifier">initVSIDS</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.RWS</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">get</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">modify</span></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.IntSet</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IntSet</span></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Preprocessing.html"><span class="hs-identifier">SAT.Preprocessing</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Preprocessing.html#preprocess"><span class="hs-identifier">preprocess</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Restarts.html"><span class="hs-identifier">SAT.Restarts</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Restarts.html#computeNextLubyThreshold"><span class="hs-identifier">computeNextLubyThreshold</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Restarts.html#increaseLubyCount"><span class="hs-identifier">increaseLubyCount</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="annot"><span class="hs-comment">-- | Initializes the solver state.</span></span><span>
+</span><span id="line-72"></span><span class="annot"><a href="SAT.Solver.html#initState"><span class="hs-identifier hs-type">initState</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier hs-type">SolverState</span></a></span><span>
+</span><span id="line-73"></span><span id="initState"><span class="annot"><span class="annottext">initState :: CNF -&gt; SolverState
+</span><a href="SAT.Solver.html#initState"><span class="hs-identifier hs-var hs-var">initState</span></a></span></span><span> </span><span id="local-6989586621679099969"><span class="annot"><span class="annottext">cnf :: CNF
+</span><a href="#local-6989586621679099969"><span class="hs-identifier hs-var">cnf</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679099970"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679099970"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-74"></span><span>  </span><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier hs-type">SolverState</span></a></span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">assignment :: Assignment
+</span><a href="SAT.Monad.html#assignment"><span class="hs-identifier hs-var">assignment</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Assignment
+</span><a href="SAT.CNF.html#initAssignment"><span class="hs-identifier hs-var">initAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">(Solutions -&gt; Assignment) -&gt; Solutions -&gt; Assignment
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Solutions
+</span><a href="SAT.Optimisers.html#collectLiteralsToSet"><span class="hs-identifier hs-var">collectLiteralsToSet</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679099969"><span class="hs-identifier hs-var">cnf</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-76"></span><span>      </span><span class="annot"><span class="annottext">trail :: Trail
+</span><a href="SAT.Monad.html#trail"><span class="hs-identifier hs-var">trail</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Trail
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span class="hs-special">,</span><span>
+</span><span id="line-77"></span><span>      </span><span class="annot"><span class="annottext">implicationGraph :: ImplicationGraph
+</span><a href="SAT.Monad.html#implicationGraph"><span class="hs-identifier hs-var">implicationGraph</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ImplicationGraph
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span class="hs-special">,</span><span>
+</span><span id="line-78"></span><span>      </span><span class="annot"><span class="annottext">watchedLiterals :: WatchedLiterals
+</span><a href="SAT.Monad.html#watchedLiterals"><span class="hs-identifier hs-var">watchedLiterals</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; WatchedLiterals
+</span><a href="SAT.Monad.html#initWatchedLiterals"><span class="hs-identifier hs-var">initWatchedLiterals</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679099969"><span class="hs-identifier hs-var">cnf</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-79"></span><span>      </span><span class="annot"><span class="annottext">decisionLevel :: Key
+</span><a href="SAT.Monad.html#decisionLevel"><span class="hs-identifier hs-var">decisionLevel</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span>
+</span><span id="line-80"></span><span>      </span><span class="annot"><span class="annottext">vsids :: VSIDS
+</span><a href="SAT.Monad.html#vsids"><span class="hs-identifier hs-var">vsids</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; VSIDS
+</span><a href="SAT.VSIDS.html#initVSIDS"><span class="hs-identifier hs-var">initVSIDS</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679099969"><span class="hs-identifier hs-var">cnf</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-81"></span><span>      </span><span class="annot"><span class="annottext">clauseDB :: [[Key]]
+</span><a href="SAT.Monad.html#clauseDB"><span class="hs-identifier hs-var">clauseDB</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679099970"><span class="hs-identifier hs-var">clauses</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-82"></span><span>      </span><span class="annot"><span class="annottext">variables :: Solutions
+</span><a href="SAT.Monad.html#variables"><span class="hs-identifier hs-var">variables</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Solutions
+</span><a href="SAT.Optimisers.html#collectLiteralsToSet"><span class="hs-identifier hs-var">collectLiteralsToSet</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679099969"><span class="hs-identifier hs-var">cnf</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-83"></span><span>      </span><span class="annot"><span class="annottext">propagationStack :: [Key]
+</span><a href="SAT.Monad.html#propagationStack"><span class="hs-identifier hs-var">propagationStack</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Key]
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span class="hs-special">,</span><span>
+</span><span id="line-84"></span><span>      </span><span class="annot"><span class="annottext">lubyCount :: Key
+</span><a href="SAT.Monad.html#lubyCount"><span class="hs-identifier hs-var">lubyCount</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span>
+</span><span id="line-85"></span><span>      </span><span class="annot"><span class="annottext">lubyThreshold :: Key
+</span><a href="SAT.Monad.html#lubyThreshold"><span class="hs-identifier hs-var">lubyThreshold</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-86"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span class="annot"><span class="hs-comment">-- | Finds a free variable at random.</span></span><span>
+</span><span id="line-89"></span><span class="annot"><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-type">findFreeVariable</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span>
+</span><span id="line-90"></span><span id="findFreeVariable"><span class="annot"><span class="annottext">findFreeVariable :: CNF -&gt; Maybe Key
+</span><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-var hs-var">findFreeVariable</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Key] -&gt; Maybe Key
+forall a. [a] -&gt; Maybe a
+</span><span class="hs-identifier hs-var">listToMaybe</span></span><span> </span><span class="annot"><span class="annottext">([Key] -&gt; Maybe Key) -&gt; (CNF -&gt; [Key]) -&gt; CNF -&gt; Maybe Key
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">CNF -&gt; [Key]
+</span><a href="SAT.Optimisers.html#collectLiterals"><span class="hs-identifier hs-var">collectLiterals</span></a></span><span>
+</span><span id="line-91"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#findFreeVariable"><span class="hs-pragma hs-type">findFreeVariable</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- | Checks if a value is in the solutions.</span><span>
+</span><span id="line-95"></span><span class="hs-comment">--</span><span>
+</span><span id="line-96"></span><span class="hs-comment">-- &gt;&gt;&gt; checkValue (IntSet.fromList [1, 2, 3]) 2</span><span>
+</span><span id="line-97"></span><span class="hs-comment">-- True</span><span>
+</span><span id="line-98"></span><span class="annot"><a href="SAT.Solver.html#checkValue"><span class="hs-identifier hs-type">checkValue</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-99"></span><span id="checkValue"><span class="annot"><span class="annottext">checkValue :: Solutions -&gt; Key -&gt; Bool
+</span><a href="SAT.Solver.html#checkValue"><span class="hs-identifier hs-var hs-var">checkValue</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Key -&gt; Solutions -&gt; Bool) -&gt; Solutions -&gt; Key -&gt; Bool
+forall a b c. (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+</span><span class="hs-identifier hs-var">flip</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Solutions -&gt; Bool
+</span><span class="hs-identifier hs-var">IntSet.member</span></span><span>
+</span><span id="line-100"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#checkValue"><span class="hs-pragma hs-type">checkValue</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="annot"><span class="hs-comment">-- | Converts an assignment to a set of solutions.</span></span><span>
+</span><span id="line-103"></span><span class="annot"><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-type">solutionsFromAssignment</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-104"></span><span id="solutionsFromAssignment"><span class="annot"><span class="annottext">solutionsFromAssignment :: Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var hs-var">solutionsFromAssignment</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+forall a. IntMap a -&gt; Solutions
+</span><span class="hs-identifier hs-var">IntMap.keysSet</span></span><span> </span><span class="annot"><span class="annottext">(Assignment -&gt; Solutions)
+-&gt; (Assignment -&gt; Assignment) -&gt; Assignment -&gt; Solutions
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Assignment -&gt; Assignment
+forall a. (a -&gt; Bool) -&gt; IntMap a -&gt; IntMap a
+</span><span class="hs-identifier hs-var">IntMap.filter</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-105"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-pragma hs-type">solutionsFromAssignment</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="annot"><a href="SAT.Solver.html#solutions"><span class="hs-identifier hs-type">solutions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-108"></span><span id="solutions"><span class="annot"><span class="annottext">solutions :: SolverM Solutions
+</span><a href="SAT.Solver.html#solutions"><span class="hs-identifier hs-var hs-var">solutions</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var">solutionsFromAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">(Assignment -&gt; Solutions)
+-&gt; RWST CNF SolverLog SolverState Maybe Assignment
+-&gt; SolverM Solutions
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe Assignment
+</span><a href="SAT.Monad.html#getAssignment"><span class="hs-identifier hs-var">getAssignment</span></a></span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="hs-comment">-- i think this is close, slightly wrong, but close ! (maybe)</span><span>
+</span><span id="line-111"></span><span class="annot"><a href="SAT.Solver.html#getSolutions"><span class="hs-identifier hs-type">getSolutions</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-112"></span><span id="getSolutions"><span class="annot"><span class="annottext">getSolutions :: CNF -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#getSolutions"><span class="hs-identifier hs-var hs-var">getSolutions</span></a></span></span><span> </span><span id="local-6989586621679099980"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679099980"><span class="hs-identifier hs-var">cnf'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-113"></span><span>  </span><span class="hs-special">(</span><span id="local-6989586621679099981"><span class="annot"><span class="annottext">Maybe Solutions
+</span><a href="#local-6989586621679099981"><span class="hs-identifier hs-var">solutions'</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">SolverLog
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+-&gt; CNF -&gt; SolverState -&gt; Maybe (Maybe Solutions, SolverLog)
+forall (m :: * -&gt; *) r w s a.
+Monad m =&gt;
+RWST r w s m a -&gt; r -&gt; s -&gt; m (a, w)
+</span><span class="hs-identifier hs-var">RWST.evalRWST</span></span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099983"><span class="hs-identifier hs-var">run</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679099980"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CNF -&gt; SolverState
+</span><a href="SAT.Solver.html#initState"><span class="hs-identifier hs-var">initState</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679099980"><span class="hs-identifier hs-var">cnf'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-114"></span><span>  </span><span class="annot"><span class="annottext">Maybe Solutions
+</span><a href="#local-6989586621679099981"><span class="hs-identifier hs-var">solutions'</span></a></span><span>
+</span><span id="line-115"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-116"></span><span>    </span><span class="annot"><a href="#local-6989586621679099983"><span class="hs-identifier hs-type">run</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>    </span><span id="local-6989586621679099983"><span class="annot"><span class="annottext">run :: RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099983"><span class="hs-identifier hs-var hs-var">run</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-118"></span><span>      </span><span class="annot"><span class="annottext">SolverM (Maybe [Key])
+</span><a href="SAT.Preprocessing.html#preprocess"><span class="hs-identifier hs-var">preprocess</span></a></span><span> </span><span class="annot"><span class="annottext">SolverM (Maybe [Key])
+-&gt; (Maybe [Key]
+    -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions))
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall a b.
+RWST CNF SolverLog SolverState Maybe a
+-&gt; (a -&gt; RWST CNF SolverLog SolverState Maybe b)
+-&gt; RWST CNF SolverLog SolverState Maybe b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-119"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="annottext">[Key]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall a. a -&gt; RWST CNF SolverLog SolverState Maybe a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span> </span><span class="hs-comment">-- failure from the start</span><span>
+</span><span id="line-120"></span><span>        </span><span class="annot"><span class="annottext">Maybe [Key]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099984"><span class="hs-identifier hs-var">solver</span></a></span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span>    </span><span class="annot"><a href="#local-6989586621679099984"><span class="hs-identifier hs-type">solver</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-123"></span><span>    </span><span id="local-6989586621679099984"><span class="annot"><span class="annottext">solver :: RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099984"><span class="hs-identifier hs-var hs-var">solver</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-124"></span><span>      </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe Bool
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall (m :: * -&gt; *) a. Monad m =&gt; m Bool -&gt; m a -&gt; m a -&gt; m a
+</span><a href="SAT.Monad.html#ifM"><span class="hs-identifier hs-var">ifM</span></a></span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe Bool
+</span><a href="SAT.Solver.html#allVariablesAssigned"><span class="hs-identifier hs-var">allVariablesAssigned</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Solutions -&gt; Maybe Solutions
+forall a. a -&gt; Maybe a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Solutions -&gt; Maybe Solutions)
+-&gt; SolverM Solutions
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">SolverM Solutions
+</span><a href="SAT.Solver.html#solutions"><span class="hs-identifier hs-var">solutions</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099986"><span class="hs-identifier hs-var">branch</span></a></span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span>    </span><span class="annot"><a href="#local-6989586621679099986"><span class="hs-identifier hs-type">branch</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-127"></span><span>    </span><span id="local-6989586621679099986"><span class="annot"><span class="annottext">branch :: RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099986"><span class="hs-identifier hs-var hs-var">branch</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SolverM Key
+</span><a href="SAT.Optimisers.html#pickLiteralM"><span class="hs-identifier hs-var">pickLiteralM</span></a></span><span> </span><span class="annot"><span class="annottext">SolverM Key
+-&gt; (Key -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions))
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall a b.
+RWST CNF SolverLog SolverState Maybe a
+-&gt; (a -&gt; RWST CNF SolverLog SolverState Maybe b)
+-&gt; RWST CNF SolverLog SolverState Maybe b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099987"><span class="hs-identifier hs-var">try</span></a></span><span>
+</span><span id="line-128"></span><span>
+</span><span id="line-129"></span><span>    </span><span class="annot"><a href="#local-6989586621679099987"><span class="hs-identifier hs-type">try</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>    </span><span id="local-6989586621679099987"><span class="annot"><span class="annottext">try :: Key -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099987"><span class="hs-identifier hs-var hs-var">try</span></a></span></span><span> </span><span id="local-6989586621679099988"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099988"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Key
+-&gt; Bool -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099989"><span class="hs-identifier hs-var">tryAssign</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099988"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall a.
+RWST CNF SolverLog SolverState Maybe a
+-&gt; RWST CNF SolverLog SolverState Maybe a
+-&gt; RWST CNF SolverLog SolverState Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key
+-&gt; Bool -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099989"><span class="hs-identifier hs-var">tryAssign</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099988"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span>    </span><span class="annot"><a href="#local-6989586621679099989"><span class="hs-identifier hs-type">tryAssign</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-133"></span><span>    </span><span id="local-6989586621679099989"><span class="annot"><span class="annottext">tryAssign :: Key
+-&gt; Bool -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099989"><span class="hs-identifier hs-var hs-var">tryAssign</span></a></span></span><span> </span><span id="local-6989586621679099990"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099990"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679099991"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679099991"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-134"></span><span>      </span><span class="annot"><span class="annottext">SolverM ()
+</span><a href="SAT.Monad.html#increaseDecisionLevel"><span class="hs-identifier hs-var">increaseDecisionLevel</span></a></span><span>
+</span><span id="line-135"></span><span>      </span><span class="annot"><span class="annottext">Key -&gt; SolverM ()
+</span><a href="SAT.Optimisers.html#addDecision"><span class="hs-identifier hs-var">addDecision</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099990"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-136"></span><span>      </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; SolverM ()
+</span><a href="SAT.Optimisers.html#assignM"><span class="hs-identifier hs-var">assignM</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099990"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679099991"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-137"></span><span>      </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099992"><span class="hs-identifier hs-var">propagate</span></a></span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span>    </span><span class="annot"><a href="#local-6989586621679099992"><span class="hs-identifier hs-type">propagate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-140"></span><span>    </span><span id="local-6989586621679099992"><span class="annot"><span class="annottext">propagate :: RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099992"><span class="hs-identifier hs-var hs-var">propagate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-141"></span><span>      </span><span class="annot"><span class="annottext">SolverM (Maybe [Key])
+</span><a href="SAT.Optimisers.html#unitPropagateM"><span class="hs-identifier hs-var">unitPropagateM</span></a></span><span> </span><span class="annot"><span class="annottext">SolverM (Maybe [Key])
+-&gt; (Maybe [Key]
+    -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions))
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall a b.
+RWST CNF SolverLog SolverState Maybe a
+-&gt; (a -&gt; RWST CNF SolverLog SolverState Maybe b)
+-&gt; RWST CNF SolverLog SolverState Maybe b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-glyph">case</span><span>
+</span><span id="line-142"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679099993"><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679099993"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[Key] -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099994"><span class="hs-identifier hs-var">handleConflict</span></a></span><span> </span><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679099993"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-143"></span><span>        </span><span class="annot"><span class="annottext">Maybe [Key]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>  </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099984"><span class="hs-identifier hs-var">solver</span></a></span><span>
+</span><span id="line-144"></span><span>
+</span><span id="line-145"></span><span>    </span><span class="annot"><a href="#local-6989586621679099994"><span class="hs-identifier hs-type">handleConflict</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-146"></span><span>    </span><span id="local-6989586621679099994"><span class="annot"><span class="annottext">handleConflict :: [Key] -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099994"><span class="hs-identifier hs-var hs-var">handleConflict</span></a></span></span><span> </span><span id="local-6989586621679099995"><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679099995"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span> </span><span>
+</span><span id="line-147"></span><span>      </span><span class="hs-special">(</span><span id="local-6989586621679099996"><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679099996"><span class="hs-identifier hs-var">clause</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099997"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099997"><span class="hs-identifier hs-var">dl</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Key] -&gt; SolverM ([Key], Key)
+</span><a href="SAT.Optimisers.html#analyseConflict"><span class="hs-identifier hs-var">analyseConflict</span></a></span><span> </span><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679099995"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-148"></span><span>      </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099997"><span class="hs-identifier hs-var">dl</span></a></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall a. a -&gt; RWST CNF SolverLog SolverState Maybe a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-149"></span><span>        </span><span class="annot"><span class="annottext">SolverM ()
+</span><a href="SAT.Optimisers.html#decayM"><span class="hs-identifier hs-var">decayM</span></a></span><span>
+</span><span id="line-150"></span><span>        </span><span class="annot"><span class="annottext">[Key] -&gt; SolverM ()
+</span><a href="SAT.Optimisers.html#adjustScoresM"><span class="hs-identifier hs-var">adjustScoresM</span></a></span><span> </span><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679099996"><span class="hs-identifier hs-var">clause</span></a></span><span>
+</span><span id="line-151"></span><span>        </span><span class="annot"><span class="annottext">[Key] -&gt; SolverM ()
+</span><a href="SAT.Monad.html#learn"><span class="hs-identifier hs-var">learn</span></a></span><span> </span><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679099996"><span class="hs-identifier hs-var">clause</span></a></span><span>
+</span><span id="line-152"></span><span>        </span><span class="annot"><span class="annottext">SolverM ()
+</span><a href="SAT.Restarts.html#increaseLubyCount"><span class="hs-identifier hs-var">increaseLubyCount</span></a></span><span>
+</span><span id="line-153"></span><span>        </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe Bool
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall (m :: * -&gt; *) a. Monad m =&gt; m Bool -&gt; m a -&gt; m a -&gt; m a
+</span><a href="SAT.Monad.html#ifM"><span class="hs-identifier hs-var">ifM</span></a></span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe Bool
+</span><a href="#local-6989586621679099999"><span class="hs-identifier hs-var">shouldRestart</span></a></span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679100000"><span class="hs-identifier hs-var">restart</span></a></span><span> </span><span class="annot"><span class="annottext">(RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+ -&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions))
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+-&gt; RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span> </span><span>
+</span><span id="line-154"></span><span>          </span><span class="annot"><span class="annottext">Key -&gt; SolverM ()
+</span><a href="SAT.Optimisers.html#backtrack"><span class="hs-identifier hs-var">backtrack</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679099997"><span class="hs-identifier hs-var">dl</span></a></span><span>
+</span><span id="line-155"></span><span>          </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099984"><span class="hs-identifier hs-var">solver</span></a></span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span>
+</span><span id="line-158"></span><span>    </span><span class="annot"><a href="#local-6989586621679099999"><span class="hs-identifier hs-type">shouldRestart</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-159"></span><span>    </span><span id="local-6989586621679099999"><span class="annot"><span class="annottext">shouldRestart :: RWST CNF SolverLog SolverState Maybe Bool
+</span><a href="#local-6989586621679099999"><span class="hs-identifier hs-var hs-var">shouldRestart</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-160"></span><span>      </span><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier hs-type">SolverState</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span id="local-6989586621679100001"><span class="annot"><span class="annottext">Key
+lubyCount :: SolverState -&gt; Key
+lubyCount :: Key
+</span><a href="SAT.Monad.html#lubyCount"><span class="hs-identifier hs-var hs-var">lubyCount</span></a></span></span><span> </span><span class="hs-special">}</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe SolverState
+forall s (m :: * -&gt; *). MonadState s m =&gt; m s
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-161"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679100004"><span class="annot"><span class="annottext">nextThreshold :: Key
+</span><a href="#local-6989586621679100004"><span class="hs-identifier hs-var hs-var">nextThreshold</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key
+</span><a href="SAT.Restarts.html#computeNextLubyThreshold"><span class="hs-identifier hs-var">computeNextLubyThreshold</span></a></span><span> </span><span class="annot"><span class="annottext">(Key -&gt; Key) -&gt; Key -&gt; Key
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100001"><span class="hs-identifier hs-var">lubyCount</span></a></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Key
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-162"></span><span>      </span><span class="annot"><span class="annottext">Bool -&gt; RWST CNF SolverLog SolverState Maybe Bool
+forall a. a -&gt; RWST CNF SolverLog SolverState Maybe a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; RWST CNF SolverLog SolverState Maybe Bool)
+-&gt; Bool -&gt; RWST CNF SolverLog SolverState Maybe Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100001"><span class="hs-identifier hs-var">lubyCount</span></a></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100004"><span class="hs-identifier hs-var">nextThreshold</span></a></span><span>
+</span><span id="line-163"></span><span>
+</span><span id="line-164"></span><span>    </span><span class="annot"><a href="#local-6989586621679100000"><span class="hs-identifier hs-type">restart</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-165"></span><span>    </span><span id="local-6989586621679100000"><span class="annot"><span class="annottext">restart :: RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679100000"><span class="hs-identifier hs-var hs-var">restart</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-166"></span><span>      </span><span class="annot"><span class="annottext">(SolverState -&gt; SolverState) -&gt; SolverM ()
+forall s (m :: * -&gt; *). MonadState s m =&gt; (s -&gt; s) -&gt; m ()
+</span><span class="hs-identifier hs-var">modify</span></span><span> </span><span class="annot"><span class="annottext">((SolverState -&gt; SolverState) -&gt; SolverM ())
+-&gt; (SolverState -&gt; SolverState) -&gt; SolverM ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679100006"><span class="annot"><span class="annottext">SolverState
+</span><a href="#local-6989586621679100006"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SolverState
+</span><a href="#local-6989586621679100006"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="SAT.Monad.html#assignment"><span class="hs-identifier hs-var">assignment</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">mempty</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#decisionLevel"><span class="hs-identifier hs-var">decisionLevel</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#trail"><span class="hs-identifier hs-var">trail</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">mempty</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#implicationGraph"><span class="hs-identifier hs-var">implicationGraph</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">mempty</span></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-167"></span><span>      </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe (Maybe Solutions)
+</span><a href="#local-6989586621679099984"><span class="hs-identifier hs-var">solver</span></a></span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#getSolutions"><span class="hs-pragma hs-type">getSolutions</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-170"></span><span>
+</span><span id="line-171"></span><span class="annot"><span class="hs-comment">-- | Checks if a CNF is satisfiable.</span></span><span>
+</span><span id="line-172"></span><span class="annot"><a href="SAT.Solver.html#satisfiable"><span class="hs-identifier hs-type">satisfiable</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-173"></span><span id="satisfiable"><span class="annot"><span class="annottext">satisfiable :: CNF -&gt; Bool
+</span><a href="SAT.Solver.html#satisfiable"><span class="hs-identifier hs-var hs-var">satisfiable</span></a></span></span><span> </span><span id="local-6989586621679100007"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100007"><span class="hs-identifier hs-var">cnf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#getSolutions"><span class="hs-identifier hs-var">getSolutions</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100007"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-174"></span><span>  </span><span class="annot"><span class="annottext">Maybe Solutions
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-175"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="annottext">Solutions
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-176"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#satisfiable"><span class="hs-pragma hs-type">satisfiable</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-177"></span><span>
+</span><span id="line-178"></span><span class="annot"><a href="SAT.Solver.html#bruteForce"><span class="hs-identifier hs-type">bruteForce</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-179"></span><span id="bruteForce"><span class="annot"><span class="annottext">bruteForce :: Expr Key -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#bruteForce"><span class="hs-identifier hs-var hs-var">bruteForce</span></a></span></span><span> </span><span id="local-6989586621679100008"><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100008"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679100009"><span class="annot"><span class="annottext">cnf :: CNF
+</span><a href="#local-6989586621679100009"><span class="hs-identifier hs-var hs-var">cnf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Key -&gt; CNF
+</span><a href="SAT.CNF.html#toCNF"><span class="hs-identifier hs-var">toCNF</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100008"><span class="hs-identifier hs-var">expr</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100010"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100009"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span>
+</span><span id="line-180"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-181"></span><span>    </span><span class="annot"><a href="#local-6989586621679100010"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-182"></span><span>    </span><span id="local-6989586621679100010"><span class="annot"><span class="annottext">go :: CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100010"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679100011"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100011"><span class="hs-identifier hs-var">cnf</span></a></span></span><span> </span><span id="local-6989586621679100012"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100012"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Maybe Key
+</span><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-var">findFreeVariable</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100011"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-183"></span><span>      </span><span class="annot"><span class="annottext">Maybe Key
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Bool
+</span><a href="#local-6989586621679100013"><span class="hs-identifier hs-var">isSat</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100011"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Maybe Solutions
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var">solutionsFromAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100012"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-184"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679100014"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100014"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100015"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100014"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions -&gt; Maybe Solutions -&gt; Maybe Solutions
+forall a. Maybe a -&gt; Maybe a -&gt; Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100015"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100014"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-185"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-186"></span><span>        </span><span class="annot"><a href="#local-6989586621679100015"><span class="hs-identifier hs-type">try</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-187"></span><span>        </span><span id="local-6989586621679100015"><span class="annot"><span class="annottext">try :: Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100015"><span class="hs-identifier hs-var hs-var">try</span></a></span></span><span> </span><span id="local-6989586621679100016"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100016"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679100017"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100017"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100010"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; CNF -&gt; CNF
+</span><a href="SAT.Optimisers.html#substitute"><span class="hs-identifier hs-var">substitute</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100016"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100017"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100011"><span class="hs-identifier hs-var">cnf</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Key -&gt; Bool -&gt; Assignment
+</span><a href="SAT.Optimisers.html#assign"><span class="hs-identifier hs-var">assign</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100012"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100016"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100017"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-188"></span><span>
+</span><span id="line-189"></span><span>        </span><span class="annot"><a href="#local-6989586621679100013"><span class="hs-identifier hs-type">isSat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-190"></span><span>        </span><span id="local-6989586621679100013"><span class="annot"><span class="annottext">isSat :: CNF -&gt; Bool
+</span><a href="#local-6989586621679100013"><span class="hs-identifier hs-var hs-var">isSat</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679100018"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100018"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]] -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100018"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-191"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#bruteForce"><span class="hs-pragma hs-type">bruteForce</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-192"></span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span class="annot"><a href="SAT.Solver.html#withUnitPropagation"><span class="hs-identifier hs-type">withUnitPropagation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-195"></span><span id="withUnitPropagation"><span class="annot"><span class="annottext">withUnitPropagation :: Expr Key -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#withUnitPropagation"><span class="hs-identifier hs-var hs-var">withUnitPropagation</span></a></span></span><span> </span><span id="local-6989586621679100020"><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100020"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679100021"><span class="annot"><span class="annottext">cnf :: CNF
+</span><a href="#local-6989586621679100021"><span class="hs-identifier hs-var hs-var">cnf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Key -&gt; CNF
+</span><a href="SAT.CNF.html#toCNF"><span class="hs-identifier hs-var">toCNF</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100020"><span class="hs-identifier hs-var">expr</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100022"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100021"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span>
+</span><span id="line-196"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-197"></span><span>    </span><span class="annot"><a href="#local-6989586621679100022"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-198"></span><span>    </span><span id="local-6989586621679100022"><span class="annot"><span class="annottext">go :: CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100022"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679100023"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100023"><span class="hs-identifier hs-var">cnf</span></a></span></span><span> </span><span id="local-6989586621679100024"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100024"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Maybe Key
+</span><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-var">findFreeVariable</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100025"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-199"></span><span>      </span><span class="annot"><span class="annottext">Maybe Key
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Bool
+</span><a href="#local-6989586621679100026"><span class="hs-identifier hs-var">isSat</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100025"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Maybe Solutions
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var">solutionsFromAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100027"><span class="hs-identifier hs-var">m'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-200"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679100028"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100028"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100029"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100028"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions -&gt; Maybe Solutions -&gt; Maybe Solutions
+forall a. Maybe a -&gt; Maybe a -&gt; Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100029"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100028"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-201"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-202"></span><span>        </span><span class="annot"><a href="#local-6989586621679100029"><span class="hs-identifier hs-type">try</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-203"></span><span>        </span><span id="local-6989586621679100029"><span class="annot"><span class="annottext">try :: Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100029"><span class="hs-identifier hs-var hs-var">try</span></a></span></span><span> </span><span id="local-6989586621679100030"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100030"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679100031"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100031"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100022"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; CNF -&gt; CNF
+</span><a href="SAT.Optimisers.html#substitute"><span class="hs-identifier hs-var">substitute</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100030"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100031"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100025"><span class="hs-identifier hs-var">cnf'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Key -&gt; Bool -&gt; Assignment
+</span><a href="SAT.Optimisers.html#assign"><span class="hs-identifier hs-var">assign</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100027"><span class="hs-identifier hs-var">m'</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100030"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100031"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span>        </span><span class="annot"><a href="#local-6989586621679100026"><span class="hs-identifier hs-type">isSat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-206"></span><span>        </span><span id="local-6989586621679100026"><span class="annot"><span class="annottext">isSat :: CNF -&gt; Bool
+</span><a href="#local-6989586621679100026"><span class="hs-identifier hs-var hs-var">isSat</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679100032"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100032"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]] -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100032"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-207"></span><span>
+</span><span id="line-208"></span><span>        </span><span class="annot"><a href="#local-6989586621679100025"><span class="hs-identifier hs-type">cnf'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span>
+</span><span id="line-209"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679100027"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100027"><span class="hs-identifier hs-var">m'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100025"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100025"><span class="hs-identifier hs-var">cnf'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Key -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#unitPropagate"><span class="hs-identifier hs-var">unitPropagate</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100023"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100024"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-210"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#withUnitPropagation"><span class="hs-pragma hs-type">withUnitPropagation</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-211"></span><span>
+</span><span id="line-212"></span><span class="annot"><a href="SAT.Solver.html#withPureLiteralElimination"><span class="hs-identifier hs-type">withPureLiteralElimination</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-213"></span><span id="withPureLiteralElimination"><span class="annot"><span class="annottext">withPureLiteralElimination :: Expr Key -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#withPureLiteralElimination"><span class="hs-identifier hs-var hs-var">withPureLiteralElimination</span></a></span></span><span> </span><span id="local-6989586621679100033"><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100033"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679100034"><span class="annot"><span class="annottext">cnf :: CNF
+</span><a href="#local-6989586621679100034"><span class="hs-identifier hs-var hs-var">cnf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Key -&gt; CNF
+</span><a href="SAT.CNF.html#toCNF"><span class="hs-identifier hs-var">toCNF</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100033"><span class="hs-identifier hs-var">expr</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100035"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100034"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span>
+</span><span id="line-214"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-215"></span><span>    </span><span class="annot"><a href="#local-6989586621679100035"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-216"></span><span>    </span><span id="local-6989586621679100035"><span class="annot"><span class="annottext">go :: CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100035"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679100036"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100036"><span class="hs-identifier hs-var">cnf</span></a></span></span><span> </span><span id="local-6989586621679100037"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100037"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Maybe Key
+</span><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-var">findFreeVariable</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100038"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-217"></span><span>      </span><span class="annot"><span class="annottext">Maybe Key
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Bool
+</span><a href="#local-6989586621679100039"><span class="hs-identifier hs-var">isSat</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100038"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Maybe Solutions
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var">solutionsFromAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100040"><span class="hs-identifier hs-var">m'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-218"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679100041"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100041"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100042"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100041"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions -&gt; Maybe Solutions -&gt; Maybe Solutions
+forall a. Maybe a -&gt; Maybe a -&gt; Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100042"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100041"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-219"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-220"></span><span>        </span><span class="annot"><a href="#local-6989586621679100042"><span class="hs-identifier hs-type">try</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-221"></span><span>        </span><span id="local-6989586621679100042"><span class="annot"><span class="annottext">try :: Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100042"><span class="hs-identifier hs-var hs-var">try</span></a></span></span><span> </span><span id="local-6989586621679100043"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100043"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679100044"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100044"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100035"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; CNF -&gt; CNF
+</span><a href="SAT.Optimisers.html#substitute"><span class="hs-identifier hs-var">substitute</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100043"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100044"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100038"><span class="hs-identifier hs-var">cnf'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Key -&gt; Bool -&gt; Assignment
+</span><a href="SAT.Optimisers.html#assign"><span class="hs-identifier hs-var">assign</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100040"><span class="hs-identifier hs-var">m'</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100043"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100044"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-222"></span><span>
+</span><span id="line-223"></span><span>        </span><span class="annot"><a href="#local-6989586621679100039"><span class="hs-identifier hs-type">isSat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-224"></span><span>        </span><span id="local-6989586621679100039"><span class="annot"><span class="annottext">isSat :: CNF -&gt; Bool
+</span><a href="#local-6989586621679100039"><span class="hs-identifier hs-var hs-var">isSat</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679100045"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100045"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]] -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100045"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-225"></span><span>
+</span><span id="line-226"></span><span>        </span><span class="annot"><a href="#local-6989586621679100038"><span class="hs-identifier hs-type">cnf'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span>
+</span><span id="line-227"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679100040"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100040"><span class="hs-identifier hs-var">m'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100038"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100038"><span class="hs-identifier hs-var">cnf'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#eliminateLiterals"><span class="hs-identifier hs-var">eliminateLiterals</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100036"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100037"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-228"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#withPureLiteralElimination"><span class="hs-pragma hs-type">withPureLiteralElimination</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-229"></span><span>
+</span><span id="line-230"></span><span class="annot"><a href="SAT.Solver.html#withPureLiteralAndUnitPropagation"><span class="hs-identifier hs-type">withPureLiteralAndUnitPropagation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-231"></span><span id="withPureLiteralAndUnitPropagation"><span class="annot"><span class="annottext">withPureLiteralAndUnitPropagation :: Expr Key -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#withPureLiteralAndUnitPropagation"><span class="hs-identifier hs-var hs-var">withPureLiteralAndUnitPropagation</span></a></span></span><span> </span><span id="local-6989586621679100046"><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100046"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679100047"><span class="annot"><span class="annottext">cnf :: CNF
+</span><a href="#local-6989586621679100047"><span class="hs-identifier hs-var hs-var">cnf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Key -&gt; CNF
+</span><a href="SAT.CNF.html#toCNF"><span class="hs-identifier hs-var">toCNF</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100046"><span class="hs-identifier hs-var">expr</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100048"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100047"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span>
+</span><span id="line-232"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-233"></span><span>    </span><span class="annot"><a href="#local-6989586621679100048"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-234"></span><span>    </span><span id="local-6989586621679100048"><span class="annot"><span class="annottext">go :: CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100048"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679100049"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100049"><span class="hs-identifier hs-var">cnf</span></a></span></span><span> </span><span id="local-6989586621679100050"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100050"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Maybe Key
+</span><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-var">findFreeVariable</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100051"><span class="hs-identifier hs-var">cnf''</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-235"></span><span>      </span><span class="annot"><span class="annottext">Maybe Key
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Bool
+</span><a href="#local-6989586621679100052"><span class="hs-identifier hs-var">isSat</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100051"><span class="hs-identifier hs-var">cnf''</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Maybe Solutions
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var">solutionsFromAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100053"><span class="hs-identifier hs-var">m''</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-236"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679100054"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100054"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100055"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100054"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions -&gt; Maybe Solutions -&gt; Maybe Solutions
+forall a. Maybe a -&gt; Maybe a -&gt; Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100055"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100054"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-237"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-238"></span><span>        </span><span class="annot"><a href="#local-6989586621679100055"><span class="hs-identifier hs-type">try</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-239"></span><span>        </span><span id="local-6989586621679100055"><span class="annot"><span class="annottext">try :: Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100055"><span class="hs-identifier hs-var hs-var">try</span></a></span></span><span> </span><span id="local-6989586621679100056"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100056"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679100057"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100057"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100048"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; CNF -&gt; CNF
+</span><a href="SAT.Optimisers.html#substitute"><span class="hs-identifier hs-var">substitute</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100056"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100057"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100051"><span class="hs-identifier hs-var">cnf''</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Key -&gt; Bool -&gt; Assignment
+</span><a href="SAT.Optimisers.html#assign"><span class="hs-identifier hs-var">assign</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100053"><span class="hs-identifier hs-var">m''</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100056"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100057"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-240"></span><span>
+</span><span id="line-241"></span><span>        </span><span class="annot"><a href="#local-6989586621679100052"><span class="hs-identifier hs-type">isSat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-242"></span><span>        </span><span id="local-6989586621679100052"><span class="annot"><span class="annottext">isSat :: CNF -&gt; Bool
+</span><a href="#local-6989586621679100052"><span class="hs-identifier hs-var hs-var">isSat</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679100058"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100058"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]] -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100058"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-243"></span><span>
+</span><span id="line-244"></span><span>        </span><span class="annot"><a href="#local-6989586621679100059"><span class="hs-identifier hs-type">cnf'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span>
+</span><span id="line-245"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679100060"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100060"><span class="hs-identifier hs-var">m'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100059"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100059"><span class="hs-identifier hs-var">cnf'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#eliminateLiterals"><span class="hs-identifier hs-var">eliminateLiterals</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100049"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100050"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-246"></span><span>
+</span><span id="line-247"></span><span>        </span><span class="annot"><a href="#local-6989586621679100051"><span class="hs-identifier hs-type">cnf''</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span>
+</span><span id="line-248"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679100053"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100053"><span class="hs-identifier hs-var">m''</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100051"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100051"><span class="hs-identifier hs-var">cnf''</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Key -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#unitPropagate"><span class="hs-identifier hs-var">unitPropagate</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100059"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100060"><span class="hs-identifier hs-var">m'</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-249"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#withPureLiteralAndUnitPropagation"><span class="hs-pragma hs-type">withPureLiteralAndUnitPropagation</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-250"></span><span>
+</span><span id="line-251"></span><span class="annot"><a href="SAT.Solver.html#pureLitOnlyAsPreprocess"><span class="hs-identifier hs-type">pureLitOnlyAsPreprocess</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-252"></span><span id="pureLitOnlyAsPreprocess"><span class="annot"><span class="annottext">pureLitOnlyAsPreprocess :: Expr Key -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#pureLitOnlyAsPreprocess"><span class="hs-identifier hs-var hs-var">pureLitOnlyAsPreprocess</span></a></span></span><span> </span><span id="local-6989586621679100061"><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100061"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100062"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100063"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100064"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-253"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-254"></span><span>    </span><span id="local-6989586621679100065"><span class="annot"><span class="annottext">cnf :: CNF
+</span><a href="#local-6989586621679100065"><span class="hs-identifier hs-var hs-var">cnf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Key -&gt; CNF
+</span><a href="SAT.CNF.html#toCNF"><span class="hs-identifier hs-var">toCNF</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100061"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-255"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679100064"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100064"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100063"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100063"><span class="hs-identifier hs-var">cnf'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#eliminateLiterals"><span class="hs-identifier hs-var">eliminateLiterals</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100065"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span>
+</span><span id="line-256"></span><span>
+</span><span id="line-257"></span><span>    </span><span class="annot"><a href="#local-6989586621679100062"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-258"></span><span>    </span><span id="local-6989586621679100062"><span class="annot"><span class="annottext">go :: CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100062"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679100067"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100067"><span class="hs-identifier hs-var">cnf''</span></a></span></span><span> </span><span id="local-6989586621679100068"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100068"><span class="hs-identifier hs-var">m'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Maybe Key
+</span><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-var">findFreeVariable</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100067"><span class="hs-identifier hs-var">cnf''</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-259"></span><span>      </span><span class="annot"><span class="annottext">Maybe Key
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Bool
+</span><a href="#local-6989586621679100069"><span class="hs-identifier hs-var">isSat</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100067"><span class="hs-identifier hs-var">cnf''</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Maybe Solutions
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var">solutionsFromAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100070"><span class="hs-identifier hs-var">m''</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-260"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679100071"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100071"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100072"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100071"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions -&gt; Maybe Solutions -&gt; Maybe Solutions
+forall a. Maybe a -&gt; Maybe a -&gt; Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100072"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100071"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-261"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-262"></span><span>        </span><span class="annot"><a href="#local-6989586621679100072"><span class="hs-identifier hs-type">try</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-263"></span><span>        </span><span id="local-6989586621679100072"><span class="annot"><span class="annottext">try :: Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100072"><span class="hs-identifier hs-var hs-var">try</span></a></span></span><span> </span><span id="local-6989586621679100073"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100073"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679100074"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100074"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100062"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; CNF -&gt; CNF
+</span><a href="SAT.Optimisers.html#substitute"><span class="hs-identifier hs-var">substitute</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100073"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100074"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100075"><span class="hs-identifier hs-var">cnf'''</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Key -&gt; Bool -&gt; Assignment
+</span><a href="SAT.Optimisers.html#assign"><span class="hs-identifier hs-var">assign</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100070"><span class="hs-identifier hs-var">m''</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100073"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100074"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-264"></span><span>
+</span><span id="line-265"></span><span>        </span><span class="annot"><a href="#local-6989586621679100069"><span class="hs-identifier hs-type">isSat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-266"></span><span>        </span><span id="local-6989586621679100069"><span class="annot"><span class="annottext">isSat :: CNF -&gt; Bool
+</span><a href="#local-6989586621679100069"><span class="hs-identifier hs-var hs-var">isSat</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679100076"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100076"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]] -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100076"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-267"></span><span>
+</span><span id="line-268"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679100070"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100070"><span class="hs-identifier hs-var">m''</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100075"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100075"><span class="hs-identifier hs-var">cnf'''</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Key -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#unitPropagate"><span class="hs-identifier hs-var">unitPropagate</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100067"><span class="hs-identifier hs-var">cnf''</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100068"><span class="hs-identifier hs-var">m'</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-269"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#pureLitOnlyAsPreprocess"><span class="hs-pragma hs-type">pureLitOnlyAsPreprocess</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-270"></span><span>
+</span><span id="line-271"></span><span class="annot"><a href="SAT.Solver.html#literalEvery100"><span class="hs-identifier hs-type">literalEvery100</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-272"></span><span id="literalEvery100"><span class="annot"><span class="annottext">literalEvery100 :: Expr Key -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#literalEvery100"><span class="hs-identifier hs-var hs-var">literalEvery100</span></a></span></span><span> </span><span id="local-6989586621679100077"><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100077"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Key -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100078"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100079"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100080"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-273"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-274"></span><span>    </span><span id="local-6989586621679100081"><span class="annot"><span class="annottext">cnf :: CNF
+</span><a href="#local-6989586621679100081"><span class="hs-identifier hs-var hs-var">cnf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Key -&gt; CNF
+</span><a href="SAT.CNF.html#toCNF"><span class="hs-identifier hs-var">toCNF</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100077"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-275"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679100080"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100080"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100079"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100079"><span class="hs-identifier hs-var">cnf'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#eliminateLiterals"><span class="hs-identifier hs-var">eliminateLiterals</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100081"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span>
+</span><span id="line-276"></span><span>
+</span><span id="line-277"></span><span>    </span><span class="annot"><a href="#local-6989586621679100078"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-278"></span><span>    </span><span id="local-6989586621679100078"><span class="annot"><span class="annottext">go :: CNF -&gt; Assignment -&gt; Key -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100078"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679100083"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100083"><span class="hs-identifier hs-var">cnf''</span></a></span></span><span> </span><span id="local-6989586621679100084"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100084"><span class="hs-identifier hs-var">m'</span></a></span></span><span> </span><span id="local-6989586621679100085"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100085"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Maybe Key
+</span><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-var">findFreeVariable</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100086"><span class="hs-identifier hs-var">cnf''''</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-279"></span><span>      </span><span class="annot"><span class="annottext">Maybe Key
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Bool
+</span><a href="#local-6989586621679100087"><span class="hs-identifier hs-var">isSat</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100086"><span class="hs-identifier hs-var">cnf''''</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Maybe Solutions
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var">solutionsFromAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100088"><span class="hs-identifier hs-var">m'''</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-280"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679100089"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100089"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100090"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100089"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions -&gt; Maybe Solutions -&gt; Maybe Solutions
+forall a. Maybe a -&gt; Maybe a -&gt; Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100090"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100089"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-281"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-282"></span><span>        </span><span class="annot"><a href="#local-6989586621679100090"><span class="hs-identifier hs-type">try</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-283"></span><span>        </span><span id="local-6989586621679100090"><span class="annot"><span class="annottext">try :: Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100090"><span class="hs-identifier hs-var hs-var">try</span></a></span></span><span> </span><span id="local-6989586621679100091"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100091"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679100092"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100092"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Key -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100078"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; CNF -&gt; CNF
+</span><a href="SAT.Optimisers.html#substitute"><span class="hs-identifier hs-var">substitute</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100091"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100092"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100086"><span class="hs-identifier hs-var">cnf''''</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Key -&gt; Bool -&gt; Assignment
+</span><a href="SAT.Optimisers.html#assign"><span class="hs-identifier hs-var">assign</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100093"><span class="hs-identifier hs-var">m''</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100091"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100092"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100085"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Key
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-284"></span><span>
+</span><span id="line-285"></span><span>        </span><span class="annot"><a href="#local-6989586621679100087"><span class="hs-identifier hs-type">isSat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-286"></span><span>        </span><span id="local-6989586621679100087"><span class="annot"><span class="annottext">isSat :: CNF -&gt; Bool
+</span><a href="#local-6989586621679100087"><span class="hs-identifier hs-var hs-var">isSat</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679100094"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100094"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]] -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100094"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-287"></span><span>
+</span><span id="line-288"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679100093"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100093"><span class="hs-identifier hs-var">m''</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100095"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100095"><span class="hs-identifier hs-var">cnf'''</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Key -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#unitPropagate"><span class="hs-identifier hs-var">unitPropagate</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100083"><span class="hs-identifier hs-var">cnf''</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100084"><span class="hs-identifier hs-var">m'</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-289"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679100088"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100088"><span class="hs-identifier hs-var">m'''</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100086"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100086"><span class="hs-identifier hs-var">cnf''''</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100085"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Key
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`mod`</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">100</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#eliminateLiterals"><span class="hs-identifier hs-var">eliminateLiterals</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100095"><span class="hs-identifier hs-var">cnf'''</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100093"><span class="hs-identifier hs-var">m''</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100093"><span class="hs-identifier hs-var">m''</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100095"><span class="hs-identifier hs-var">cnf'''</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-290"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#literalEvery100"><span class="hs-pragma hs-type">literalEvery100</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-291"></span><span>
+</span><span id="line-292"></span><span class="annot"><a href="SAT.Solver.html#withTautologyElimination"><span class="hs-identifier hs-type">withTautologyElimination</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Expr.html#Expr"><span class="hs-identifier hs-type">Expr</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-293"></span><span id="withTautologyElimination"><span class="annot"><span class="annottext">withTautologyElimination :: Expr Key -&gt; Maybe Solutions
+</span><a href="SAT.Solver.html#withTautologyElimination"><span class="hs-identifier hs-var hs-var">withTautologyElimination</span></a></span></span><span> </span><span id="local-6989586621679100103"><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100103"><span class="hs-identifier hs-var">expr</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100104"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100105"><span class="hs-identifier hs-var">init'</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100106"><span class="hs-identifier hs-var">m''</span></a></span><span>
+</span><span id="line-294"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-295"></span><span>    </span><span id="local-6989586621679100107"><span class="annot"><span class="annottext">cnf'' :: CNF
+</span><a href="#local-6989586621679100107"><span class="hs-identifier hs-var hs-var">cnf''</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Expr Key -&gt; CNF
+</span><a href="SAT.CNF.html#toCNF"><span class="hs-identifier hs-var">toCNF</span></a></span><span> </span><span class="annot"><span class="annottext">Expr Key
+</span><a href="#local-6989586621679100103"><span class="hs-identifier hs-var">expr</span></a></span><span>
+</span><span id="line-296"></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679100106"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100106"><span class="hs-identifier hs-var">m''</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100109"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100109"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#eliminateLiterals"><span class="hs-identifier hs-var">eliminateLiterals</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100107"><span class="hs-identifier hs-var">cnf''</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span>
+</span><span id="line-297"></span><span>    </span><span id="local-6989586621679100105"><span class="annot"><span class="annottext">init' :: CNF
+</span><a href="#local-6989586621679100105"><span class="hs-identifier hs-var hs-var">init'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; CNF
+</span><a href="SAT.Solver.html#removeTautologies"><span class="hs-identifier hs-var">removeTautologies</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100109"><span class="hs-identifier hs-var">i</span></a></span><span>
+</span><span id="line-298"></span><span>
+</span><span id="line-299"></span><span>    </span><span class="annot"><a href="#local-6989586621679100104"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-300"></span><span>    </span><span id="local-6989586621679100104"><span class="annot"><span class="annottext">go :: CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100104"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679100111"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100111"><span class="hs-identifier hs-var">cnf</span></a></span></span><span> </span><span id="local-6989586621679100112"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100112"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Maybe Key
+</span><a href="SAT.Solver.html#findFreeVariable"><span class="hs-identifier hs-var">findFreeVariable</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100113"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-301"></span><span>      </span><span class="annot"><span class="annottext">Maybe Key
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Bool
+</span><a href="#local-6989586621679100114"><span class="hs-identifier hs-var">isSat</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100113"><span class="hs-identifier hs-var">cnf'</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Maybe Solutions
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#solutionsFromAssignment"><span class="hs-identifier hs-var">solutionsFromAssignment</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100115"><span class="hs-identifier hs-var">m'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Solutions
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-302"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679100116"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100116"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100117"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100116"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Maybe Solutions -&gt; Maybe Solutions -&gt; Maybe Solutions
+forall a. Maybe a -&gt; Maybe a -&gt; Maybe a
+forall (f :: * -&gt; *) a. Alternative f =&gt; f a -&gt; f a -&gt; f a
+</span><span class="hs-operator hs-var">&lt;|&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100117"><span class="hs-identifier hs-var">try</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100116"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-303"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-304"></span><span>        </span><span class="annot"><a href="#local-6989586621679100117"><span class="hs-identifier hs-type">try</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Literal"><span class="hs-identifier hs-type">Literal</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SAT.Expr.html#Solutions"><span class="hs-identifier hs-type">Solutions</span></a></span><span>
+</span><span id="line-305"></span><span>        </span><span id="local-6989586621679100117"><span class="annot"><span class="annottext">try :: Key -&gt; Bool -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100117"><span class="hs-identifier hs-var hs-var">try</span></a></span></span><span> </span><span id="local-6989586621679100118"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100118"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679100119"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100119"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Maybe Solutions
+</span><a href="#local-6989586621679100104"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Bool -&gt; CNF -&gt; CNF
+</span><a href="SAT.Optimisers.html#substitute"><span class="hs-identifier hs-var">substitute</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100118"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100119"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100113"><span class="hs-identifier hs-var">cnf'</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Assignment -&gt; Key -&gt; Bool -&gt; Assignment
+</span><a href="SAT.Optimisers.html#assign"><span class="hs-identifier hs-var">assign</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100115"><span class="hs-identifier hs-var">m'</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100118"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679100119"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-306"></span><span>
+</span><span id="line-307"></span><span>        </span><span class="annot"><a href="#local-6989586621679100114"><span class="hs-identifier hs-type">isSat</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-308"></span><span>        </span><span id="local-6989586621679100114"><span class="annot"><span class="annottext">isSat :: CNF -&gt; Bool
+</span><a href="#local-6989586621679100114"><span class="hs-identifier hs-var hs-var">isSat</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679100120"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100120"><span class="hs-identifier hs-var">clauses</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]] -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100120"><span class="hs-identifier hs-var">clauses</span></a></span><span>
+</span><span id="line-309"></span><span>
+</span><span id="line-310"></span><span>        </span><span class="annot"><a href="#local-6989586621679100113"><span class="hs-identifier hs-type">cnf'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span>
+</span><span id="line-311"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679100115"><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100115"><span class="hs-identifier hs-var">m'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100113"><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100113"><span class="hs-identifier hs-var">cnf'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CNF -&gt; Assignment -&gt; Key -&gt; (Assignment, CNF)
+</span><a href="SAT.Optimisers.html#unitPropagate"><span class="hs-identifier hs-var">unitPropagate</span></a></span><span> </span><span class="annot"><span class="annottext">CNF
+</span><a href="#local-6989586621679100111"><span class="hs-identifier hs-var">cnf</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100112"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-312"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Solver.html#withTautologyElimination"><span class="hs-pragma hs-type">withTautologyElimination</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-313"></span><span>
+</span><span id="line-314"></span><span class="annot"><a href="SAT.Solver.html#allAssignments"><span class="hs-identifier hs-type">allAssignments</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Assignment"><span class="hs-identifier hs-type">Assignment</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IntSet</span></span><span>
+</span><span id="line-315"></span><span id="allAssignments"><span class="annot"><span class="annottext">allAssignments :: Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#allAssignments"><span class="hs-identifier hs-var hs-var">allAssignments</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+forall a. IntMap a -&gt; Solutions
+</span><span class="hs-identifier hs-var">IntMap.keysSet</span></span><span>
+</span><span id="line-316"></span><span>
+</span><span id="line-317"></span><span class="annot"><a href="SAT.Solver.html#allVariablesAssigned"><span class="hs-identifier hs-type">allVariablesAssigned</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-318"></span><span id="allVariablesAssigned"><span class="annot"><span class="annottext">allVariablesAssigned :: RWST CNF SolverLog SolverState Maybe Bool
+</span><a href="SAT.Solver.html#allVariablesAssigned"><span class="hs-identifier hs-var hs-var">allVariablesAssigned</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-319"></span><span>  </span><span class="annot"><a href="SAT.Monad.html#SolverState"><span class="hs-identifier hs-type">SolverState</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span id="local-6989586621679100122"><span class="annot"><span class="annottext">Solutions
+variables :: SolverState -&gt; Solutions
+variables :: Solutions
+</span><a href="SAT.Monad.html#variables"><span class="hs-identifier hs-var hs-var">variables</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679100123"><span class="annot"><span class="annottext">Assignment
+assignment :: SolverState -&gt; Assignment
+assignment :: Assignment
+</span><a href="SAT.Monad.html#assignment"><span class="hs-identifier hs-var hs-var">assignment</span></a></span></span><span> </span><span class="hs-special">}</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">RWST CNF SolverLog SolverState Maybe SolverState
+forall s (m :: * -&gt; *). MonadState s m =&gt; m s
+</span><span class="hs-identifier hs-var">get</span></span><span>
+</span><span id="line-320"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; RWST CNF SolverLog SolverState Maybe Bool
+forall a. a -&gt; RWST CNF SolverLog SolverState Maybe a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; RWST CNF SolverLog SolverState Maybe Bool)
+-&gt; Bool -&gt; RWST CNF SolverLog SolverState Maybe Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Bool
+</span><span class="hs-identifier hs-var">IntSet.null</span></span><span> </span><span class="annot"><span class="annottext">(Solutions -&gt; Bool) -&gt; Solutions -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Solutions
+</span><a href="#local-6989586621679100122"><span class="hs-identifier hs-var">variables</span></a></span><span> </span><span class="annot"><span class="annottext">Solutions -&gt; Solutions -&gt; Solutions
+</span><span class="hs-operator hs-var">`IntSet.difference`</span></span><span> </span><span class="annot"><span class="annottext">Assignment -&gt; Solutions
+</span><a href="SAT.Solver.html#allAssignments"><span class="hs-identifier hs-var">allAssignments</span></a></span><span> </span><span class="annot"><span class="annottext">Assignment
+</span><a href="#local-6989586621679100123"><span class="hs-identifier hs-var">assignment</span></a></span><span>
+</span><span id="line-321"></span><span>
+</span><span id="line-322"></span><span class="annot"><a href="SAT.Solver.html#removeTautologies"><span class="hs-identifier hs-type">removeTautologies</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span>
+</span><span id="line-323"></span><span id="removeTautologies"><span class="annot"><span class="annottext">removeTautologies :: CNF -&gt; CNF
+</span><a href="SAT.Solver.html#removeTautologies"><span class="hs-identifier hs-var hs-var">removeTautologies</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-type">CNF</span></a></span><span> </span><span id="local-6989586621679100126"><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100126"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[[Key]] -&gt; CNF
+</span><a href="SAT.CNF.html#CNF"><span class="hs-identifier hs-var">CNF</span></a></span><span> </span><span class="annot"><span class="annottext">([[Key]] -&gt; CNF) -&gt; [[Key]] -&gt; CNF
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">([Key] -&gt; Bool) -&gt; [[Key]] -&gt; [[Key]]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; ([Key] -&gt; Bool) -&gt; [Key] -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Key] -&gt; Bool
+</span><a href="#local-6989586621679100128"><span class="hs-identifier hs-var">isTautology</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[[Key]]
+</span><a href="#local-6989586621679100126"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-324"></span><span>  </span><span class="hs-keyword">where</span><span> </span><span>
+</span><span id="line-325"></span><span>    </span><span class="annot"><a href="#local-6989586621679100128"><span class="hs-identifier hs-type">isTautology</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.CNF.html#Clause"><span class="hs-identifier hs-type">Clause</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-326"></span><span>    </span><span id="local-6989586621679100128"><span class="annot"><span class="annottext">isTautology :: [Key] -&gt; Bool
+</span><a href="#local-6989586621679100128"><span class="hs-identifier hs-var hs-var">isTautology</span></a></span></span><span> </span><span id="local-6989586621679100129"><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679100129"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Key -&gt; Bool) -&gt; [Key] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; (a -&gt; Bool) -&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">any</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679100131"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100131"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Solutions -&gt; Bool
+</span><span class="hs-identifier hs-var">IntSet.member</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Key
+forall a. Num a =&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">negate</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679100131"><span class="hs-identifier hs-var">l</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Key] -&gt; Solutions
+</span><span class="hs-identifier hs-var">IntSet.fromList</span></span><span> </span><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679100129"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Key]
+</span><a href="#local-6989586621679100129"><span class="hs-identifier hs-var">c</span></a></span></pre></body></html>

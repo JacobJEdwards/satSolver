@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SAT.Restarts</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Restarts.html#computeNextLubyThreshold"><span class="hs-identifier">computeNextLubyThreshold</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Restarts.html#luby"><span class="hs-identifier">luby</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Restarts.html#increaseLubyCount"><span class="hs-identifier">increaseLubyCount</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span> </span><span>
+</span><span id="line-2"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="SAT.Monad.html"><span class="hs-identifier">SAT.Monad</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier">SolverM</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Monad.html#lubyCount"><span class="hs-identifier">lubyCount</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.RWS</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">modify</span></span><span class="hs-special">)</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="annot"><a href="SAT.Restarts.html#computeNextLubyThreshold"><span class="hs-identifier hs-type">computeNextLubyThreshold</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-6"></span><span id="computeNextLubyThreshold"><span class="annot"><span class="annottext">computeNextLubyThreshold :: Int -&gt; Int
+</span><a href="SAT.Restarts.html#computeNextLubyThreshold"><span class="hs-identifier hs-var hs-var">computeNextLubyThreshold</span></a></span></span><span> </span><span id="local-6989586621679099072"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099072"><span class="hs-identifier hs-var">count</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679099074"><span class="annot"><span class="annottext">scale :: Int
+</span><a href="#local-6989586621679099074"><span class="hs-identifier hs-var hs-var">scale</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">10</span></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099074"><span class="hs-identifier hs-var">scale</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int
+</span><a href="SAT.Restarts.html#luby"><span class="hs-identifier hs-var">luby</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099072"><span class="hs-identifier hs-var">count</span></a></span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="annot"><a href="SAT.Restarts.html#luby"><span class="hs-identifier hs-type">luby</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>
+</span><span id="line-11"></span><span id="luby"><span class="annot"><span class="annottext">luby :: Int -&gt; Int
+</span><a href="SAT.Restarts.html#luby"><span class="hs-identifier hs-var hs-var">luby</span></a></span></span><span> </span><span id="local-6989586621679099076"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099076"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int -&gt; Int
+forall {t}. Integral t =&gt; t -&gt; t -&gt; t -&gt; t
+</span><a href="#local-6989586621679099077"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099076"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>    </span><span id="local-6989586621679099077"><span class="annot"><span class="annottext">go :: t -&gt; t -&gt; t -&gt; t
+</span><a href="#local-6989586621679099077"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="#local-6989586621679099077"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679099112"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099112"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679099113"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099113"><span class="hs-identifier hs-var">power</span></a></span></span><span> </span><span id="local-6989586621679099114"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099114"><span class="hs-identifier hs-var">level</span></a></span></span><span>
+</span><span id="line-15"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099112"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099113"><span class="hs-identifier hs-var">power</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099114"><span class="hs-identifier hs-var">level</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099114"><span class="hs-identifier hs-var">level</span></a></span><span>
+</span><span id="line-16"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099112"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099113"><span class="hs-identifier hs-var">power</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099114"><span class="hs-identifier hs-var">level</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">1</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t -&gt; t
+</span><a href="#local-6989586621679099077"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099112"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099113"><span class="hs-identifier hs-var">power</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099114"><span class="hs-identifier hs-var">level</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">`div`</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>              </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t -&gt; t
+</span><a href="#local-6989586621679099077"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099112"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099113"><span class="hs-identifier hs-var">power</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679099114"><span class="hs-identifier hs-var">level</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="annot"><a href="SAT.Restarts.html#increaseLubyCount"><span class="hs-identifier hs-type">increaseLubyCount</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Monad.html#SolverM"><span class="hs-identifier hs-type">SolverM</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span id="increaseLubyCount"><span class="annot"><span class="annottext">increaseLubyCount :: SolverM ()
+</span><a href="SAT.Restarts.html#increaseLubyCount"><span class="hs-identifier hs-var hs-var">increaseLubyCount</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(SolverState -&gt; SolverState) -&gt; SolverM ()
+forall s (m :: * -&gt; *). MonadState s m =&gt; (s -&gt; s) -&gt; m ()
+</span><span class="hs-identifier hs-var">modify</span></span><span> </span><span class="annot"><span class="annottext">((SolverState -&gt; SolverState) -&gt; SolverM ())
+-&gt; (SolverState -&gt; SolverState) -&gt; SolverM ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099118"><span class="annot"><span class="annottext">SolverState
+</span><a href="#local-6989586621679099118"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SolverState
+</span><a href="#local-6989586621679099118"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="SAT.Monad.html#lubyCount"><span class="hs-identifier hs-var">lubyCount</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="SAT.Monad.html#lubyCount"><span class="hs-identifier hs-var">lubyCount</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099118"><span class="hs-identifier hs-type">s</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">+</span></span><span> </span><span class="annot"><span class="hs-number">1</span></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-21"></span></pre></body></html>

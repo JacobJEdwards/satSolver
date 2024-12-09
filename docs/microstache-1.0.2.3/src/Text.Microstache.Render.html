@@ -1,0 +1,931 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- |</span><span>
+</span><span id="line-2"></span><span class="hs-comment">-- Module      :  Text.Microstache.Render</span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- Copyright   :  &#169; 2016&#8211;2017 Stack Builders</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- License     :  BSD 3 clause</span><span>
+</span><span id="line-5"></span><span class="hs-comment">--</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Maintainer  :  Mark Karpov &lt;markkarpov@openmailbox.org&gt;</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Stability   :  experimental</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Portability :  portable</span><span>
+</span><span id="line-9"></span><span class="hs-comment">--</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- Functions for rendering Mustache templates. You don't usually need to</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- import the module, because &quot;Text.Microstache&quot; re-exports everything you may</span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- need, import that module instead.</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-pragma">{-# LANGUAGE CPP               #-}</span><span>
+</span><span id="line-15"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.Microstache.Render</span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#renderMustache"><span class="hs-identifier">renderMustache</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#renderMustacheW"><span class="hs-identifier">renderMustacheW</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">forM_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">unless</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">when</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Class</span></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">lift</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Reader</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ReaderT</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">asks</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">local</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Value</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">encode</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Foldable</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">asum</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">tails</span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NonEmpty</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Monoid</span></span><span>                </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">mempty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Semigroup</span></span><span>             </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&lt;&gt;)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Word</span></span><span>                  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Word</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.List.NonEmpty</span></span><span>      </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">NE</span></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>                </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>               </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy</span></span><span>          </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LT</span></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy.Builder</span></span><span>  </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">B</span></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy.Encoding</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LTE</span></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Vector</span></span><span>             </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">V</span></span><span class="hs-cpp">
+
+#if MIN_VERSION_aeson(2,0,0)
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.KeyMap</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">KM</span></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.Key</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Key</span></span><span class="hs-cpp">
+#else
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="hs-identifier">Data.HashMap.Strict</span><span> </span><span class="hs-keyword">as</span><span> </span><span class="hs-identifier">KM</span><span class="hs-cpp">
+#endif
+</span><span class="hs-cpp">
+#if MIN_VERSION_transformers(0,4,0)
+</span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.State.Strict</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">State</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">execState</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">modify'</span></span><span class="hs-special">)</span><span class="hs-cpp">
+#else
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Control.Monad.Trans.State.Strict</span><span> </span><span class="hs-special">(</span><span class="hs-identifier">State</span><span class="hs-special">,</span><span> </span><span class="hs-identifier">execState</span><span class="hs-special">,</span><span> </span><span class="hs-identifier">get</span><span class="hs-special">,</span><span> </span><span class="hs-identifier">put</span><span class="hs-special">)</span><span class="hs-cpp">
+#endif
+</span><span class="hs-cpp">
+#if !MIN_VERSION_base(4,8,0)
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Control.Applicative</span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-operator">&lt;$&gt;</span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-57"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html"><span class="hs-identifier">Text.Microstache.Type</span></a></span><span class="hs-cpp">
+
+#if !(MIN_VERSION_transformers(0,4,0))
+</span><span class="hs-identifier">modify'</span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="hs-identifier">s</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-identifier">s</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-identifier">State</span><span> </span><span class="hs-identifier">s</span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span class="hs-identifier">modify'</span><span> </span><span class="hs-identifier">f</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-identifier">s</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-identifier">get</span><span>
+</span><span id="line-63"></span><span>    </span><span class="hs-identifier">put</span><span> </span><span class="hs-operator">$!</span><span> </span><span class="hs-identifier">f</span><span> </span><span class="hs-identifier">s</span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-66"></span><span class="hs-comment">----------------------------------------------------------------------------</span><span>
+</span><span id="line-67"></span><span class="hs-comment">-- The rendering monad</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- | Synonym for the monad we use for rendering. It allows to share context</span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- and accumulate the result as 'B.Builder' data which is then turned into</span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- lazy 'LT.Text'.</span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="hs-keyword">type</span><span> </span><span id="Render"><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-var">Render</span></a></span></span><span> </span><span id="local-6989586621679092264"><span class="annot"><a href="#local-6989586621679092264"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ReaderT</span></span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#RenderContext"><span class="hs-identifier hs-type">RenderContext</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">State</span></span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-type">S</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679092264"><span class="hs-identifier hs-type">a</span></a></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-keyword">data</span><span> </span><span id="S"><span class="annot"><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-var">S</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="S"><span class="annot"><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-var">S</span></a></span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier hs-type">MustacheWarning</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier hs-type">MustacheWarning</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-identifier hs-type">B.Builder</span></span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Text.Microstache.Render.html#tellWarning"><span class="hs-identifier hs-type">tellWarning</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier hs-type">MustacheWarning</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span id="tellWarning"><span class="annot"><span class="annottext">tellWarning :: MustacheWarning -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#tellWarning"><span class="hs-identifier hs-var hs-var">tellWarning</span></a></span></span><span> </span><span id="local-6989586621679092267"><span class="annot"><span class="annottext">MustacheWarning
+</span><a href="#local-6989586621679092267"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">State S () -&gt; Render ()
+forall (m :: * -&gt; *) a. Monad m =&gt; m a -&gt; ReaderT RenderContext m a
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(S -&gt; S) -&gt; State S ()
+forall (m :: * -&gt; *) s. Monad m =&gt; (s -&gt; s) -&gt; StateT s m ()
+</span><span class="hs-identifier hs-var">modify'</span></span><span> </span><span class="annot"><span class="annottext">S -&gt; S
+</span><a href="#local-6989586621679092268"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-79"></span><span>    </span><span id="local-6989586621679092268"><span class="annot"><span class="annottext">f :: S -&gt; S
+</span><a href="#local-6989586621679092268"><span class="hs-identifier hs-var hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-type">S</span></a></span><span> </span><span id="local-6989586621679092269"><span class="annot"><span class="annottext">[MustacheWarning] -&gt; [MustacheWarning]
+</span><a href="#local-6989586621679092269"><span class="hs-identifier hs-var">ws</span></a></span></span><span> </span><span id="local-6989586621679092270"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679092270"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([MustacheWarning] -&gt; [MustacheWarning]) -&gt; Builder -&gt; S
+</span><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-var">S</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[MustacheWarning] -&gt; [MustacheWarning]
+</span><a href="#local-6989586621679092269"><span class="hs-identifier hs-var">ws</span></a></span><span> </span><span class="annot"><span class="annottext">([MustacheWarning] -&gt; [MustacheWarning])
+-&gt; ([MustacheWarning] -&gt; [MustacheWarning])
+-&gt; [MustacheWarning]
+-&gt; [MustacheWarning]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">MustacheWarning
+</span><a href="#local-6989586621679092267"><span class="hs-identifier hs-var">w</span></a></span><span class="annot"><span class="annottext">MustacheWarning -&gt; [MustacheWarning] -&gt; [MustacheWarning]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679092270"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Text.Microstache.Render.html#tellBuilder"><span class="hs-identifier hs-type">tellBuilder</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">B.Builder</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-82"></span><span id="tellBuilder"><span class="annot"><span class="annottext">tellBuilder :: Builder -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#tellBuilder"><span class="hs-identifier hs-var hs-var">tellBuilder</span></a></span></span><span> </span><span id="local-6989586621679092273"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679092273"><span class="hs-identifier hs-var">b'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">State S () -&gt; Render ()
+forall (m :: * -&gt; *) a. Monad m =&gt; m a -&gt; ReaderT RenderContext m a
+forall (t :: (* -&gt; *) -&gt; * -&gt; *) (m :: * -&gt; *) a.
+(MonadTrans t, Monad m) =&gt;
+m a -&gt; t m a
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(S -&gt; S) -&gt; State S ()
+forall (m :: * -&gt; *) s. Monad m =&gt; (s -&gt; s) -&gt; StateT s m ()
+</span><span class="hs-identifier hs-var">modify'</span></span><span> </span><span class="annot"><span class="annottext">S -&gt; S
+</span><a href="#local-6989586621679092274"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-83"></span><span>    </span><span id="local-6989586621679092274"><span class="annot"><span class="annottext">f :: S -&gt; S
+</span><a href="#local-6989586621679092274"><span class="hs-identifier hs-var hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-type">S</span></a></span><span> </span><span id="local-6989586621679092277"><span class="annot"><span class="annottext">[MustacheWarning] -&gt; [MustacheWarning]
+</span><a href="#local-6989586621679092277"><span class="hs-identifier hs-var">ws</span></a></span></span><span> </span><span id="local-6989586621679092278"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679092278"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([MustacheWarning] -&gt; [MustacheWarning]) -&gt; Builder -&gt; S
+</span><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-var">S</span></a></span><span> </span><span class="annot"><span class="annottext">[MustacheWarning] -&gt; [MustacheWarning]
+</span><a href="#local-6989586621679092277"><span class="hs-identifier hs-var">ws</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679092278"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679092273"><span class="hs-identifier hs-var">b'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="annot"><span class="hs-comment">-- | The render monad context.</span></span><span>
+</span><span id="line-86"></span><span class="hs-keyword">data</span><span> </span><span id="RenderContext"><span class="annot"><a href="Text.Microstache.Render.html#RenderContext"><span class="hs-identifier hs-var">RenderContext</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="RenderContext"><span class="annot"><a href="Text.Microstache.Render.html#RenderContext"><span class="hs-identifier hs-var">RenderContext</span></a></span></span><span>
+</span><span id="line-87"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="rcIndent"><span class="annot"><span class="annottext">RenderContext -&gt; Maybe Word
+</span><a href="Text.Microstache.Render.html#rcIndent"><span class="hs-identifier hs-var hs-var">rcIndent</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span>     </span><span class="annot"><span class="hs-comment">-- ^ Actual indentation level</span></span><span>
+</span><span id="line-88"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="rcContext"><span class="annot"><span class="annottext">RenderContext -&gt; NonEmpty Value
+</span><a href="Text.Microstache.Render.html#rcContext"><span class="hs-identifier hs-var hs-var">rcContext</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NonEmpty</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span> </span><span class="annot"><span class="hs-comment">-- ^ The context stack</span></span><span>
+</span><span id="line-89"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="rcPrefix"><span class="annot"><span class="annottext">RenderContext -&gt; Key
+</span><a href="Text.Microstache.Render.html#rcPrefix"><span class="hs-identifier hs-var hs-var">rcPrefix</span></a></span></span><span>   </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span>            </span><span class="annot"><span class="hs-comment">-- ^ Prefix accumulated by entering sections</span></span><span>
+</span><span id="line-90"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="rcTemplate"><span class="annot"><span class="annottext">RenderContext -&gt; Template
+</span><a href="Text.Microstache.Render.html#rcTemplate"><span class="hs-identifier hs-var hs-var">rcTemplate</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-type">Template</span></a></span><span>       </span><span class="annot"><span class="hs-comment">-- ^ The template to render</span></span><span>
+</span><span id="line-91"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="rcLastNode"><span class="annot"><span class="annottext">RenderContext -&gt; Bool
+</span><a href="Text.Microstache.Render.html#rcLastNode"><span class="hs-identifier hs-var hs-var">rcLastNode</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>           </span><span class="annot"><span class="hs-comment">-- ^ Is this last node in this partial?</span></span><span>
+</span><span id="line-92"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-comment">----------------------------------------------------------------------------</span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- High-level interface</span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="hs-comment">-- | Render a Mustache 'Template' using Aeson's 'Value' to get actual values</span><span>
+</span><span id="line-98"></span><span class="hs-comment">-- for interpolation.</span><span>
+</span><span id="line-99"></span><span class="annot"><a href="Text.Microstache.Render.html#renderMustache"><span class="hs-identifier hs-type">renderMustache</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-type">Template</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span>
+</span><span id="line-100"></span><span id="renderMustache"><span class="annot"><span class="annottext">renderMustache :: Template -&gt; Value -&gt; Text
+</span><a href="Text.Microstache.Render.html#renderMustache"><span class="hs-identifier hs-var hs-var">renderMustache</span></a></span></span><span> </span><span id="local-6989586621679092286"><span class="annot"><span class="annottext">Template
+</span><a href="#local-6989586621679092286"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([MustacheWarning], Text) -&gt; Text
+forall a b. (a, b) -&gt; b
+</span><span class="hs-identifier hs-var">snd</span></span><span> </span><span class="annot"><span class="annottext">(([MustacheWarning], Text) -&gt; Text)
+-&gt; (Value -&gt; ([MustacheWarning], Text)) -&gt; Value -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Template -&gt; Value -&gt; ([MustacheWarning], Text)
+</span><a href="Text.Microstache.Render.html#renderMustacheW"><span class="hs-identifier hs-var">renderMustacheW</span></a></span><span> </span><span class="annot"><span class="annottext">Template
+</span><a href="#local-6989586621679092286"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="hs-comment">-- | Like 'renderMustache' but also return a list of warnings.</span><span>
+</span><span id="line-103"></span><span class="hs-comment">--</span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- @since 1.0.1</span><span>
+</span><span id="line-105"></span><span class="annot"><a href="Text.Microstache.Render.html#renderMustacheW"><span class="hs-identifier hs-type">renderMustacheW</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-type">Template</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier hs-type">MustacheWarning</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span id="renderMustacheW"><span class="annot"><span class="annottext">renderMustacheW :: Template -&gt; Value -&gt; ([MustacheWarning], Text)
+</span><a href="Text.Microstache.Render.html#renderMustacheW"><span class="hs-identifier hs-var hs-var">renderMustacheW</span></a></span></span><span> </span><span id="local-6989586621679092288"><span class="annot"><span class="annottext">Template
+</span><a href="#local-6989586621679092288"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-107"></span><span>  </span><span class="annot"><span class="annottext">Render () -&gt; Template -&gt; Value -&gt; ([MustacheWarning], Text)
+forall a.
+Render a -&gt; Template -&gt; Value -&gt; ([MustacheWarning], Text)
+</span><a href="Text.Microstache.Render.html#runRender"><span class="hs-identifier hs-var">runRender</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PName -&gt; Maybe Word -&gt; (Node -&gt; Render ()) -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderPartial"><span class="hs-identifier hs-var">renderPartial</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Template -&gt; PName
+</span><a href="Text.Microstache.Type.html#templateActual"><span class="hs-identifier hs-var">templateActual</span></a></span><span> </span><span class="annot"><span class="annottext">Template
+</span><a href="#local-6989586621679092288"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Word
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Template
+</span><a href="#local-6989586621679092288"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span class="annot"><span class="hs-comment">-- | Render a single 'Node'.</span></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="annot"><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-type">renderNode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-type">Node</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-112"></span><span id="renderNode"><span class="annot"><span class="annottext">renderNode :: Node -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var hs-var">renderNode</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#TextBlock"><span class="hs-identifier hs-type">TextBlock</span></a></span><span> </span><span id="local-6989586621679092294"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092294"><span class="hs-identifier hs-var">txt</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#outputIndented"><span class="hs-identifier hs-var">outputIndented</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092294"><span class="hs-identifier hs-var">txt</span></a></span><span>
+</span><span id="line-113"></span><span class="annot"><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#EscapedVar"><span class="hs-identifier hs-type">EscapedVar</span></a></span><span> </span><span id="local-6989586621679092297"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092297"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-114"></span><span>  </span><span class="annot"><span class="annottext">Key -&gt; Render Value
+</span><a href="Text.Microstache.Render.html#lookupKey"><span class="hs-identifier hs-var">lookupKey</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092297"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Render Value
+-&gt; (Value -&gt; ReaderT RenderContext (State S) Text)
+-&gt; ReaderT RenderContext (State S) Text
+forall a b.
+ReaderT RenderContext (State S) a
+-&gt; (a -&gt; ReaderT RenderContext (State S) b)
+-&gt; ReaderT RenderContext (State S) b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Value -&gt; ReaderT RenderContext (State S) Text
+</span><a href="Text.Microstache.Render.html#renderValue"><span class="hs-identifier hs-var">renderValue</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092297"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">ReaderT RenderContext (State S) Text
+-&gt; (Text -&gt; Render ()) -&gt; Render ()
+forall a b.
+ReaderT RenderContext (State S) a
+-&gt; (a -&gt; ReaderT RenderContext (State S) b)
+-&gt; ReaderT RenderContext (State S) b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#outputRaw"><span class="hs-identifier hs-var">outputRaw</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Render ()) -&gt; (Text -&gt; Text) -&gt; Text -&gt; Render ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><a href="Text.Microstache.Render.html#escapeHtml"><span class="hs-identifier hs-var">escapeHtml</span></a></span><span>
+</span><span id="line-115"></span><span class="annot"><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#UnescapedVar"><span class="hs-identifier hs-type">UnescapedVar</span></a></span><span> </span><span id="local-6989586621679092303"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092303"><span class="hs-identifier hs-var">k</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-116"></span><span>  </span><span class="annot"><span class="annottext">Key -&gt; Render Value
+</span><a href="Text.Microstache.Render.html#lookupKey"><span class="hs-identifier hs-var">lookupKey</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092303"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">Render Value
+-&gt; (Value -&gt; ReaderT RenderContext (State S) Text)
+-&gt; ReaderT RenderContext (State S) Text
+forall a b.
+ReaderT RenderContext (State S) a
+-&gt; (a -&gt; ReaderT RenderContext (State S) b)
+-&gt; ReaderT RenderContext (State S) b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Value -&gt; ReaderT RenderContext (State S) Text
+</span><a href="Text.Microstache.Render.html#renderValue"><span class="hs-identifier hs-var">renderValue</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092303"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">ReaderT RenderContext (State S) Text
+-&gt; (Text -&gt; Render ()) -&gt; Render ()
+forall a b.
+ReaderT RenderContext (State S) a
+-&gt; (a -&gt; ReaderT RenderContext (State S) b)
+-&gt; ReaderT RenderContext (State S) b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#outputRaw"><span class="hs-identifier hs-var">outputRaw</span></a></span><span>
+</span><span id="line-117"></span><span class="annot"><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Section"><span class="hs-identifier hs-type">Section</span></a></span><span> </span><span id="local-6989586621679092305"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092305"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679092306"><span class="annot"><span class="annottext">[Node]
+</span><a href="#local-6989586621679092306"><span class="hs-identifier hs-var">ns</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-118"></span><span>  </span><span id="local-6989586621679092307"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092307"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Render Value
+</span><a href="Text.Microstache.Render.html#lookupKey"><span class="hs-identifier hs-var">lookupKey</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092305"><span class="hs-identifier hs-var">k</span></a></span><span>
+</span><span id="line-119"></span><span>  </span><span class="annot"><span class="annottext">Key -&gt; Render () -&gt; Render ()
+forall a. Key -&gt; Render a -&gt; Render a
+</span><a href="Text.Microstache.Render.html#enterSection"><span class="hs-identifier hs-var">enterSection</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092305"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">(Render () -&gt; Render ()) -&gt; Render () -&gt; Render ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-120"></span><span>    </span><span class="annot"><span class="annottext">Bool -&gt; Render () -&gt; Render ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">unless</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Value -&gt; Bool
+</span><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-var">isBlank</span></a></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092307"><span class="hs-identifier hs-var">val</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Render () -&gt; Render ()) -&gt; Render () -&gt; Render ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-121"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092307"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-122"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Array</span></span><span> </span><span id="local-6989586621679092311"><span class="annot"><span class="annottext">Array
+</span><a href="#local-6989586621679092311"><span class="hs-identifier hs-var">xs</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-123"></span><span>          </span><span class="annot"><span class="annottext">[Value] -&gt; (Value -&gt; Render ()) -&gt; Render ()
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Foldable t, Monad m) =&gt;
+t a -&gt; (a -&gt; m b) -&gt; m ()
+</span><span class="hs-identifier hs-var">forM_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Array -&gt; [Value]
+forall a. Vector a -&gt; [a]
+</span><span class="hs-identifier hs-var">V.toList</span></span><span> </span><span class="annot"><span class="annottext">Array
+</span><a href="#local-6989586621679092311"><span class="hs-identifier hs-var">xs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((Value -&gt; Render ()) -&gt; Render ())
+-&gt; (Value -&gt; Render ()) -&gt; Render ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679092313"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092313"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-124"></span><span>            </span><span class="annot"><span class="annottext">Value -&gt; Render () -&gt; Render ()
+forall a. Value -&gt; Render a -&gt; Render a
+</span><a href="Text.Microstache.Render.html#addToLocalContext"><span class="hs-identifier hs-var">addToLocalContext</span></a></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092313"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Node -&gt; Render ()) -&gt; [Node] -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-var">renderMany</span></a></span><span> </span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span> </span><span class="annot"><span class="annottext">[Node]
+</span><a href="#local-6989586621679092306"><span class="hs-identifier hs-var">ns</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-125"></span><span>        </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-126"></span><span>          </span><span class="annot"><span class="annottext">Value -&gt; Render () -&gt; Render ()
+forall a. Value -&gt; Render a -&gt; Render a
+</span><a href="Text.Microstache.Render.html#addToLocalContext"><span class="hs-identifier hs-var">addToLocalContext</span></a></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092307"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Node -&gt; Render ()) -&gt; [Node] -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-var">renderMany</span></a></span><span> </span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span> </span><span class="annot"><span class="annottext">[Node]
+</span><a href="#local-6989586621679092306"><span class="hs-identifier hs-var">ns</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-127"></span><span class="annot"><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#InvertedSection"><span class="hs-identifier hs-type">InvertedSection</span></a></span><span> </span><span id="local-6989586621679092317"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092317"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679092318"><span class="annot"><span class="annottext">[Node]
+</span><a href="#local-6989586621679092318"><span class="hs-identifier hs-var">ns</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-128"></span><span>  </span><span id="local-6989586621679092319"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092319"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Render Value
+</span><a href="Text.Microstache.Render.html#lookupKey"><span class="hs-identifier hs-var">lookupKey</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092317"><span class="hs-identifier hs-var">k</span></a></span><span>
+</span><span id="line-129"></span><span>  </span><span class="annot"><span class="annottext">Bool -&gt; Render () -&gt; Render ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">when</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Value -&gt; Bool
+</span><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-var">isBlank</span></a></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092319"><span class="hs-identifier hs-var">val</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Render () -&gt; Render ()) -&gt; Render () -&gt; Render ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-130"></span><span>    </span><span class="annot"><span class="annottext">(Node -&gt; Render ()) -&gt; [Node] -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-var">renderMany</span></a></span><span> </span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span> </span><span class="annot"><span class="annottext">[Node]
+</span><a href="#local-6989586621679092318"><span class="hs-identifier hs-var">ns</span></a></span><span>
+</span><span id="line-131"></span><span class="annot"><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Partial"><span class="hs-identifier hs-type">Partial</span></a></span><span> </span><span id="local-6989586621679092321"><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679092321"><span class="hs-identifier hs-var">pname</span></a></span></span><span> </span><span id="local-6989586621679092322"><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679092322"><span class="hs-identifier hs-var">indent</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-132"></span><span>  </span><span class="annot"><span class="annottext">PName -&gt; Maybe Word -&gt; (Node -&gt; Render ()) -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderPartial"><span class="hs-identifier hs-var">renderPartial</span></a></span><span> </span><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679092321"><span class="hs-identifier hs-var">pname</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679092322"><span class="hs-identifier hs-var">indent</span></a></span><span> </span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderNode"><span class="hs-identifier hs-var">renderNode</span></a></span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span class="hs-comment">----------------------------------------------------------------------------</span><span>
+</span><span id="line-135"></span><span class="hs-comment">-- The rendering monad vocabulary</span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span class="hs-comment">-- | Run 'Render' monad given template to render and a 'Value' to take</span><span>
+</span><span id="line-138"></span><span class="hs-comment">-- values from.</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span id="local-6989586621679092086"><span class="annot"><a href="Text.Microstache.Render.html#runRender"><span class="hs-identifier hs-type">runRender</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092086"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-type">Template</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier hs-type">MustacheWarning</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span class="hs-special">)</span></span><span>
+</span><span id="line-141"></span><span id="runRender"><span class="annot"><span class="annottext">runRender :: forall a.
+Render a -&gt; Template -&gt; Value -&gt; ([MustacheWarning], Text)
+</span><a href="Text.Microstache.Render.html#runRender"><span class="hs-identifier hs-var hs-var">runRender</span></a></span></span><span> </span><span id="local-6989586621679092325"><span class="annot"><span class="annottext">Render a
+</span><a href="#local-6989586621679092325"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span id="local-6989586621679092326"><span class="annot"><span class="annottext">Template
+</span><a href="#local-6989586621679092326"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span id="local-6989586621679092327"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092327"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">State S a -&gt; S -&gt; S
+forall s a. State s a -&gt; s -&gt; s
+</span><span class="hs-identifier hs-var">execState</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Render a -&gt; RenderContext -&gt; State S a
+forall r (m :: * -&gt; *) a. ReaderT r m a -&gt; r -&gt; m a
+</span><span class="hs-identifier hs-var">runReaderT</span></span><span> </span><span class="annot"><span class="annottext">Render a
+</span><a href="#local-6989586621679092325"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092329"><span class="hs-identifier hs-var">rc</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">([MustacheWarning] -&gt; [MustacheWarning]) -&gt; Builder -&gt; S
+</span><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-var">S</span></a></span><span> </span><span class="annot"><span class="annottext">[MustacheWarning] -&gt; [MustacheWarning]
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">Builder
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-142"></span><span>    </span><span class="annot"><a href="Text.Microstache.Render.html#S"><span class="hs-identifier hs-type">S</span></a></span><span> </span><span id="local-6989586621679092331"><span class="annot"><span class="annottext">[MustacheWarning] -&gt; [MustacheWarning]
+</span><a href="#local-6989586621679092331"><span class="hs-identifier hs-var">ws</span></a></span></span><span> </span><span id="local-6989586621679092332"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679092332"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[MustacheWarning] -&gt; [MustacheWarning]
+</span><a href="#local-6989586621679092331"><span class="hs-identifier hs-var">ws</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Text
+</span><span class="hs-identifier hs-var">B.toLazyText</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679092332"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-143"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-144"></span><span>    </span><span id="local-6989586621679092329"><span class="annot"><span class="annottext">rc :: RenderContext
+</span><a href="#local-6989586621679092329"><span class="hs-identifier hs-var hs-var">rc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#RenderContext"><span class="hs-identifier hs-type">RenderContext</span></a></span><span>
+</span><span id="line-145"></span><span>      </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">rcIndent :: Maybe Word
+</span><a href="Text.Microstache.Render.html#rcIndent"><span class="hs-identifier hs-var">rcIndent</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Word
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-146"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rcContext :: NonEmpty Value
+</span><a href="Text.Microstache.Render.html#rcContext"><span class="hs-identifier hs-var">rcContext</span></a></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092327"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="annot"><span class="annottext">Value -&gt; [Value] -&gt; NonEmpty Value
+forall a. a -&gt; [a] -&gt; NonEmpty a
+</span><span class="hs-operator hs-var">:|</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-147"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rcPrefix :: Key
+</span><a href="Text.Microstache.Render.html#rcPrefix"><span class="hs-identifier hs-var">rcPrefix</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Key
+forall a. Monoid a =&gt; a
+</span><span class="hs-identifier hs-var">mempty</span></span><span>
+</span><span id="line-148"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rcTemplate :: Template
+</span><a href="Text.Microstache.Render.html#rcTemplate"><span class="hs-identifier hs-var">rcTemplate</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Template
+</span><a href="#local-6989586621679092326"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-149"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">rcLastNode :: Bool
+</span><a href="Text.Microstache.Render.html#rcLastNode"><span class="hs-identifier hs-var">rcLastNode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-150"></span><span>      </span><span class="hs-special">}</span><span>
+</span><span id="line-151"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#runRender"><span class="hs-pragma hs-type">runRender</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="annot"><span class="hs-comment">-- | Output a piece of strict 'Text'.</span></span><span>
+</span><span id="line-154"></span><span>
+</span><span id="line-155"></span><span class="annot"><a href="Text.Microstache.Render.html#outputRaw"><span class="hs-identifier hs-type">outputRaw</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-156"></span><span id="outputRaw"><span class="annot"><span class="annottext">outputRaw :: Text -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#outputRaw"><span class="hs-identifier hs-var hs-var">outputRaw</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#tellBuilder"><span class="hs-identifier hs-var">tellBuilder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Render ()) -&gt; (Text -&gt; Builder) -&gt; Text -&gt; Render ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">B.fromText</span></span><span>
+</span><span id="line-157"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#outputRaw"><span class="hs-pragma hs-type">outputRaw</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-158"></span><span>
+</span><span id="line-159"></span><span class="annot"><span class="hs-comment">-- | Output indentation consisting of appropriate number of spaces.</span></span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span class="annot"><a href="Text.Microstache.Render.html#outputIndent"><span class="hs-identifier hs-type">outputIndent</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-162"></span><span id="outputIndent"><span class="annot"><span class="annottext">outputIndent :: Render ()
+</span><a href="Text.Microstache.Render.html#outputIndent"><span class="hs-identifier hs-var hs-var">outputIndent</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(RenderContext -&gt; Maybe Word)
+-&gt; ReaderT RenderContext (State S) (Maybe Word)
+forall (m :: * -&gt; *) r a. Monad m =&gt; (r -&gt; a) -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">asks</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; Maybe Word
+</span><a href="Text.Microstache.Render.html#rcIndent"><span class="hs-identifier hs-var">rcIndent</span></a></span><span> </span><span class="annot"><span class="annottext">ReaderT RenderContext (State S) (Maybe Word)
+-&gt; (Maybe Word -&gt; Render ()) -&gt; Render ()
+forall a b.
+ReaderT RenderContext (State S) a
+-&gt; (a -&gt; ReaderT RenderContext (State S) b)
+-&gt; ReaderT RenderContext (State S) b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#outputRaw"><span class="hs-identifier hs-var">outputRaw</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Render ())
+-&gt; (Maybe Word -&gt; Text) -&gt; Maybe Word -&gt; Render ()
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Maybe Word -&gt; Text
+</span><a href="Text.Microstache.Render.html#buildIndent"><span class="hs-identifier hs-var">buildIndent</span></a></span><span>
+</span><span id="line-163"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#outputIndent"><span class="hs-pragma hs-type">outputIndent</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-164"></span><span>
+</span><span id="line-165"></span><span class="annot"><span class="hs-comment">-- | Output piece of strict 'Text' with added indentation.</span></span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span class="annot"><a href="Text.Microstache.Render.html#outputIndented"><span class="hs-identifier hs-type">outputIndented</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-168"></span><span id="outputIndented"><span class="annot"><span class="annottext">outputIndented :: Text -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#outputIndented"><span class="hs-identifier hs-var hs-var">outputIndented</span></a></span></span><span> </span><span id="local-6989586621679092340"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092340"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-169"></span><span>  </span><span id="local-6989586621679092341"><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679092341"><span class="hs-identifier hs-var">level</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(RenderContext -&gt; Maybe Word)
+-&gt; ReaderT RenderContext (State S) (Maybe Word)
+forall (m :: * -&gt; *) r a. Monad m =&gt; (r -&gt; a) -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">asks</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; Maybe Word
+</span><a href="Text.Microstache.Render.html#rcIndent"><span class="hs-identifier hs-var">rcIndent</span></a></span><span>
+</span><span id="line-170"></span><span>  </span><span id="local-6989586621679092342"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679092342"><span class="hs-identifier hs-var">lnode</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(RenderContext -&gt; Bool) -&gt; ReaderT RenderContext (State S) Bool
+forall (m :: * -&gt; *) r a. Monad m =&gt; (r -&gt; a) -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">asks</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; Bool
+</span><a href="Text.Microstache.Render.html#rcLastNode"><span class="hs-identifier hs-var">rcLastNode</span></a></span><span>
+</span><span id="line-171"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679092349"><span class="annot"><span class="annottext">f :: Text -&gt; Render ()
+</span><a href="#local-6989586621679092349"><span class="hs-identifier hs-var hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679092350"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092350"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#outputRaw"><span class="hs-identifier hs-var">outputRaw</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">HasCallStack =&gt; Text -&gt; Text -&gt; Text -&gt; Text
+Text -&gt; Text -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.replace</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\n&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\n&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Maybe Word -&gt; Text
+</span><a href="Text.Microstache.Render.html#buildIndent"><span class="hs-identifier hs-var">buildIndent</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679092341"><span class="hs-identifier hs-var">level</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092350"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-172"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679092342"><span class="hs-identifier hs-var">lnode</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Bool
+</span><span class="hs-identifier hs-var">T.isSuffixOf</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\n&quot;</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092340"><span class="hs-identifier hs-var">txt</span></a></span><span>
+</span><span id="line-173"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Render ()
+</span><a href="#local-6989586621679092349"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">HasCallStack =&gt; Text -&gt; Text
+Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.init</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092340"><span class="hs-identifier hs-var">txt</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Render () -&gt; Render () -&gt; Render ()
+forall a b.
+ReaderT RenderContext (State S) a
+-&gt; ReaderT RenderContext (State S) b
+-&gt; ReaderT RenderContext (State S) b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#outputRaw"><span class="hs-identifier hs-var">outputRaw</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\n&quot;</span></span><span>
+</span><span id="line-174"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Render ()
+</span><a href="#local-6989586621679092349"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092340"><span class="hs-identifier hs-var">txt</span></a></span><span>
+</span><span id="line-175"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#outputIndented"><span class="hs-pragma hs-type">outputIndented</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-176"></span><span>
+</span><span id="line-177"></span><span class="annot"><span class="hs-comment">-- | Render a partial.</span></span><span>
+</span><span id="line-178"></span><span>
+</span><span id="line-179"></span><span class="annot"><a href="Text.Microstache.Render.html#renderPartial"><span class="hs-identifier hs-type">renderPartial</span></a></span><span>
+</span><span id="line-180"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-type">PName</span></a></span><span>             </span><span class="annot"><span class="hs-comment">-- ^ Name of partial to render</span></span><span>
+</span><span id="line-181"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span>         </span><span class="annot"><span class="hs-comment">-- ^ Indentation level to use</span></span><span>
+</span><span id="line-182"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-type">Node</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-comment">-- ^ How to render nodes in that partial</span></span><span>
+</span><span id="line-183"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-184"></span><span id="renderPartial"><span class="annot"><span class="annottext">renderPartial :: PName -&gt; Maybe Word -&gt; (Node -&gt; Render ()) -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderPartial"><span class="hs-identifier hs-var hs-var">renderPartial</span></a></span></span><span> </span><span id="local-6989586621679092355"><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679092355"><span class="hs-identifier hs-var">pname</span></a></span></span><span> </span><span id="local-6989586621679092356"><span class="annot"><span class="annottext">Maybe Word
+</span><a href="#local-6989586621679092356"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679092357"><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="#local-6989586621679092357"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-185"></span><span>  </span><span class="annot"><span class="annottext">(RenderContext -&gt; RenderContext) -&gt; Render () -&gt; Render ()
+forall r (m :: * -&gt; *) a.
+(r -&gt; r) -&gt; ReaderT r m a -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; RenderContext
+</span><a href="#local-6989586621679092358"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Render ()
+</span><a href="Text.Microstache.Render.html#outputIndent"><span class="hs-identifier hs-var">outputIndent</span></a></span><span> </span><span class="annot"><span class="annottext">Render ()
+-&gt; ReaderT RenderContext (State S) [Node]
+-&gt; ReaderT RenderContext (State S) [Node]
+forall a b.
+ReaderT RenderContext (State S) a
+-&gt; ReaderT RenderContext (State S) b
+-&gt; ReaderT RenderContext (State S) b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ReaderT RenderContext (State S) [Node]
+</span><a href="Text.Microstache.Render.html#getNodes"><span class="hs-identifier hs-var">getNodes</span></a></span><span> </span><span class="annot"><span class="annottext">ReaderT RenderContext (State S) [Node]
+-&gt; ([Node] -&gt; Render ()) -&gt; Render ()
+forall a b.
+ReaderT RenderContext (State S) a
+-&gt; (a -&gt; ReaderT RenderContext (State S) b)
+-&gt; ReaderT RenderContext (State S) b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; (a -&gt; m b) -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;=</span></span><span> </span><span class="annot"><span class="annottext">(Node -&gt; Render ()) -&gt; [Node] -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-var">renderMany</span></a></span><span> </span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="#local-6989586621679092357"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-186"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-187"></span><span>    </span><span id="local-6989586621679092358"><span class="annot"><span class="annottext">u :: RenderContext -&gt; RenderContext
+</span><a href="#local-6989586621679092358"><span class="hs-identifier hs-var hs-var">u</span></a></span></span><span> </span><span id="local-6989586621679092361"><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092361"><span class="hs-identifier hs-var">rc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092361"><span class="hs-identifier hs-var">rc</span></a></span><span>
+</span><span id="line-188"></span><span>      </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcIndent"><span class="hs-identifier hs-var">rcIndent</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#addIndents"><span class="hs-identifier hs-type">addIndents</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092356"><span class="hs-identifier hs-type">i</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Render.html#rcIndent"><span class="hs-identifier hs-var">rcIndent</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092361"><span class="hs-identifier hs-type">rc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-189"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcPrefix"><span class="hs-identifier hs-var">rcPrefix</span></a></span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">mempty</span></span><span>
+</span><span id="line-190"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcTemplate"><span class="hs-identifier hs-var">rcTemplate</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Render.html#rcTemplate"><span class="hs-identifier hs-var">rcTemplate</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092361"><span class="hs-identifier hs-type">rc</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#templateActual"><span class="hs-identifier hs-var">templateActual</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="#local-6989586621679092355"><span class="hs-identifier hs-type">pname</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-191"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcLastNode"><span class="hs-identifier hs-var">rcLastNode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">True</span></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-192"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#renderPartial"><span class="hs-pragma hs-type">renderPartial</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span class="annot"><span class="hs-comment">-- | Get collection of 'Node's for actual template.</span></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span class="annot"><a href="Text.Microstache.Render.html#getNodes"><span class="hs-identifier hs-type">getNodes</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-type">Node</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-197"></span><span id="getNodes"><span class="annot"><span class="annottext">getNodes :: ReaderT RenderContext (State S) [Node]
+</span><a href="Text.Microstache.Render.html#getNodes"><span class="hs-identifier hs-var hs-var">getNodes</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-198"></span><span>  </span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-type">Template</span></a></span><span> </span><span id="local-6989586621679092363"><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679092363"><span class="hs-identifier hs-var">actual</span></a></span></span><span> </span><span id="local-6989586621679092364"><span class="annot"><span class="annottext">Map PName [Node]
+</span><a href="#local-6989586621679092364"><span class="hs-identifier hs-var">cache</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(RenderContext -&gt; Template)
+-&gt; ReaderT RenderContext (State S) Template
+forall (m :: * -&gt; *) r a. Monad m =&gt; (r -&gt; a) -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">asks</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; Template
+</span><a href="Text.Microstache.Render.html#rcTemplate"><span class="hs-identifier hs-var">rcTemplate</span></a></span><span>
+</span><span id="line-199"></span><span>  </span><span class="annot"><span class="annottext">[Node] -&gt; ReaderT RenderContext (State S) [Node]
+forall a. a -&gt; ReaderT RenderContext (State S) a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Node] -&gt; PName -&gt; Map PName [Node] -&gt; [Node]
+forall k a. Ord k =&gt; a -&gt; k -&gt; Map k a -&gt; a
+</span><span class="hs-identifier hs-var">Map.findWithDefault</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679092363"><span class="hs-identifier hs-var">actual</span></a></span><span> </span><span class="annot"><span class="annottext">Map PName [Node]
+</span><a href="#local-6989586621679092364"><span class="hs-identifier hs-var">cache</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#getNodes"><span class="hs-pragma hs-type">getNodes</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-201"></span><span>
+</span><span id="line-202"></span><span class="annot"><span class="hs-comment">-- | Render many nodes.</span></span><span>
+</span><span id="line-203"></span><span>
+</span><span id="line-204"></span><span class="annot"><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-type">renderMany</span></a></span><span>
+</span><span id="line-205"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-type">Node</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-comment">-- ^ How to render a node</span></span><span>
+</span><span id="line-206"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-type">Node</span></a></span><span class="hs-special">]</span><span>            </span><span class="annot"><span class="hs-comment">-- ^ The collection of nodes to render</span></span><span>
+</span><span id="line-207"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-208"></span><span id="renderMany"><span class="annot"><span class="annottext">renderMany :: (Node -&gt; Render ()) -&gt; [Node] -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-var hs-var">renderMany</span></a></span></span><span> </span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">() -&gt; Render ()
+forall a. a -&gt; ReaderT RenderContext (State S) a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-209"></span><span class="annot"><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-var">renderMany</span></a></span><span> </span><span id="local-6989586621679092366"><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="#local-6989586621679092366"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679092367"><span class="annot"><span class="annottext">Node
+</span><a href="#local-6989586621679092367"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-210"></span><span>  </span><span id="local-6989586621679092368"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679092368"><span class="hs-identifier hs-var">ln</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(RenderContext -&gt; Bool) -&gt; ReaderT RenderContext (State S) Bool
+forall (m :: * -&gt; *) r a. Monad m =&gt; (r -&gt; a) -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">asks</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; Bool
+</span><a href="Text.Microstache.Render.html#rcLastNode"><span class="hs-identifier hs-var">rcLastNode</span></a></span><span>
+</span><span id="line-211"></span><span>  </span><span class="annot"><span class="annottext">(RenderContext -&gt; RenderContext) -&gt; Render () -&gt; Render ()
+forall r (m :: * -&gt; *) a.
+(r -&gt; r) -&gt; ReaderT r m a -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679092369"><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092369"><span class="hs-identifier hs-var">rc</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092369"><span class="hs-identifier hs-var">rc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcLastNode"><span class="hs-identifier hs-var">rcLastNode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="#local-6989586621679092368"><span class="hs-identifier hs-type">ln</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">&amp;&amp;</span></span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcLastNode"><span class="hs-identifier hs-var">rcLastNode</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092369"><span class="hs-identifier hs-type">rc</span></a></span><span> </span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="#local-6989586621679092366"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Node
+</span><a href="#local-6989586621679092367"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-212"></span><span class="annot"><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-var">renderMany</span></a></span><span> </span><span id="local-6989586621679092370"><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="#local-6989586621679092370"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679092371"><span class="annot"><span class="annottext">Node
+</span><a href="#local-6989586621679092371"><span class="hs-identifier hs-var">n</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679092372"><span class="annot"><span class="annottext">[Node]
+</span><a href="#local-6989586621679092372"><span class="hs-identifier hs-var">ns</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-213"></span><span>  </span><span class="annot"><span class="annottext">(RenderContext -&gt; RenderContext) -&gt; Render () -&gt; Render ()
+forall r (m :: * -&gt; *) a.
+(r -&gt; r) -&gt; ReaderT r m a -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679092373"><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092373"><span class="hs-identifier hs-var">rc</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092373"><span class="hs-identifier hs-var">rc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcLastNode"><span class="hs-identifier hs-var">rcLastNode</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">False</span></span><span> </span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="#local-6989586621679092370"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Node
+</span><a href="#local-6989586621679092371"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-214"></span><span>  </span><span class="annot"><span class="annottext">(Node -&gt; Render ()) -&gt; [Node] -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#renderMany"><span class="hs-identifier hs-var">renderMany</span></a></span><span> </span><span class="annot"><span class="annottext">Node -&gt; Render ()
+</span><a href="#local-6989586621679092370"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">[Node]
+</span><a href="#local-6989586621679092372"><span class="hs-identifier hs-var">ns</span></a></span><span>
+</span><span id="line-215"></span><span>
+</span><span id="line-216"></span><span class="annot"><span class="hs-comment">-- | Lookup a 'Value' by its 'Key'.</span></span><span>
+</span><span id="line-217"></span><span>
+</span><span id="line-218"></span><span class="annot"><a href="Text.Microstache.Render.html#lookupKey"><span class="hs-identifier hs-type">lookupKey</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span>
+</span><span id="line-219"></span><span id="lookupKey"><span class="annot"><span class="annottext">lookupKey :: Key -&gt; Render Value
+</span><a href="Text.Microstache.Render.html#lookupKey"><span class="hs-identifier hs-var hs-var">lookupKey</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NonEmpty Value -&gt; Value
+forall a. NonEmpty a -&gt; a
+</span><span class="hs-identifier hs-var">NE.head</span></span><span> </span><span class="annot"><span class="annottext">(NonEmpty Value -&gt; Value)
+-&gt; ReaderT RenderContext (State S) (NonEmpty Value) -&gt; Render Value
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">(RenderContext -&gt; NonEmpty Value)
+-&gt; ReaderT RenderContext (State S) (NonEmpty Value)
+forall (m :: * -&gt; *) r a. Monad m =&gt; (r -&gt; a) -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">asks</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; NonEmpty Value
+</span><a href="Text.Microstache.Render.html#rcContext"><span class="hs-identifier hs-var">rcContext</span></a></span><span>
+</span><span id="line-220"></span><span class="annot"><a href="Text.Microstache.Render.html#lookupKey"><span class="hs-identifier hs-var">lookupKey</span></a></span><span> </span><span id="local-6989586621679092377"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092377"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-221"></span><span>  </span><span id="local-6989586621679092378"><span class="annot"><span class="annottext">NonEmpty Value
+</span><a href="#local-6989586621679092378"><span class="hs-identifier hs-var">v</span></a></span></span><span>     </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(RenderContext -&gt; NonEmpty Value)
+-&gt; ReaderT RenderContext (State S) (NonEmpty Value)
+forall (m :: * -&gt; *) r a. Monad m =&gt; (r -&gt; a) -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">asks</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; NonEmpty Value
+</span><a href="Text.Microstache.Render.html#rcContext"><span class="hs-identifier hs-var">rcContext</span></a></span><span>
+</span><span id="line-222"></span><span>  </span><span id="local-6989586621679092379"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092379"><span class="hs-identifier hs-var">p</span></a></span></span><span>     </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(RenderContext -&gt; Key) -&gt; ReaderT RenderContext (State S) Key
+forall (m :: * -&gt; *) r a. Monad m =&gt; (r -&gt; a) -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">asks</span></span><span> </span><span class="annot"><span class="annottext">RenderContext -&gt; Key
+</span><a href="Text.Microstache.Render.html#rcPrefix"><span class="hs-identifier hs-var">rcPrefix</span></a></span><span>
+</span><span id="line-223"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679092386"><span class="annot"><span class="annottext">f :: Key -&gt; Maybe Value
+</span><a href="#local-6989586621679092386"><span class="hs-identifier hs-var hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679092387"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092387"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">NonEmpty (Maybe Value) -&gt; Maybe Value
+forall (t :: * -&gt; *) (f :: * -&gt; *) a.
+(Foldable t, Alternative f) =&gt;
+t (f a) -&gt; f a
+</span><span class="hs-identifier hs-var">asum</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; Key -&gt; Value -&gt; Maybe Value
+</span><a href="Text.Microstache.Render.html#simpleLookup"><span class="hs-identifier hs-var">simpleLookup</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092387"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Key
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092377"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Value -&gt; Maybe Value) -&gt; NonEmpty Value -&gt; NonEmpty (Maybe Value)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">NonEmpty Value
+</span><a href="#local-6989586621679092378"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-224"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[Maybe Value] -&gt; Maybe Value
+forall (t :: * -&gt; *) (f :: * -&gt; *) a.
+(Foldable t, Alternative f) =&gt;
+t (f a) -&gt; f a
+</span><span class="hs-identifier hs-var">asum</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">([Text] -&gt; Maybe Value) -&gt; [[Text]] -&gt; [Maybe Value]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Maybe Value
+</span><a href="#local-6989586621679092386"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">(Key -&gt; Maybe Value) -&gt; ([Text] -&gt; Key) -&gt; [Text] -&gt; Maybe Value
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; Key
+</span><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-var">Key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([[Text]] -&gt; [Maybe Value])
+-&gt; ([Text] -&gt; [[Text]]) -&gt; [Text] -&gt; [Maybe Value]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[[Text]] -&gt; [[Text]]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">([[Text]] -&gt; [[Text]])
+-&gt; ([Text] -&gt; [[Text]]) -&gt; [Text] -&gt; [[Text]]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; [[Text]]
+forall a. [a] -&gt; [[a]]
+</span><span class="hs-identifier hs-var">tails</span></span><span> </span><span class="annot"><span class="annottext">([Text] -&gt; [Maybe Value]) -&gt; [Text] -&gt; [Maybe Value]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; [Text]
+</span><a href="Text.Microstache.Type.html#unKey"><span class="hs-identifier hs-var">unKey</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092379"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-225"></span><span>    </span><span class="annot"><span class="annottext">Maybe Value
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-226"></span><span>        </span><span class="hs-comment">-- Context Misses: Failed context lookups should be considered falsey.</span><span>
+</span><span id="line-227"></span><span>        </span><span class="annot"><span class="annottext">MustacheWarning -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#tellWarning"><span class="hs-identifier hs-var">tellWarning</span></a></span><span> </span><span class="annot"><span class="annottext">(MustacheWarning -&gt; Render ()) -&gt; MustacheWarning -&gt; Render ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Key -&gt; MustacheWarning
+</span><a href="Text.Microstache.Type.html#MustacheVariableNotFound"><span class="hs-identifier hs-var">MustacheVariableNotFound</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092379"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Key
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092377"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-228"></span><span>        </span><span class="annot"><span class="annottext">Value -&gt; Render Value
+forall a. a -&gt; ReaderT RenderContext (State S) a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Value
+</span><span class="hs-identifier hs-var">String</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-229"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span>  </span><span id="local-6989586621679092393"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092393"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Value -&gt; Render Value
+forall a. a -&gt; ReaderT RenderContext (State S) a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092393"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-230"></span><span>
+</span><span id="line-231"></span><span class="hs-comment">-- | Lookup a 'Value' by traversing another 'Value' using given 'Key' as</span><span>
+</span><span id="line-232"></span><span class="hs-comment">-- &#8220;path&#8221;.</span><span>
+</span><span id="line-233"></span><span>
+</span><span id="line-234"></span><span class="annot"><a href="Text.Microstache.Render.html#simpleLookup"><span class="hs-identifier hs-type">simpleLookup</span></a></span><span>
+</span><span id="line-235"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-236"></span><span>     </span><span class="hs-comment">-- ^ At least one part of the path matched, in this case we are</span><span>
+</span><span id="line-237"></span><span>     </span><span class="hs-comment">-- &#8220;committed&#8221; to this lookup and cannot say &#8220;there is nothing, try</span><span>
+</span><span id="line-238"></span><span>     </span><span class="hs-comment">-- other level&#8221;. This is necessary to pass the &#8220;Dotted Names &#8212; Context</span><span>
+</span><span id="line-239"></span><span>     </span><span class="hs-comment">-- Precedence&#8221; test from the &#8220;interpolation.yml&#8221; spec.</span><span>
+</span><span id="line-240"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span>               </span><span class="annot"><span class="hs-comment">-- ^ The key to lookup</span></span><span>
+</span><span id="line-241"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span>             </span><span class="annot"><span class="hs-comment">-- ^ Source value</span></span><span>
+</span><span id="line-242"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span>       </span><span class="annot"><span class="hs-comment">-- ^ Looked-up value</span></span><span>
+</span><span id="line-243"></span><span id="simpleLookup"><span class="annot"><span class="annottext">simpleLookup :: Bool -&gt; Key -&gt; Value -&gt; Maybe Value
+</span><a href="Text.Microstache.Render.html#simpleLookup"><span class="hs-identifier hs-var hs-var">simpleLookup</span></a></span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>     </span><span id="local-6989586621679092394"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092394"><span class="hs-identifier hs-var">obj</span></a></span></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Value -&gt; Maybe Value
+forall a. a -&gt; Maybe a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092394"><span class="hs-identifier hs-var">obj</span></a></span><span>
+</span><span id="line-244"></span><span class="annot"><a href="Text.Microstache.Render.html#simpleLookup"><span class="hs-identifier hs-var">simpleLookup</span></a></span><span> </span><span id="local-6989586621679092395"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679092395"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679092396"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092396"><span class="hs-identifier hs-var">k</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679092397"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679092397"><span class="hs-identifier hs-var">ks</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span id="local-6989586621679092399"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679092399"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span class="hs-cpp">
+#if MIN_VERSION_aeson(2,0,0)
+</span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Key -&gt; Object -&gt; Maybe Value
+forall v. Key -&gt; KeyMap v -&gt; Maybe v
+</span><span class="hs-identifier hs-var">KM.lookup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Key
+</span><span class="hs-identifier hs-var">Key.fromText</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092396"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679092399"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="hs-keyword">of</span><span class="hs-cpp">
+#else
+</span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="hs-identifier">KM.lookup</span><span> </span><span class="hs-identifier">k</span><span> </span><span class="hs-identifier">m</span><span> </span><span class="hs-keyword">of</span><span class="hs-cpp">
+#endif
+</span><span>    </span><span class="annot"><span class="annottext">Maybe Value
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679092395"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Value -&gt; Maybe Value
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier hs-var">Null</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Maybe Value
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-251"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span>  </span><span id="local-6989586621679092403"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092403"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Key -&gt; Value -&gt; Maybe Value
+</span><a href="Text.Microstache.Render.html#simpleLookup"><span class="hs-identifier hs-var">simpleLookup</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Text] -&gt; Key
+</span><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-var">Key</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679092397"><span class="hs-identifier hs-var">ks</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092403"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-252"></span><span class="annot"><a href="Text.Microstache.Render.html#simpleLookup"><span class="hs-identifier hs-var">simpleLookup</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Key
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Value
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-253"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#simpleLookup"><span class="hs-pragma hs-type">simpleLookup</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-254"></span><span>
+</span><span id="line-255"></span><span class="annot"><span class="hs-comment">-- | Enter the section by adding given 'Key' prefix to current prefix.</span></span><span>
+</span><span id="line-256"></span><span>
+</span><span id="line-257"></span><span id="local-6989586621679092091"><span class="annot"><a href="Text.Microstache.Render.html#enterSection"><span class="hs-identifier hs-type">enterSection</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092091"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092091"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-258"></span><span id="enterSection"><span class="annot"><span class="annottext">enterSection :: forall a. Key -&gt; Render a -&gt; Render a
+</span><a href="Text.Microstache.Render.html#enterSection"><span class="hs-identifier hs-var hs-var">enterSection</span></a></span></span><span> </span><span id="local-6989586621679092405"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092405"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-259"></span><span>  </span><span class="annot"><span class="annottext">(RenderContext -&gt; RenderContext)
+-&gt; ReaderT RenderContext (State S) a
+-&gt; ReaderT RenderContext (State S) a
+forall r (m :: * -&gt; *) a.
+(r -&gt; r) -&gt; ReaderT r m a -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679092406"><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092406"><span class="hs-identifier hs-var">rc</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092406"><span class="hs-identifier hs-var">rc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcPrefix"><span class="hs-identifier hs-var">rcPrefix</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="#local-6989586621679092405"><span class="hs-identifier hs-type">p</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">&lt;&gt;</span></span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcPrefix"><span class="hs-identifier hs-var">rcPrefix</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092406"><span class="hs-identifier hs-type">rc</span></a></span><span> </span><span class="hs-special">}</span><span class="hs-special">)</span><span>
+</span><span id="line-260"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#enterSection"><span class="hs-pragma hs-type">enterSection</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-261"></span><span>
+</span><span id="line-262"></span><span class="hs-comment">-- | Add new value on the top of context. The new value has the highest</span><span>
+</span><span id="line-263"></span><span class="hs-comment">-- priority when lookup takes place.</span><span>
+</span><span id="line-264"></span><span>
+</span><span id="line-265"></span><span id="local-6989586621679092103"><span class="annot"><a href="Text.Microstache.Render.html#addToLocalContext"><span class="hs-identifier hs-type">addToLocalContext</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092103"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092103"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-266"></span><span id="addToLocalContext"><span class="annot"><span class="annottext">addToLocalContext :: forall a. Value -&gt; Render a -&gt; Render a
+</span><a href="Text.Microstache.Render.html#addToLocalContext"><span class="hs-identifier hs-var hs-var">addToLocalContext</span></a></span></span><span> </span><span id="local-6989586621679092407"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092407"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-267"></span><span>  </span><span class="annot"><span class="annottext">(RenderContext -&gt; RenderContext)
+-&gt; ReaderT RenderContext (State S) a
+-&gt; ReaderT RenderContext (State S) a
+forall r (m :: * -&gt; *) a.
+(r -&gt; r) -&gt; ReaderT r m a -&gt; ReaderT r m a
+</span><span class="hs-identifier hs-var">local</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679092408"><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092408"><span class="hs-identifier hs-var">rc</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RenderContext
+</span><a href="#local-6989586621679092408"><span class="hs-identifier hs-var">rc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#rcContext"><span class="hs-identifier hs-var">rcContext</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NE.cons</span></span><span> </span><span class="annot"><a href="#local-6989586621679092407"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Render.html#rcContext"><span class="hs-identifier hs-var">rcContext</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679092408"><span class="hs-identifier hs-type">rc</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span class="hs-special">)</span><span>
+</span><span id="line-268"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#addToLocalContext"><span class="hs-pragma hs-type">addToLocalContext</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-269"></span><span>
+</span><span id="line-270"></span><span class="hs-comment">----------------------------------------------------------------------------</span><span>
+</span><span id="line-271"></span><span class="hs-comment">-- Helpers</span><span>
+</span><span id="line-272"></span><span>
+</span><span id="line-273"></span><span class="annot"><span class="hs-comment">-- | Add two 'Maybe' 'Word' values together.</span></span><span>
+</span><span id="line-274"></span><span>
+</span><span id="line-275"></span><span class="annot"><a href="Text.Microstache.Render.html#addIndents"><span class="hs-identifier hs-type">addIndents</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span>
+</span><span id="line-276"></span><span id="addIndents"><span class="annot"><span class="annottext">addIndents :: Maybe Word -&gt; Maybe Word -&gt; Maybe Word
+</span><a href="Text.Microstache.Render.html#addIndents"><span class="hs-identifier hs-var hs-var">addIndents</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>  </span><span class="annot"><span class="annottext">Maybe Word
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Word
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-277"></span><span class="annot"><a href="Text.Microstache.Render.html#addIndents"><span class="hs-identifier hs-var">addIndents</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679092410"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092410"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word -&gt; Maybe Word
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092410"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-278"></span><span class="annot"><a href="Text.Microstache.Render.html#addIndents"><span class="hs-identifier hs-var">addIndents</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679092411"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092411"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word -&gt; Maybe Word
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092411"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-279"></span><span class="annot"><a href="Text.Microstache.Render.html#addIndents"><span class="hs-identifier hs-var">addIndents</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679092412"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092412"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679092413"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092413"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word -&gt; Maybe Word
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092412"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Word -&gt; Word
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092413"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-280"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#addIndents"><span class="hs-pragma hs-type">addIndents</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-281"></span><span>
+</span><span id="line-282"></span><span class="annot"><span class="hs-comment">-- | Build intentation of specified length by repeating the space character.</span></span><span>
+</span><span id="line-283"></span><span>
+</span><span id="line-284"></span><span class="annot"><a href="Text.Microstache.Render.html#buildIndent"><span class="hs-identifier hs-type">buildIndent</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-285"></span><span id="buildIndent"><span class="annot"><span class="annottext">buildIndent :: Maybe Word -&gt; Text
+</span><a href="Text.Microstache.Render.html#buildIndent"><span class="hs-identifier hs-var hs-var">buildIndent</span></a></span></span><span> </span><span class="annot"><span class="annottext">Maybe Word
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-286"></span><span class="annot"><a href="Text.Microstache.Render.html#buildIndent"><span class="hs-identifier hs-var">buildIndent</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679092415"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092415"><span class="hs-identifier hs-var">p</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679092422"><span class="annot"><span class="annottext">n :: Int
+</span><a href="#local-6989586621679092422"><span class="hs-identifier hs-var hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Word -&gt; Int
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679092415"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.replicate</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679092422"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot; &quot;</span></span><span>
+</span><span id="line-287"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#buildIndent"><span class="hs-pragma hs-type">buildIndent</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-288"></span><span>
+</span><span id="line-289"></span><span class="annot"><span class="hs-comment">-- | Select invisible values.</span></span><span>
+</span><span id="line-290"></span><span>
+</span><span id="line-291"></span><span class="annot"><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-type">isBlank</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-292"></span><span id="isBlank"><span class="annot"><span class="annottext">isBlank :: Value -&gt; Bool
+</span><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-var hs-var">isBlank</span></a></span></span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier hs-var">Null</span></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-293"></span><span class="annot"><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-var">isBlank</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-294"></span><span class="annot"><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-var">isBlank</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span>   </span><span id="local-6989586621679092425"><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679092425"><span class="hs-identifier hs-var">m</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Object -&gt; Bool
+forall v. KeyMap v -&gt; Bool
+</span><span class="hs-identifier hs-var">KM.null</span></span><span> </span><span class="annot"><span class="annottext">Object
+</span><a href="#local-6989586621679092425"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-295"></span><span class="annot"><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-var">isBlank</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Array</span></span><span>    </span><span id="local-6989586621679092427"><span class="annot"><span class="annottext">Array
+</span><a href="#local-6989586621679092427"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Array -&gt; Bool
+forall a. Vector a -&gt; Bool
+</span><span class="hs-identifier hs-var">V.null</span></span><span> </span><span class="annot"><span class="annottext">Array
+</span><a href="#local-6989586621679092427"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-296"></span><span class="annot"><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-var">isBlank</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>   </span><span id="local-6989586621679092429"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092429"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Bool
+</span><span class="hs-identifier hs-var">T.null</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092429"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-297"></span><span class="annot"><a href="Text.Microstache.Render.html#isBlank"><span class="hs-identifier hs-var">isBlank</span></a></span><span> </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier">_</span></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-298"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#isBlank"><span class="hs-pragma hs-type">isBlank</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-299"></span><span>
+</span><span id="line-300"></span><span class="annot"><span class="hs-comment">-- | Render Aeson's 'Value' /without/ HTML escaping.</span></span><span>
+</span><span id="line-301"></span><span>
+</span><span id="line-302"></span><span class="annot"><a href="Text.Microstache.Render.html#renderValue"><span class="hs-identifier hs-type">renderValue</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Value</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#Render"><span class="hs-identifier hs-type">Render</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-303"></span><span id="renderValue"><span class="annot"><span class="annottext">renderValue :: Key -&gt; Value -&gt; ReaderT RenderContext (State S) Text
+</span><a href="Text.Microstache.Render.html#renderValue"><span class="hs-identifier hs-var hs-var">renderValue</span></a></span></span><span> </span><span id="local-6989586621679092431"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092431"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679092432"><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092432"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092432"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-304"></span><span>    </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier hs-var">Null</span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text -&gt; ReaderT RenderContext (State S) Text
+forall a. a -&gt; ReaderT RenderContext (State S) a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-305"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span id="local-6989586621679092433"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092433"><span class="hs-identifier hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text -&gt; ReaderT RenderContext (State S) Text
+forall a. a -&gt; ReaderT RenderContext (State S) a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092433"><span class="hs-identifier hs-var">str</span></a></span><span>
+</span><span id="line-306"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Object</span></span><span> </span><span class="annot"><span class="annottext">Object
+</span><span class="hs-identifier">_</span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-307"></span><span>        </span><span class="annot"><span class="annottext">MustacheWarning -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#tellWarning"><span class="hs-identifier hs-var">tellWarning</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; MustacheWarning
+</span><a href="Text.Microstache.Type.html#MustacheDirectlyRenderedValue"><span class="hs-identifier hs-var">MustacheDirectlyRenderedValue</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092431"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-308"></span><span>        </span><span class="annot"><span class="annottext">Value -&gt; ReaderT RenderContext (State S) Text
+</span><a href="#local-6989586621679092435"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092432"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-309"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Array</span></span><span> </span><span class="annot"><span class="annottext">Array
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-310"></span><span>        </span><span class="annot"><span class="annottext">MustacheWarning -&gt; Render ()
+</span><a href="Text.Microstache.Render.html#tellWarning"><span class="hs-identifier hs-var">tellWarning</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; MustacheWarning
+</span><a href="Text.Microstache.Type.html#MustacheDirectlyRenderedValue"><span class="hs-identifier hs-var">MustacheDirectlyRenderedValue</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092431"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-311"></span><span>        </span><span class="annot"><span class="annottext">Value -&gt; ReaderT RenderContext (State S) Text
+</span><a href="#local-6989586621679092435"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092432"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-312"></span><span>    </span><span class="annot"><span class="annottext">Value
+</span><span class="hs-identifier">_</span></span><span>          </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Value -&gt; ReaderT RenderContext (State S) Text
+</span><a href="#local-6989586621679092435"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Value
+</span><a href="#local-6989586621679092432"><span class="hs-identifier hs-var">v</span></a></span><span>
+</span><span id="line-313"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-314"></span><span>    </span><span id="local-6989586621679092435"><span class="annot"><span class="annottext">render :: Value -&gt; ReaderT RenderContext (State S) Text
+</span><a href="#local-6989586621679092435"><span class="hs-identifier hs-var hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; ReaderT RenderContext (State S) Text
+forall a. a -&gt; ReaderT RenderContext (State S) a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; ReaderT RenderContext (State S) Text)
+-&gt; (Value -&gt; Text) -&gt; Value -&gt; ReaderT RenderContext (State S) Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><span class="hs-identifier hs-var">LT.toStrict</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (Value -&gt; Text) -&gt; Value -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Text
+</span><span class="hs-identifier hs-var">LTE.decodeUtf8</span></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; Text) -&gt; (Value -&gt; ByteString) -&gt; Value -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Value -&gt; ByteString
+forall a. ToJSON a =&gt; a -&gt; ByteString
+</span><span class="hs-identifier hs-var">encode</span></span><span>
+</span><span id="line-315"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#renderValue"><span class="hs-pragma hs-type">renderValue</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-316"></span><span>
+</span><span id="line-317"></span><span class="annot"><span class="hs-comment">-- | Escape HTML represented as strict 'Text'.</span></span><span>
+</span><span id="line-318"></span><span>
+</span><span id="line-319"></span><span class="annot"><a href="Text.Microstache.Render.html#escapeHtml"><span class="hs-identifier hs-type">escapeHtml</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-320"></span><span id="escapeHtml"><span class="annot"><span class="annottext">escapeHtml :: Text -&gt; Text
+</span><a href="Text.Microstache.Render.html#escapeHtml"><span class="hs-identifier hs-var hs-var">escapeHtml</span></a></span></span><span> </span><span id="local-6989586621679092443"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092443"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Text, Text) -&gt; Text -&gt; Text) -&gt; Text -&gt; [(Text, Text)] -&gt; Text
+forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; [a] -&gt; b
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Text -&gt; Text -&gt; Text -&gt; Text) -&gt; (Text, Text) -&gt; Text -&gt; Text
+forall a b c. (a -&gt; b -&gt; c) -&gt; (a, b) -&gt; c
+</span><span class="hs-identifier hs-var">uncurry</span></span><span> </span><span class="annot"><span class="annottext">HasCallStack =&gt; Text -&gt; Text -&gt; Text -&gt; Text
+Text -&gt; Text -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.replace</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679092443"><span class="hs-identifier hs-var">txt</span></a></span><span>
+</span><span id="line-321"></span><span>  </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;\&quot;&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&amp;quot;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-322"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&lt;&quot;</span></span><span class="hs-special">,</span><span>  </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&amp;lt;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-323"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&gt;&quot;</span></span><span class="hs-special">,</span><span>  </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&amp;gt;&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-324"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&amp;&quot;</span></span><span class="hs-special">,</span><span>  </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&amp;amp;&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-325"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Text.Microstache.Render.html#escapeHtml"><span class="hs-pragma hs-type">escapeHtml</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-326"></span></pre></body></html>

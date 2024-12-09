@@ -1,0 +1,186 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="annot"><span class="hs-comment">{-|
+Module      : SAT.Polarity
+Description : Exports the Polarity module.
+-}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-pragma">{-# LANGUAGE DerivingStrategies #-}</span><span>
+</span><span id="line-7"></span><span class="hs-pragma">{-# LANGUAGE ExplicitNamespaces #-}</span><span>
+</span><span id="line-8"></span><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-9"></span><span class="hs-pragma">{-# LANGUAGE InstanceSigs #-}</span><span>
+</span><span id="line-10"></span><span class="hs-pragma">{-# LANGUAGE KindSignatures #-}</span><span>
+</span><span id="line-11"></span><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-12"></span><span class="hs-pragma">{-# LANGUAGE StandaloneKindSignatures #-}</span><span>
+</span><span id="line-13"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric #-}</span><span>
+</span><span id="line-14"></span><span class="hs-pragma">{-# LANGUAGE StandaloneDeriving #-}</span><span>
+</span><span id="line-15"></span><span class="hs-pragma">{-# LANGUAGE DeriveAnyClass #-}</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SAT.Polarity</span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier">Polarity</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="SAT.Polarity.html#Positive"><span class="hs-identifier">Positive</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Negative"><span class="hs-identifier">Negative</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Mixed"><span class="hs-identifier">Mixed</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="SAT.Polarity.html#flipPolarity"><span class="hs-identifier">flipPolarity</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-18"></span><span>  </span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Kind</span></span><span> </span><span class="hs-special">(</span><span class="hs-keyword">type</span><span> </span><span class="annot"><span class="hs-identifier">Type</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Parallel.Strategies</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NFData</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="annot"><span class="hs-comment">-- | The 'Polarity' type.</span></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">type</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Type</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">data</span><span> </span><span id="Polarity"><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-var">Polarity</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Positive"><span class="annot"><a href="SAT.Polarity.html#Positive"><span class="hs-identifier hs-var">Positive</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Negative"><span class="annot"><a href="SAT.Polarity.html#Negative"><span class="hs-identifier hs-var">Negative</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Mixed"><span class="annot"><a href="SAT.Polarity.html#Mixed"><span class="hs-identifier hs-var">Mixed</span></a></span></span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">stock</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679098446"><span id="local-6989586621679098448"><span class="annot"><span class="annottext">Polarity -&gt; Polarity -&gt; Bool
+(Polarity -&gt; Polarity -&gt; Bool)
+-&gt; (Polarity -&gt; Polarity -&gt; Bool) -&gt; Eq Polarity
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: Polarity -&gt; Polarity -&gt; Bool
+== :: Polarity -&gt; Polarity -&gt; Bool
+$c/= :: Polarity -&gt; Polarity -&gt; Bool
+/= :: Polarity -&gt; Polarity -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098455"><span id="local-6989586621679098457"><span id="local-6989586621679098459"><span id="local-6989586621679098463"><span id="local-6989586621679098466"><span id="local-6989586621679098469"><span id="local-6989586621679098472"><span class="annot"><span class="annottext">Eq Polarity
+Eq Polarity =&gt;
+(Polarity -&gt; Polarity -&gt; Ordering)
+-&gt; (Polarity -&gt; Polarity -&gt; Bool)
+-&gt; (Polarity -&gt; Polarity -&gt; Bool)
+-&gt; (Polarity -&gt; Polarity -&gt; Bool)
+-&gt; (Polarity -&gt; Polarity -&gt; Bool)
+-&gt; (Polarity -&gt; Polarity -&gt; Polarity)
+-&gt; (Polarity -&gt; Polarity -&gt; Polarity)
+-&gt; Ord Polarity
+Polarity -&gt; Polarity -&gt; Bool
+Polarity -&gt; Polarity -&gt; Ordering
+Polarity -&gt; Polarity -&gt; Polarity
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+$ccompare :: Polarity -&gt; Polarity -&gt; Ordering
+compare :: Polarity -&gt; Polarity -&gt; Ordering
+$c&lt; :: Polarity -&gt; Polarity -&gt; Bool
+&lt; :: Polarity -&gt; Polarity -&gt; Bool
+$c&lt;= :: Polarity -&gt; Polarity -&gt; Bool
+&lt;= :: Polarity -&gt; Polarity -&gt; Bool
+$c&gt; :: Polarity -&gt; Polarity -&gt; Bool
+&gt; :: Polarity -&gt; Polarity -&gt; Bool
+$c&gt;= :: Polarity -&gt; Polarity -&gt; Bool
+&gt;= :: Polarity -&gt; Polarity -&gt; Bool
+$cmax :: Polarity -&gt; Polarity -&gt; Polarity
+max :: Polarity -&gt; Polarity -&gt; Polarity
+$cmin :: Polarity -&gt; Polarity -&gt; Polarity
+min :: Polarity -&gt; Polarity -&gt; Polarity
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098476"><span id="local-6989586621679098478"><span id="local-6989586621679098482"><span class="annot"><span class="annottext">Int -&gt; Polarity -&gt; ShowS
+[Polarity] -&gt; ShowS
+Polarity -&gt; String
+(Int -&gt; Polarity -&gt; ShowS)
+-&gt; (Polarity -&gt; String) -&gt; ([Polarity] -&gt; ShowS) -&gt; Show Polarity
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; Polarity -&gt; ShowS
+showsPrec :: Int -&gt; Polarity -&gt; ShowS
+$cshow :: Polarity -&gt; String
+show :: Polarity -&gt; String
+$cshowList :: [Polarity] -&gt; ShowS
+showList :: [Polarity] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098486"><span id="local-6989586621679098488"><span class="annot"><span class="annottext">(forall x. Polarity -&gt; Rep Polarity x)
+-&gt; (forall x. Rep Polarity x -&gt; Polarity) -&gt; Generic Polarity
+forall x. Rep Polarity x -&gt; Polarity
+forall x. Polarity -&gt; Rep Polarity x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. Polarity -&gt; Rep Polarity x
+from :: forall x. Polarity -&gt; Rep Polarity x
+$cto :: forall x. Rep Polarity x -&gt; Polarity
+to :: forall x. Rep Polarity x -&gt; Polarity
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098492"><span id="local-6989586621679098496"><span id="local-6989586621679098499"><span id="local-6989586621679098505"><span class="annot"><span class="annottext">ReadPrec [Polarity]
+ReadPrec Polarity
+Int -&gt; ReadS Polarity
+ReadS [Polarity]
+(Int -&gt; ReadS Polarity)
+-&gt; ReadS [Polarity]
+-&gt; ReadPrec Polarity
+-&gt; ReadPrec [Polarity]
+-&gt; Read Polarity
+forall a.
+(Int -&gt; ReadS a)
+-&gt; ReadS [a] -&gt; ReadPrec a -&gt; ReadPrec [a] -&gt; Read a
+$creadsPrec :: Int -&gt; ReadS Polarity
+readsPrec :: Int -&gt; ReadS Polarity
+$creadList :: ReadS [Polarity]
+readList :: ReadS [Polarity]
+$creadPrec :: ReadPrec Polarity
+readPrec :: ReadPrec Polarity
+$creadListPrec :: ReadPrec [Polarity]
+readListPrec :: ReadPrec [Polarity]
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Read</span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span id="local-6989586621679098509"><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">anyclass</span></span><span> </span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="annot"><span class="hs-comment">-- | Semigroup instance for the 'Polarity' type.</span></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679098527"><span id="local-6989586621679098531"><span class="annot"><span class="hs-identifier hs-type">Semigroup</span></span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-comment">-- | Combines two polarities.</span><span>
+</span><span id="line-32"></span><span>  </span><span class="hs-comment">-- </span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-comment">-- &gt;&gt;&gt; Positive &lt;&gt; Positive</span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-comment">-- Positive</span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-comment">-- </span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-comment">-- &gt;&gt;&gt; Negative &lt;&gt; Negative</span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-comment">-- Negative</span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-comment">-- </span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-comment">-- &gt;&gt;&gt; Positive &lt;&gt; Negative</span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-comment">-- Mixed</span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-comment">-- </span><span>
+</span><span id="line-42"></span><span>  </span><span class="hs-comment">-- &gt;&gt;&gt; Positive &lt;&gt; Mixed</span><span>
+</span><span id="line-43"></span><span>  </span><span class="hs-comment">-- Mixed</span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-comment">-- </span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-comment">-- &gt;&gt;&gt; Negative &lt;&gt; Mixed</span><span>
+</span><span id="line-46"></span><span>  </span><span class="hs-comment">-- Mixed</span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-comment">-- </span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-comment">-- prop&gt; \x y -&gt; x &lt;&gt; y == y &lt;&gt; x</span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-comment">-- </span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-comment">-- prop&gt; \x -&gt; x &lt;&gt; Mixed == Mixed</span><span>
+</span><span id="line-51"></span><span>  </span><span class="annot"><span class="hs-operator hs-type">(&lt;&gt;)</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span><span>
+</span><span id="line-52"></span><span>  </span><span id="local-6989586621679098536"><span class="annot"><span class="annottext">&lt;&gt; :: Polarity -&gt; Polarity -&gt; Polarity
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">(&lt;&gt;)</span></span></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Positive"><span class="hs-identifier hs-var">Positive</span></a></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Positive"><span class="hs-identifier hs-var">Positive</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Positive"><span class="hs-identifier hs-var">Positive</span></a></span><span>
+</span><span id="line-53"></span><span>  </span><span class="annot"><span class="hs-operator hs-var">(&lt;&gt;)</span></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Negative"><span class="hs-identifier hs-var">Negative</span></a></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Negative"><span class="hs-identifier hs-var">Negative</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Negative"><span class="hs-identifier hs-var">Negative</span></a></span><span>
+</span><span id="line-54"></span><span>  </span><span class="annot"><span class="hs-operator hs-var">(&lt;&gt;)</span></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Mixed"><span class="hs-identifier hs-var">Mixed</span></a></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="annot"><span class="hs-comment">-- | Monoid instance for the 'Polarity' type.</span></span><span>
+</span><span id="line-57"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679098541"><span id="local-6989586621679098545"><span class="annot"><span class="hs-identifier hs-type">Monoid</span></span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-58"></span><span>  </span><span class="hs-comment">-- | The identity element of the 'Polarity' type.</span><span>
+</span><span id="line-59"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">mempty</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span id="local-6989586621679098548"><span class="annot"><span class="annottext">mempty :: Polarity
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">mempty</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Positive"><span class="hs-identifier hs-var">Positive</span></a></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- | Flips the polarity.</span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-64"></span><span class="hs-comment">-- &gt;&gt;&gt; flipPolarity Positive</span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- Negative</span><span>
+</span><span id="line-66"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-67"></span><span class="hs-comment">-- &gt;&gt;&gt; flipPolarity Negative</span><span>
+</span><span id="line-68"></span><span class="hs-comment">-- Positive</span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- &gt;&gt;&gt; flipPolarity Mixed</span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- Mixed</span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-73"></span><span class="hs-comment">-- prop&gt; flipPolarity (flipPolarity x) == x</span><span>
+</span><span id="line-74"></span><span class="annot"><a href="SAT.Polarity.html#flipPolarity"><span class="hs-identifier hs-type">flipPolarity</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SAT.Polarity.html#Polarity"><span class="hs-identifier hs-type">Polarity</span></a></span><span>
+</span><span id="line-75"></span><span id="flipPolarity"><span class="annot"><span class="annottext">flipPolarity :: Polarity -&gt; Polarity
+</span><a href="SAT.Polarity.html#flipPolarity"><span class="hs-identifier hs-var hs-var">flipPolarity</span></a></span></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Positive"><span class="hs-identifier hs-var">Positive</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Negative"><span class="hs-identifier hs-var">Negative</span></a></span><span>
+</span><span id="line-76"></span><span class="annot"><a href="SAT.Polarity.html#flipPolarity"><span class="hs-identifier hs-var">flipPolarity</span></a></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Negative"><span class="hs-identifier hs-var">Negative</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Positive"><span class="hs-identifier hs-var">Positive</span></a></span><span>
+</span><span id="line-77"></span><span class="annot"><a href="SAT.Polarity.html#flipPolarity"><span class="hs-identifier hs-var">flipPolarity</span></a></span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Mixed"><span class="hs-identifier hs-var">Mixed</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Polarity
+</span><a href="SAT.Polarity.html#Mixed"><span class="hs-identifier hs-var">Mixed</span></a></span><span>
+</span><span id="line-78"></span><span class="hs-pragma">{-# INLINEABLE</span><span> </span><span class="annot"><a href="SAT.Polarity.html#flipPolarity"><span class="hs-pragma hs-type">flipPolarity</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-79"></span></pre></body></html>

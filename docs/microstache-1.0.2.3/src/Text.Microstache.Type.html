@@ -1,0 +1,1215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span id="local-6989586621679091288"><span id="local-6989586621679091289"><span id="local-6989586621679091290"><span id="local-6989586621679091291"><span id="local-6989586621679091292"><span id="local-6989586621679091293"><span id="local-6989586621679091294"><span id="local-6989586621679091295"><span id="local-6989586621679091296"><span id="local-6989586621679091297"><span id="local-6989586621679091298"><span id="local-6989586621679091299"><span id="local-6989586621679091300"></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-2"></span><span class="hs-comment">-- Module      :  Text.Microstache.Type</span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- Copyright   :  &#169; 2016&#8211;2017 Stack Buliders</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- License     :  BSD 3 clause</span><span>
+</span><span id="line-5"></span><span class="hs-comment">--</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Maintainer  :  Mark Karpov &lt;markkarpov@openmailbox.org&gt;</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Stability   :  experimental</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Portability :  portable</span><span>
+</span><span id="line-9"></span><span class="hs-comment">--</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- Types used by the package. You don't usually need to import the module,</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- because &quot;Text.Microstache&quot; re-exports everything you may need, import that</span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- module instead.</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-pragma">{-# LANGUAGE CPP                        #-}</span><span>
+</span><span id="line-15"></span><span class="hs-pragma">{-# LANGUAGE DeriveDataTypeable         #-}</span><span>
+</span><span id="line-16"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric              #-}</span><span>
+</span><span id="line-17"></span><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-18"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings          #-}</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.Microstache.Type</span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier">Template</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier">Node</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier">Key</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#showKey"><span class="hs-identifier">showKey</span></a></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier">PName</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#MustacheException"><span class="hs-identifier">MustacheException</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#displayMustacheException"><span class="hs-identifier">displayMustacheException</span></a></span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier">MustacheWarning</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#displayMustacheWarning"><span class="hs-identifier">displayMustacheWarning</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.DeepSeq</span></span><span>   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">NFData</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Exception</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Data</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Data</span></span><span class="hs-special">)</span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>          </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Map</span></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Monoid</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Monoid</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Semigroup</span></span><span>    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Semigroup</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.String</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IsString</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Typeable</span></span><span>     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Typeable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Word</span></span><span>         </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Word</span></span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>
+</span><span id="line-44"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.Parsec</span></span><span>       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ParseError</span></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>  </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-47"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span class="hs-comment">-- | Mustache template as name of &#8220;top-level&#8221; template and a collection of</span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- all available templates (partials).</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--</span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- 'Template' is a 'Semigroup'. This means that you can combine 'Template's</span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- (and their caches) using the @('&lt;&gt;')@ operator, the resulting 'Template'</span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- will have the same currently selected template as the left one. Union of</span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- caches is also left-biased.</span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-keyword">data</span><span> </span><span id="Template"><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-var">Template</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Template"><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-var">Template</span></a></span></span><span>
+</span><span id="line-58"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="templateActual"><span class="annot"><span class="annottext">Template -&gt; PName
+</span><a href="Text.Microstache.Type.html#templateActual"><span class="hs-identifier hs-var hs-var">templateActual</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-type">PName</span></a></span><span>
+</span><span id="line-59"></span><span>    </span><span class="annot"><span class="hs-comment">-- ^ Name of currently &#8220;selected&#8221; template (top-level one).</span></span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="templateCache"><span class="annot"><span class="annottext">Template -&gt; Map PName [Node]
+</span><a href="Text.Microstache.Type.html#templateCache"><span class="hs-identifier hs-var hs-var">templateCache</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-type">PName</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-type">Node</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-61"></span><span>    </span><span class="hs-comment">-- ^ Collection of all templates that are available for interpolation</span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-comment">-- (as partials). The top-level one is also contained here and the</span><span>
+</span><span id="line-63"></span><span>    </span><span class="hs-comment">-- &#8220;focus&#8221; can be switched easily by modifying 'templateActual'.</span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679091319"><span id="local-6989586621679091326"><span class="annot"><span class="annottext">Template -&gt; Template -&gt; Bool
+(Template -&gt; Template -&gt; Bool)
+-&gt; (Template -&gt; Template -&gt; Bool) -&gt; Eq Template
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: Template -&gt; Template -&gt; Bool
+== :: Template -&gt; Template -&gt; Bool
+$c/= :: Template -&gt; Template -&gt; Bool
+/= :: Template -&gt; Template -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091336"><span id="local-6989586621679091343"><span id="local-6989586621679091348"><span id="local-6989586621679091352"><span id="local-6989586621679091355"><span id="local-6989586621679091358"><span id="local-6989586621679091361"><span class="annot"><span class="annottext">Eq Template
+Eq Template =&gt;
+(Template -&gt; Template -&gt; Ordering)
+-&gt; (Template -&gt; Template -&gt; Bool)
+-&gt; (Template -&gt; Template -&gt; Bool)
+-&gt; (Template -&gt; Template -&gt; Bool)
+-&gt; (Template -&gt; Template -&gt; Bool)
+-&gt; (Template -&gt; Template -&gt; Template)
+-&gt; (Template -&gt; Template -&gt; Template)
+-&gt; Ord Template
+Template -&gt; Template -&gt; Bool
+Template -&gt; Template -&gt; Ordering
+Template -&gt; Template -&gt; Template
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+$ccompare :: Template -&gt; Template -&gt; Ordering
+compare :: Template -&gt; Template -&gt; Ordering
+$c&lt; :: Template -&gt; Template -&gt; Bool
+&lt; :: Template -&gt; Template -&gt; Bool
+$c&lt;= :: Template -&gt; Template -&gt; Bool
+&lt;= :: Template -&gt; Template -&gt; Bool
+$c&gt; :: Template -&gt; Template -&gt; Bool
+&gt; :: Template -&gt; Template -&gt; Bool
+$c&gt;= :: Template -&gt; Template -&gt; Bool
+&gt;= :: Template -&gt; Template -&gt; Bool
+$cmax :: Template -&gt; Template -&gt; Template
+max :: Template -&gt; Template -&gt; Template
+$cmin :: Template -&gt; Template -&gt; Template
+min :: Template -&gt; Template -&gt; Template
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091369"><span id="local-6989586621679091378"><span id="local-6989586621679091382"><span class="annot"><span class="annottext">Int -&gt; Template -&gt; ShowS
+[Template] -&gt; ShowS
+Template -&gt; [Char]
+(Int -&gt; Template -&gt; ShowS)
+-&gt; (Template -&gt; [Char]) -&gt; ([Template] -&gt; ShowS) -&gt; Show Template
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; [Char]) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; Template -&gt; ShowS
+showsPrec :: Int -&gt; Template -&gt; ShowS
+$cshow :: Template -&gt; [Char]
+show :: Template -&gt; [Char]
+$cshowList :: [Template] -&gt; ShowS
+showList :: [Template] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091391"><span id="local-6989586621679091399"><span id="local-6989586621679091406"><span id="local-6989586621679091408"><span id="local-6989586621679091410"><span id="local-6989586621679091416"><span id="local-6989586621679091421"><span id="local-6989586621679091424"><span id="local-6989586621679091427"><span id="local-6989586621679091430"><span id="local-6989586621679091433"><span id="local-6989586621679091436"><span id="local-6989586621679091441"><span id="local-6989586621679091446"><span class="annot"><span class="annottext">Typeable Template
+Typeable Template =&gt;
+(forall (c :: * -&gt; *).
+ (forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+ -&gt; (forall g. g -&gt; c g) -&gt; Template -&gt; c Template)
+-&gt; (forall (c :: * -&gt; *).
+    (forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+    -&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Template)
+-&gt; (Template -&gt; Constr)
+-&gt; (Template -&gt; DataType)
+-&gt; (forall (t :: * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Template))
+-&gt; (forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Template))
+-&gt; ((forall b. Data b =&gt; b -&gt; b) -&gt; Template -&gt; Template)
+-&gt; (forall r r'.
+    (r -&gt; r' -&gt; r)
+    -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Template -&gt; r)
+-&gt; (forall r r'.
+    (r' -&gt; r -&gt; r)
+    -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Template -&gt; r)
+-&gt; (forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Template -&gt; [u])
+-&gt; (forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Template -&gt; u)
+-&gt; (forall (m :: * -&gt; *).
+    Monad m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template)
+-&gt; Data Template
+Template -&gt; Constr
+Template -&gt; DataType
+(forall b. Data b =&gt; b -&gt; b) -&gt; Template -&gt; Template
+forall a.
+Typeable a =&gt;
+(forall (c :: * -&gt; *).
+ (forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+ -&gt; (forall g. g -&gt; c g) -&gt; a -&gt; c a)
+-&gt; (forall (c :: * -&gt; *).
+    (forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+    -&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c a)
+-&gt; (a -&gt; Constr)
+-&gt; (a -&gt; DataType)
+-&gt; (forall (t :: * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d. Data d =&gt; c (t d)) -&gt; Maybe (c a))
+-&gt; (forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c a))
+-&gt; ((forall b. Data b =&gt; b -&gt; b) -&gt; a -&gt; a)
+-&gt; (forall r r'.
+    (r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; a -&gt; r)
+-&gt; (forall r r'.
+    (r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; a -&gt; r)
+-&gt; (forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; a -&gt; [u])
+-&gt; (forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; a -&gt; u)
+-&gt; (forall (m :: * -&gt; *).
+    Monad m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; Data a
+forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Template -&gt; u
+forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Template -&gt; [u]
+forall r r'.
+(r -&gt; r' -&gt; r)
+-&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Template -&gt; r
+forall r r'.
+(r' -&gt; r -&gt; r)
+-&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Template -&gt; r
+forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template
+forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template
+forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Template
+forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Template -&gt; c Template
+forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Template)
+forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Template)
+$cgfoldl :: forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Template -&gt; c Template
+gfoldl :: forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Template -&gt; c Template
+$cgunfold :: forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Template
+gunfold :: forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Template
+$ctoConstr :: Template -&gt; Constr
+toConstr :: Template -&gt; Constr
+$cdataTypeOf :: Template -&gt; DataType
+dataTypeOf :: Template -&gt; DataType
+$cdataCast1 :: forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Template)
+dataCast1 :: forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Template)
+$cdataCast2 :: forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Template)
+dataCast2 :: forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Template)
+$cgmapT :: (forall b. Data b =&gt; b -&gt; b) -&gt; Template -&gt; Template
+gmapT :: (forall b. Data b =&gt; b -&gt; b) -&gt; Template -&gt; Template
+$cgmapQl :: forall r r'.
+(r -&gt; r' -&gt; r)
+-&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Template -&gt; r
+gmapQl :: forall r r'.
+(r -&gt; r' -&gt; r)
+-&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Template -&gt; r
+$cgmapQr :: forall r r'.
+(r' -&gt; r -&gt; r)
+-&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Template -&gt; r
+gmapQr :: forall r r'.
+(r' -&gt; r -&gt; r)
+-&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Template -&gt; r
+$cgmapQ :: forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Template -&gt; [u]
+gmapQ :: forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Template -&gt; [u]
+$cgmapQi :: forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Template -&gt; u
+gmapQi :: forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Template -&gt; u
+$cgmapM :: forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template
+gmapM :: forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template
+$cgmapMp :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template
+gmapMp :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template
+$cgmapMo :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template
+gmapMo :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Template -&gt; m Template
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091457"><span id="local-6989586621679091459"><span class="annot"><span class="annottext">(forall x. Template -&gt; Rep Template x)
+-&gt; (forall x. Rep Template x -&gt; Template) -&gt; Generic Template
+forall x. Rep Template x -&gt; Template
+forall x. Template -&gt; Rep Template x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. Template -&gt; Rep Template x
+from :: forall x. Template -&gt; Rep Template x
+$cto :: forall x. Rep Template x -&gt; Template
+to :: forall x. Rep Template x -&gt; Template
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>
+</span><span id="line-66"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679091464"><span id="local-6989586621679091468"><span class="annot"><span class="hs-identifier hs-type">Semigroup</span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-type">Template</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-type">Template</span></a></span><span> </span><span id="local-6989586621679091474"><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679091474"><span class="hs-identifier hs-var">pname</span></a></span></span><span> </span><span id="local-6989586621679091475"><span class="annot"><span class="annottext">Map PName [Node]
+</span><a href="#local-6989586621679091475"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679091476"><span class="annot"><span class="annottext">&lt;&gt; :: Template -&gt; Template -&gt; Template
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&lt;&gt;</span></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-type">Template</span></a></span><span> </span><span class="annot"><span class="annottext">PName
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679091477"><span class="annot"><span class="annottext">Map PName [Node]
+</span><a href="#local-6989586621679091477"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PName -&gt; Map PName [Node] -&gt; Template
+</span><a href="Text.Microstache.Type.html#Template"><span class="hs-identifier hs-var">Template</span></a></span><span> </span><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679091474"><span class="hs-identifier hs-var">pname</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map PName [Node] -&gt; Map PName [Node] -&gt; Map PName [Node]
+forall k a. Ord k =&gt; Map k a -&gt; Map k a -&gt; Map k a
+</span><span class="hs-identifier hs-var">Map.union</span></span><span> </span><span class="annot"><span class="annottext">Map PName [Node]
+</span><a href="#local-6989586621679091475"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Map PName [Node]
+</span><a href="#local-6989586621679091477"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="annot"><span class="hs-comment">-- | Structural element of template.</span></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span class="hs-keyword">data</span><span> </span><span id="Node"><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-var">Node</span></a></span></span><span>
+</span><span id="line-72"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="TextBlock"><span class="annot"><a href="Text.Microstache.Type.html#TextBlock"><span class="hs-identifier hs-var">TextBlock</span></a></span></span><span>       </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>       </span><span class="annot"><span class="hs-comment">-- ^ Plain text contained between tags</span></span><span>
+</span><span id="line-73"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="EscapedVar"><span class="annot"><a href="Text.Microstache.Type.html#EscapedVar"><span class="hs-identifier hs-var">EscapedVar</span></a></span></span><span>      </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span>        </span><span class="annot"><span class="hs-comment">-- ^ HTML-escaped variable</span></span><span>
+</span><span id="line-74"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="UnescapedVar"><span class="annot"><a href="Text.Microstache.Type.html#UnescapedVar"><span class="hs-identifier hs-var">UnescapedVar</span></a></span></span><span>    </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span>        </span><span class="annot"><span class="hs-comment">-- ^ Unescaped variable</span></span><span>
+</span><span id="line-75"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Section"><span class="annot"><a href="Text.Microstache.Type.html#Section"><span class="hs-identifier hs-var">Section</span></a></span></span><span>         </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-type">Node</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="hs-comment">-- ^ Mustache section</span></span><span>
+</span><span id="line-76"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="InvertedSection"><span class="annot"><a href="Text.Microstache.Type.html#InvertedSection"><span class="hs-identifier hs-var">InvertedSection</span></a></span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Microstache.Type.html#Node"><span class="hs-identifier hs-type">Node</span></a></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="hs-comment">-- ^ Inverted section</span></span><span>
+</span><span id="line-77"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="Partial"><span class="annot"><a href="Text.Microstache.Type.html#Partial"><span class="hs-identifier hs-var">Partial</span></a></span></span><span>         </span><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-type">PName</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>    </span><span class="annot"><span class="hs-comment">-- ^ Partial with indentation level ('Nothing' means it was inlined)</span></span><span>
+</span><span id="line-79"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679091486"><span id="local-6989586621679091502"><span class="annot"><span class="annottext">Node -&gt; Node -&gt; Bool
+(Node -&gt; Node -&gt; Bool) -&gt; (Node -&gt; Node -&gt; Bool) -&gt; Eq Node
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: Node -&gt; Node -&gt; Bool
+== :: Node -&gt; Node -&gt; Bool
+$c/= :: Node -&gt; Node -&gt; Bool
+/= :: Node -&gt; Node -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091508"><span id="local-6989586621679091524"><span id="local-6989586621679091527"><span id="local-6989586621679091530"><span id="local-6989586621679091533"><span id="local-6989586621679091536"><span id="local-6989586621679091539"><span class="annot"><span class="annottext">Eq Node
+Eq Node =&gt;
+(Node -&gt; Node -&gt; Ordering)
+-&gt; (Node -&gt; Node -&gt; Bool)
+-&gt; (Node -&gt; Node -&gt; Bool)
+-&gt; (Node -&gt; Node -&gt; Bool)
+-&gt; (Node -&gt; Node -&gt; Bool)
+-&gt; (Node -&gt; Node -&gt; Node)
+-&gt; (Node -&gt; Node -&gt; Node)
+-&gt; Ord Node
+Node -&gt; Node -&gt; Bool
+Node -&gt; Node -&gt; Ordering
+Node -&gt; Node -&gt; Node
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+$ccompare :: Node -&gt; Node -&gt; Ordering
+compare :: Node -&gt; Node -&gt; Ordering
+$c&lt; :: Node -&gt; Node -&gt; Bool
+&lt; :: Node -&gt; Node -&gt; Bool
+$c&lt;= :: Node -&gt; Node -&gt; Bool
+&lt;= :: Node -&gt; Node -&gt; Bool
+$c&gt; :: Node -&gt; Node -&gt; Bool
+&gt; :: Node -&gt; Node -&gt; Bool
+$c&gt;= :: Node -&gt; Node -&gt; Bool
+&gt;= :: Node -&gt; Node -&gt; Bool
+$cmax :: Node -&gt; Node -&gt; Node
+max :: Node -&gt; Node -&gt; Node
+$cmin :: Node -&gt; Node -&gt; Node
+min :: Node -&gt; Node -&gt; Node
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091543"><span id="local-6989586621679091565"><span id="local-6989586621679091568"><span class="annot"><span class="annottext">Int -&gt; Node -&gt; ShowS
+[Node] -&gt; ShowS
+Node -&gt; [Char]
+(Int -&gt; Node -&gt; ShowS)
+-&gt; (Node -&gt; [Char]) -&gt; ([Node] -&gt; ShowS) -&gt; Show Node
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; [Char]) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; Node -&gt; ShowS
+showsPrec :: Int -&gt; Node -&gt; ShowS
+$cshow :: Node -&gt; [Char]
+show :: Node -&gt; [Char]
+$cshowList :: [Node] -&gt; ShowS
+showList :: [Node] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091574"><span id="local-6989586621679091590"><span id="local-6989586621679091603"><span id="local-6989586621679091605"><span id="local-6989586621679091607"><span id="local-6989586621679091612"><span id="local-6989586621679091617"><span id="local-6989586621679091620"><span id="local-6989586621679091623"><span id="local-6989586621679091626"><span id="local-6989586621679091629"><span id="local-6989586621679091632"><span id="local-6989586621679091637"><span id="local-6989586621679091642"><span class="annot"><span class="annottext">Typeable Node
+Typeable Node =&gt;
+(forall (c :: * -&gt; *).
+ (forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+ -&gt; (forall g. g -&gt; c g) -&gt; Node -&gt; c Node)
+-&gt; (forall (c :: * -&gt; *).
+    (forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+    -&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Node)
+-&gt; (Node -&gt; Constr)
+-&gt; (Node -&gt; DataType)
+-&gt; (forall (t :: * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Node))
+-&gt; (forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Node))
+-&gt; ((forall b. Data b =&gt; b -&gt; b) -&gt; Node -&gt; Node)
+-&gt; (forall r r'.
+    (r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Node -&gt; r)
+-&gt; (forall r r'.
+    (r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Node -&gt; r)
+-&gt; (forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Node -&gt; [u])
+-&gt; (forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Node -&gt; u)
+-&gt; (forall (m :: * -&gt; *).
+    Monad m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node)
+-&gt; Data Node
+Node -&gt; Constr
+Node -&gt; DataType
+(forall b. Data b =&gt; b -&gt; b) -&gt; Node -&gt; Node
+forall a.
+Typeable a =&gt;
+(forall (c :: * -&gt; *).
+ (forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+ -&gt; (forall g. g -&gt; c g) -&gt; a -&gt; c a)
+-&gt; (forall (c :: * -&gt; *).
+    (forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+    -&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c a)
+-&gt; (a -&gt; Constr)
+-&gt; (a -&gt; DataType)
+-&gt; (forall (t :: * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d. Data d =&gt; c (t d)) -&gt; Maybe (c a))
+-&gt; (forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c a))
+-&gt; ((forall b. Data b =&gt; b -&gt; b) -&gt; a -&gt; a)
+-&gt; (forall r r'.
+    (r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; a -&gt; r)
+-&gt; (forall r r'.
+    (r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; a -&gt; r)
+-&gt; (forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; a -&gt; [u])
+-&gt; (forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; a -&gt; u)
+-&gt; (forall (m :: * -&gt; *).
+    Monad m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; Data a
+forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Node -&gt; u
+forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Node -&gt; [u]
+forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Node -&gt; r
+forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Node -&gt; r
+forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node
+forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node
+forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Node
+forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Node -&gt; c Node
+forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Node)
+forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Node)
+$cgfoldl :: forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Node -&gt; c Node
+gfoldl :: forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Node -&gt; c Node
+$cgunfold :: forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Node
+gunfold :: forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Node
+$ctoConstr :: Node -&gt; Constr
+toConstr :: Node -&gt; Constr
+$cdataTypeOf :: Node -&gt; DataType
+dataTypeOf :: Node -&gt; DataType
+$cdataCast1 :: forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Node)
+dataCast1 :: forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Node)
+$cdataCast2 :: forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Node)
+dataCast2 :: forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Node)
+$cgmapT :: (forall b. Data b =&gt; b -&gt; b) -&gt; Node -&gt; Node
+gmapT :: (forall b. Data b =&gt; b -&gt; b) -&gt; Node -&gt; Node
+$cgmapQl :: forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Node -&gt; r
+gmapQl :: forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Node -&gt; r
+$cgmapQr :: forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Node -&gt; r
+gmapQr :: forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Node -&gt; r
+$cgmapQ :: forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Node -&gt; [u]
+gmapQ :: forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Node -&gt; [u]
+$cgmapQi :: forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Node -&gt; u
+gmapQi :: forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Node -&gt; u
+$cgmapM :: forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node
+gmapM :: forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node
+$cgmapMp :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node
+gmapMp :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node
+$cgmapMo :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node
+gmapMo :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Node -&gt; m Node
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091648"><span id="local-6989586621679091650"><span class="annot"><span class="annottext">(forall x. Node -&gt; Rep Node x)
+-&gt; (forall x. Rep Node x -&gt; Node) -&gt; Generic Node
+forall x. Rep Node x -&gt; Node
+forall x. Node -&gt; Rep Node x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. Node -&gt; Rep Node x
+from :: forall x. Node -&gt; Rep Node x
+$cto :: forall x. Rep Node x -&gt; Node
+to :: forall x. Rep Node x -&gt; Node
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="hs-comment">-- | Identifier for values to interpolate.</span><span>
+</span><span id="line-82"></span><span class="hs-comment">--</span><span>
+</span><span id="line-83"></span><span class="hs-comment">-- The representation is the following:</span><span>
+</span><span id="line-84"></span><span class="hs-comment">--</span><span>
+</span><span id="line-85"></span><span class="hs-comment">--     * @[]@ &#8212; empty list means implicit iterators;</span><span>
+</span><span id="line-86"></span><span class="hs-comment">--     * @[text]@ &#8212; single key is a normal identifier;</span><span>
+</span><span id="line-87"></span><span class="hs-comment">--     * @[text1, text2]@ &#8212; multiple keys represent dotted names.</span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="hs-keyword">newtype</span><span> </span><span id="Key"><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-var">Key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Key"><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-var">Key</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unKey"><span class="annot"><span class="annottext">Key -&gt; [Text]
+</span><a href="Text.Microstache.Type.html#unKey"><span class="hs-identifier hs-var hs-var">unKey</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-90"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679091655"><span id="local-6989586621679091660"><span class="annot"><span class="annottext">Key -&gt; Key -&gt; Bool
+(Key -&gt; Key -&gt; Bool) -&gt; (Key -&gt; Key -&gt; Bool) -&gt; Eq Key
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: Key -&gt; Key -&gt; Bool
+== :: Key -&gt; Key -&gt; Bool
+$c/= :: Key -&gt; Key -&gt; Bool
+/= :: Key -&gt; Key -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091667"><span id="local-6989586621679091672"><span id="local-6989586621679091677"><span id="local-6989586621679091682"><span id="local-6989586621679091687"><span id="local-6989586621679091692"><span id="local-6989586621679091697"><span class="annot"><span class="annottext">Eq Key
+Eq Key =&gt;
+(Key -&gt; Key -&gt; Ordering)
+-&gt; (Key -&gt; Key -&gt; Bool)
+-&gt; (Key -&gt; Key -&gt; Bool)
+-&gt; (Key -&gt; Key -&gt; Bool)
+-&gt; (Key -&gt; Key -&gt; Bool)
+-&gt; (Key -&gt; Key -&gt; Key)
+-&gt; (Key -&gt; Key -&gt; Key)
+-&gt; Ord Key
+Key -&gt; Key -&gt; Bool
+Key -&gt; Key -&gt; Ordering
+Key -&gt; Key -&gt; Key
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+$ccompare :: Key -&gt; Key -&gt; Ordering
+compare :: Key -&gt; Key -&gt; Ordering
+$c&lt; :: Key -&gt; Key -&gt; Bool
+&lt; :: Key -&gt; Key -&gt; Bool
+$c&lt;= :: Key -&gt; Key -&gt; Bool
+&lt;= :: Key -&gt; Key -&gt; Bool
+$c&gt; :: Key -&gt; Key -&gt; Bool
+&gt; :: Key -&gt; Key -&gt; Bool
+$c&gt;= :: Key -&gt; Key -&gt; Bool
+&gt;= :: Key -&gt; Key -&gt; Bool
+$cmax :: Key -&gt; Key -&gt; Key
+max :: Key -&gt; Key -&gt; Key
+$cmin :: Key -&gt; Key -&gt; Key
+min :: Key -&gt; Key -&gt; Key
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091702"><span id="local-6989586621679091707"><span id="local-6989586621679091710"><span class="annot"><span class="annottext">Int -&gt; Key -&gt; ShowS
+[Key] -&gt; ShowS
+Key -&gt; [Char]
+(Int -&gt; Key -&gt; ShowS)
+-&gt; (Key -&gt; [Char]) -&gt; ([Key] -&gt; ShowS) -&gt; Show Key
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; [Char]) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; Key -&gt; ShowS
+showsPrec :: Int -&gt; Key -&gt; ShowS
+$cshow :: Key -&gt; [Char]
+show :: Key -&gt; [Char]
+$cshowList :: [Key] -&gt; ShowS
+showList :: [Key] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091713"><span id="local-6989586621679091718"><span id="local-6989586621679091724"><span class="annot"><span class="annottext">NonEmpty Key -&gt; Key
+Key -&gt; Key -&gt; Key
+(Key -&gt; Key -&gt; Key)
+-&gt; (NonEmpty Key -&gt; Key)
+-&gt; (forall b. Integral b =&gt; b -&gt; Key -&gt; Key)
+-&gt; Semigroup Key
+forall b. Integral b =&gt; b -&gt; Key -&gt; Key
+forall a.
+(a -&gt; a -&gt; a)
+-&gt; (NonEmpty a -&gt; a)
+-&gt; (forall b. Integral b =&gt; b -&gt; a -&gt; a)
+-&gt; Semigroup a
+$c&lt;&gt; :: Key -&gt; Key -&gt; Key
+&lt;&gt; :: Key -&gt; Key -&gt; Key
+$csconcat :: NonEmpty Key -&gt; Key
+sconcat :: NonEmpty Key -&gt; Key
+$cstimes :: forall b. Integral b =&gt; b -&gt; Key -&gt; Key
+stimes :: forall b. Integral b =&gt; b -&gt; Key -&gt; Key
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Semigroup</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091733"><span id="local-6989586621679091738"><span id="local-6989586621679091742"><span class="annot"><span class="annottext">Semigroup Key
+Key
+Semigroup Key =&gt;
+Key -&gt; (Key -&gt; Key -&gt; Key) -&gt; ([Key] -&gt; Key) -&gt; Monoid Key
+[Key] -&gt; Key
+Key -&gt; Key -&gt; Key
+forall a.
+Semigroup a =&gt;
+a -&gt; (a -&gt; a -&gt; a) -&gt; ([a] -&gt; a) -&gt; Monoid a
+$cmempty :: Key
+mempty :: Key
+$cmappend :: Key -&gt; Key -&gt; Key
+mappend :: Key -&gt; Key -&gt; Key
+$cmconcat :: [Key] -&gt; Key
+mconcat :: [Key] -&gt; Key
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Monoid</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091750"><span id="local-6989586621679091754"><span id="local-6989586621679091758"><span id="local-6989586621679091760"><span id="local-6989586621679091762"><span id="local-6989586621679091767"><span id="local-6989586621679091772"><span id="local-6989586621679091775"><span id="local-6989586621679091778"><span id="local-6989586621679091781"><span id="local-6989586621679091784"><span id="local-6989586621679091787"><span id="local-6989586621679091792"><span id="local-6989586621679091797"><span class="annot"><span class="annottext">Typeable Key
+Typeable Key =&gt;
+(forall (c :: * -&gt; *).
+ (forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+ -&gt; (forall g. g -&gt; c g) -&gt; Key -&gt; c Key)
+-&gt; (forall (c :: * -&gt; *).
+    (forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+    -&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Key)
+-&gt; (Key -&gt; Constr)
+-&gt; (Key -&gt; DataType)
+-&gt; (forall (t :: * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Key))
+-&gt; (forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Key))
+-&gt; ((forall b. Data b =&gt; b -&gt; b) -&gt; Key -&gt; Key)
+-&gt; (forall r r'.
+    (r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Key -&gt; r)
+-&gt; (forall r r'.
+    (r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Key -&gt; r)
+-&gt; (forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Key -&gt; [u])
+-&gt; (forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Key -&gt; u)
+-&gt; (forall (m :: * -&gt; *).
+    Monad m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key)
+-&gt; Data Key
+Key -&gt; Constr
+Key -&gt; DataType
+(forall b. Data b =&gt; b -&gt; b) -&gt; Key -&gt; Key
+forall a.
+Typeable a =&gt;
+(forall (c :: * -&gt; *).
+ (forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+ -&gt; (forall g. g -&gt; c g) -&gt; a -&gt; c a)
+-&gt; (forall (c :: * -&gt; *).
+    (forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+    -&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c a)
+-&gt; (a -&gt; Constr)
+-&gt; (a -&gt; DataType)
+-&gt; (forall (t :: * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d. Data d =&gt; c (t d)) -&gt; Maybe (c a))
+-&gt; (forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c a))
+-&gt; ((forall b. Data b =&gt; b -&gt; b) -&gt; a -&gt; a)
+-&gt; (forall r r'.
+    (r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; a -&gt; r)
+-&gt; (forall r r'.
+    (r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; a -&gt; r)
+-&gt; (forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; a -&gt; [u])
+-&gt; (forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; a -&gt; u)
+-&gt; (forall (m :: * -&gt; *).
+    Monad m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; Data a
+forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Key -&gt; u
+forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Key -&gt; [u]
+forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Key -&gt; r
+forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Key -&gt; r
+forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key
+forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key
+forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Key
+forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Key -&gt; c Key
+forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Key)
+forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Key)
+$cgfoldl :: forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Key -&gt; c Key
+gfoldl :: forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; Key -&gt; c Key
+$cgunfold :: forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Key
+gunfold :: forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c Key
+$ctoConstr :: Key -&gt; Constr
+toConstr :: Key -&gt; Constr
+$cdataTypeOf :: Key -&gt; DataType
+dataTypeOf :: Key -&gt; DataType
+$cdataCast1 :: forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Key)
+dataCast1 :: forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c Key)
+$cdataCast2 :: forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Key)
+dataCast2 :: forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c Key)
+$cgmapT :: (forall b. Data b =&gt; b -&gt; b) -&gt; Key -&gt; Key
+gmapT :: (forall b. Data b =&gt; b -&gt; b) -&gt; Key -&gt; Key
+$cgmapQl :: forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Key -&gt; r
+gmapQl :: forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Key -&gt; r
+$cgmapQr :: forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Key -&gt; r
+gmapQr :: forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; Key -&gt; r
+$cgmapQ :: forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Key -&gt; [u]
+gmapQ :: forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; Key -&gt; [u]
+$cgmapQi :: forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Key -&gt; u
+gmapQi :: forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; Key -&gt; u
+$cgmapM :: forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key
+gmapM :: forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key
+$cgmapMp :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key
+gmapMp :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key
+$cgmapMo :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key
+gmapMo :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; Key -&gt; m Key
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091802"><span id="local-6989586621679091804"><span class="annot"><span class="annottext">(forall x. Key -&gt; Rep Key x)
+-&gt; (forall x. Rep Key x -&gt; Key) -&gt; Generic Key
+forall x. Rep Key x -&gt; Key
+forall x. Key -&gt; Rep Key x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. Key -&gt; Rep Key x
+from :: forall x. Key -&gt; Rep Key x
+$cto :: forall x. Rep Key x -&gt; Key
+to :: forall x. Rep Key x -&gt; Key
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679091807"><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- | Pretty-print a key, this is helpful, for example, if you want to</span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- display an error message.</span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="annot"><a href="Text.Microstache.Type.html#showKey"><span class="hs-identifier hs-type">showKey</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-98"></span><span id="showKey"><span class="annot"><span class="annottext">showKey :: Key -&gt; Text
+</span><a href="Text.Microstache.Type.html#showKey"><span class="hs-identifier hs-var hs-var">showKey</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&lt;implicit&gt;&quot;</span></span><span>
+</span><span id="line-99"></span><span class="annot"><a href="Text.Microstache.Type.html#showKey"><span class="hs-identifier hs-var">showKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span id="local-6989586621679091823"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679091823"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; Text
+</span><span class="hs-identifier hs-var">T.intercalate</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;.&quot;</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679091823"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="hs-comment">-- | Identifier for partials. Note that with the @OverloadedStrings@</span><span>
+</span><span id="line-102"></span><span class="hs-comment">-- extension you can use just string literals to create values of this type.</span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span class="hs-keyword">newtype</span><span> </span><span id="PName"><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-var">PName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="PName"><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-var">PName</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unPName"><span class="annot"><span class="annottext">PName -&gt; Text
+</span><a href="Text.Microstache.Type.html#unPName"><span class="hs-identifier hs-var hs-var">unPName</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-105"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679091828"><span id="local-6989586621679091832"><span class="annot"><span class="annottext">PName -&gt; PName -&gt; Bool
+(PName -&gt; PName -&gt; Bool) -&gt; (PName -&gt; PName -&gt; Bool) -&gt; Eq PName
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: PName -&gt; PName -&gt; Bool
+== :: PName -&gt; PName -&gt; Bool
+$c/= :: PName -&gt; PName -&gt; Bool
+/= :: PName -&gt; PName -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091838"><span id="local-6989586621679091842"><span id="local-6989586621679091846"><span id="local-6989586621679091850"><span id="local-6989586621679091854"><span id="local-6989586621679091858"><span id="local-6989586621679091862"><span class="annot"><span class="annottext">Eq PName
+Eq PName =&gt;
+(PName -&gt; PName -&gt; Ordering)
+-&gt; (PName -&gt; PName -&gt; Bool)
+-&gt; (PName -&gt; PName -&gt; Bool)
+-&gt; (PName -&gt; PName -&gt; Bool)
+-&gt; (PName -&gt; PName -&gt; Bool)
+-&gt; (PName -&gt; PName -&gt; PName)
+-&gt; (PName -&gt; PName -&gt; PName)
+-&gt; Ord PName
+PName -&gt; PName -&gt; Bool
+PName -&gt; PName -&gt; Ordering
+PName -&gt; PName -&gt; PName
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+$ccompare :: PName -&gt; PName -&gt; Ordering
+compare :: PName -&gt; PName -&gt; Ordering
+$c&lt; :: PName -&gt; PName -&gt; Bool
+&lt; :: PName -&gt; PName -&gt; Bool
+$c&lt;= :: PName -&gt; PName -&gt; Bool
+&lt;= :: PName -&gt; PName -&gt; Bool
+$c&gt; :: PName -&gt; PName -&gt; Bool
+&gt; :: PName -&gt; PName -&gt; Bool
+$c&gt;= :: PName -&gt; PName -&gt; Bool
+&gt;= :: PName -&gt; PName -&gt; Bool
+$cmax :: PName -&gt; PName -&gt; PName
+max :: PName -&gt; PName -&gt; PName
+$cmin :: PName -&gt; PName -&gt; PName
+min :: PName -&gt; PName -&gt; PName
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091866"><span id="local-6989586621679091870"><span id="local-6989586621679091873"><span class="annot"><span class="annottext">Int -&gt; PName -&gt; ShowS
+[PName] -&gt; ShowS
+PName -&gt; [Char]
+(Int -&gt; PName -&gt; ShowS)
+-&gt; (PName -&gt; [Char]) -&gt; ([PName] -&gt; ShowS) -&gt; Show PName
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; [Char]) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; PName -&gt; ShowS
+showsPrec :: Int -&gt; PName -&gt; ShowS
+$cshow :: PName -&gt; [Char]
+show :: PName -&gt; [Char]
+$cshowList :: [PName] -&gt; ShowS
+showList :: [PName] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091878"><span id="local-6989586621679091881"><span id="local-6989586621679091884"><span id="local-6989586621679091886"><span id="local-6989586621679091888"><span id="local-6989586621679091893"><span id="local-6989586621679091898"><span id="local-6989586621679091901"><span id="local-6989586621679091904"><span id="local-6989586621679091907"><span id="local-6989586621679091910"><span id="local-6989586621679091913"><span id="local-6989586621679091918"><span id="local-6989586621679091923"><span class="annot"><span class="annottext">Typeable PName
+Typeable PName =&gt;
+(forall (c :: * -&gt; *).
+ (forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+ -&gt; (forall g. g -&gt; c g) -&gt; PName -&gt; c PName)
+-&gt; (forall (c :: * -&gt; *).
+    (forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+    -&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c PName)
+-&gt; (PName -&gt; Constr)
+-&gt; (PName -&gt; DataType)
+-&gt; (forall (t :: * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d. Data d =&gt; c (t d)) -&gt; Maybe (c PName))
+-&gt; (forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c PName))
+-&gt; ((forall b. Data b =&gt; b -&gt; b) -&gt; PName -&gt; PName)
+-&gt; (forall r r'.
+    (r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; PName -&gt; r)
+-&gt; (forall r r'.
+    (r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; PName -&gt; r)
+-&gt; (forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; PName -&gt; [u])
+-&gt; (forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; PName -&gt; u)
+-&gt; (forall (m :: * -&gt; *).
+    Monad m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName)
+-&gt; Data PName
+PName -&gt; Constr
+PName -&gt; DataType
+(forall b. Data b =&gt; b -&gt; b) -&gt; PName -&gt; PName
+forall a.
+Typeable a =&gt;
+(forall (c :: * -&gt; *).
+ (forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+ -&gt; (forall g. g -&gt; c g) -&gt; a -&gt; c a)
+-&gt; (forall (c :: * -&gt; *).
+    (forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+    -&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c a)
+-&gt; (a -&gt; Constr)
+-&gt; (a -&gt; DataType)
+-&gt; (forall (t :: * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d. Data d =&gt; c (t d)) -&gt; Maybe (c a))
+-&gt; (forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+    Typeable t =&gt;
+    (forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c a))
+-&gt; ((forall b. Data b =&gt; b -&gt; b) -&gt; a -&gt; a)
+-&gt; (forall r r'.
+    (r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; a -&gt; r)
+-&gt; (forall r r'.
+    (r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; a -&gt; r)
+-&gt; (forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; a -&gt; [u])
+-&gt; (forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; a -&gt; u)
+-&gt; (forall (m :: * -&gt; *).
+    Monad m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; (forall (m :: * -&gt; *).
+    MonadPlus m =&gt;
+    (forall d. Data d =&gt; d -&gt; m d) -&gt; a -&gt; m a)
+-&gt; Data a
+forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; PName -&gt; u
+forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; PName -&gt; [u]
+forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; PName -&gt; r
+forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; PName -&gt; r
+forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName
+forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName
+forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c PName
+forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; PName -&gt; c PName
+forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c PName)
+forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c PName)
+$cgfoldl :: forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; PName -&gt; c PName
+gfoldl :: forall (c :: * -&gt; *).
+(forall d b. Data d =&gt; c (d -&gt; b) -&gt; d -&gt; c b)
+-&gt; (forall g. g -&gt; c g) -&gt; PName -&gt; c PName
+$cgunfold :: forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c PName
+gunfold :: forall (c :: * -&gt; *).
+(forall b r. Data b =&gt; c (b -&gt; r) -&gt; c r)
+-&gt; (forall r. r -&gt; c r) -&gt; Constr -&gt; c PName
+$ctoConstr :: PName -&gt; Constr
+toConstr :: PName -&gt; Constr
+$cdataTypeOf :: PName -&gt; DataType
+dataTypeOf :: PName -&gt; DataType
+$cdataCast1 :: forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c PName)
+dataCast1 :: forall (t :: * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d. Data d =&gt; c (t d)) -&gt; Maybe (c PName)
+$cdataCast2 :: forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c PName)
+dataCast2 :: forall (t :: * -&gt; * -&gt; *) (c :: * -&gt; *).
+Typeable t =&gt;
+(forall d e. (Data d, Data e) =&gt; c (t d e)) -&gt; Maybe (c PName)
+$cgmapT :: (forall b. Data b =&gt; b -&gt; b) -&gt; PName -&gt; PName
+gmapT :: (forall b. Data b =&gt; b -&gt; b) -&gt; PName -&gt; PName
+$cgmapQl :: forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; PName -&gt; r
+gmapQl :: forall r r'.
+(r -&gt; r' -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; PName -&gt; r
+$cgmapQr :: forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; PName -&gt; r
+gmapQr :: forall r r'.
+(r' -&gt; r -&gt; r) -&gt; r -&gt; (forall d. Data d =&gt; d -&gt; r') -&gt; PName -&gt; r
+$cgmapQ :: forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; PName -&gt; [u]
+gmapQ :: forall u. (forall d. Data d =&gt; d -&gt; u) -&gt; PName -&gt; [u]
+$cgmapQi :: forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; PName -&gt; u
+gmapQi :: forall u. Int -&gt; (forall d. Data d =&gt; d -&gt; u) -&gt; PName -&gt; u
+$cgmapM :: forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName
+gmapM :: forall (m :: * -&gt; *).
+Monad m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName
+$cgmapMp :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName
+gmapMp :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName
+$cgmapMo :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName
+gmapMo :: forall (m :: * -&gt; *).
+MonadPlus m =&gt;
+(forall d. Data d =&gt; d -&gt; m d) -&gt; PName -&gt; m PName
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Data</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091928"><span id="local-6989586621679091930"><span class="annot"><span class="annottext">(forall x. PName -&gt; Rep PName x)
+-&gt; (forall x. Rep PName x -&gt; PName) -&gt; Generic PName
+forall x. Rep PName x -&gt; PName
+forall x. PName -&gt; Rep PName x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. PName -&gt; Rep PName x
+from :: forall x. PName -&gt; Rep PName x
+$cto :: forall x. Rep PName x -&gt; PName
+to :: forall x. Rep PName x -&gt; PName
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IsString</span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-type">PName</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-108"></span><span>  </span><span id="local-6989586621679091935"><span class="annot"><span class="annottext">fromString :: [Char] -&gt; PName
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fromString</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; PName
+</span><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-var">PName</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; PName) -&gt; ([Char] -&gt; Text) -&gt; [Char] -&gt; PName
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Text
+</span><span class="hs-identifier hs-var">T.pack</span></span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679091939"><span class="annot"><span class="hs-identifier hs-type">NFData</span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-type">PName</span></a></span></span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- | Exception that is thrown when parsing of a template has failed or</span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- referenced values were not provided.</span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span class="hs-keyword">data</span><span> </span><span id="MustacheException"><span class="annot"><a href="Text.Microstache.Type.html#MustacheException"><span class="hs-identifier hs-var">MustacheException</span></a></span></span><span>
+</span><span id="line-116"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="MustacheParserException"><span class="annot"><a href="Text.Microstache.Type.html#MustacheParserException"><span class="hs-identifier hs-var">MustacheParserException</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">ParseError</span></span><span>
+</span><span id="line-117"></span><span>    </span><span class="annot"><span class="hs-comment">-- ^ Template parser has failed. This contains the parse error.</span></span><span>
+</span><span id="line-118"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="MustacheRenderException"><span class="annot"><a href="Text.Microstache.Type.html#MustacheRenderException"><span class="hs-identifier hs-var">MustacheRenderException</span></a></span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#PName"><span class="hs-identifier hs-type">PName</span></a></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span>
+</span><span id="line-119"></span><span>    </span><span class="hs-comment">-- ^ A referenced value was not provided. The exception provides info</span><span>
+</span><span id="line-120"></span><span>    </span><span class="hs-comment">-- about partial in which the issue happened 'PName' and name of the</span><span>
+</span><span id="line-121"></span><span>    </span><span class="hs-comment">-- missing key 'Key'.</span><span>
+</span><span id="line-122"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679091952"><span id="local-6989586621679091958"><span class="annot"><span class="annottext">MustacheException -&gt; MustacheException -&gt; Bool
+(MustacheException -&gt; MustacheException -&gt; Bool)
+-&gt; (MustacheException -&gt; MustacheException -&gt; Bool)
+-&gt; Eq MustacheException
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: MustacheException -&gt; MustacheException -&gt; Bool
+== :: MustacheException -&gt; MustacheException -&gt; Bool
+$c/= :: MustacheException -&gt; MustacheException -&gt; Bool
+/= :: MustacheException -&gt; MustacheException -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091962"><span id="local-6989586621679091969"><span id="local-6989586621679091973"><span class="annot"><span class="annottext">Int -&gt; MustacheException -&gt; ShowS
+[MustacheException] -&gt; ShowS
+MustacheException -&gt; [Char]
+(Int -&gt; MustacheException -&gt; ShowS)
+-&gt; (MustacheException -&gt; [Char])
+-&gt; ([MustacheException] -&gt; ShowS)
+-&gt; Show MustacheException
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; [Char]) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; MustacheException -&gt; ShowS
+showsPrec :: Int -&gt; MustacheException -&gt; ShowS
+$cshow :: MustacheException -&gt; [Char]
+show :: MustacheException -&gt; [Char]
+$cshowList :: [MustacheException] -&gt; ShowS
+showList :: [MustacheException] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679091976"><span id="local-6989586621679091978"><span class="annot"><span class="annottext">(forall x. MustacheException -&gt; Rep MustacheException x)
+-&gt; (forall x. Rep MustacheException x -&gt; MustacheException)
+-&gt; Generic MustacheException
+forall x. Rep MustacheException x -&gt; MustacheException
+forall x. MustacheException -&gt; Rep MustacheException x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. MustacheException -&gt; Rep MustacheException x
+from :: forall x. MustacheException -&gt; Rep MustacheException x
+$cto :: forall x. Rep MustacheException x -&gt; MustacheException
+to :: forall x. Rep MustacheException x -&gt; MustacheException
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-123"></span><span>
+</span><span id="line-124"></span><span class="hs-pragma">{-# DEPRECATED</span><span> </span><span class="hs-pragma">MustacheRenderException</span><span> </span><span class="hs-pragma">&quot;Not thrown anymore, will be removed in the next major version of microstache&quot;</span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span class="annot"><span class="hs-comment">-- | @since 1.0.1</span></span><span>
+</span><span id="line-127"></span><span class="annot"><a href="Text.Microstache.Type.html#displayMustacheException"><span class="hs-identifier hs-type">displayMustacheException</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#MustacheException"><span class="hs-identifier hs-type">MustacheException</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-128"></span><span id="displayMustacheException"><span class="annot"><span class="annottext">displayMustacheException :: MustacheException -&gt; [Char]
+</span><a href="Text.Microstache.Type.html#displayMustacheException"><span class="hs-identifier hs-var hs-var">displayMustacheException</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#MustacheParserException"><span class="hs-identifier hs-type">MustacheParserException</span></a></span><span> </span><span id="local-6989586621679091980"><span class="annot"><span class="annottext">ParseError
+</span><a href="#local-6989586621679091980"><span class="hs-identifier hs-var">e</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ParseError -&gt; [Char]
+forall a. Show a =&gt; a -&gt; [Char]
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">ParseError
+</span><a href="#local-6989586621679091980"><span class="hs-identifier hs-var">e</span></a></span><span>
+</span><span id="line-129"></span><span class="annot"><a href="Text.Microstache.Type.html#displayMustacheException"><span class="hs-identifier hs-var">displayMustacheException</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#MustacheRenderException"><span class="hs-identifier hs-type">MustacheRenderException</span></a></span><span> </span><span id="local-6989586621679091982"><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679091982"><span class="hs-identifier hs-var">pname</span></a></span></span><span> </span><span id="local-6989586621679091983"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679091983"><span class="hs-identifier hs-var">key</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-130"></span><span>    </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Referenced value was not provided in partial \&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Char]
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">PName -&gt; Text
+</span><a href="Text.Microstache.Type.html#unPName"><span class="hs-identifier hs-var">unPName</span></a></span><span> </span><span class="annot"><span class="annottext">PName
+</span><a href="#local-6989586621679091982"><span class="hs-identifier hs-var">pname</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span>
+</span><span id="line-131"></span><span>    </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\&quot;, key: &quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Char]
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Text
+</span><a href="Text.Microstache.Type.html#showKey"><span class="hs-identifier hs-var">showKey</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679091983"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679091990"><span id="local-6989586621679091994"><span class="annot"><span class="hs-identifier hs-type">Exception</span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#MustacheException"><span class="hs-identifier hs-type">MustacheException</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span class="hs-cpp">
+#if MIN_VERSION_base(4,8,0)
+</span><span>    </span><span id="local-6989586621679091998"><span class="annot"><span class="annottext">displayException :: MustacheException -&gt; [Char]
+</span><a href="#local-6989586621679091998"><span class="hs-identifier hs-var hs-var hs-var hs-var">displayException</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">MustacheException -&gt; [Char]
+</span><a href="Text.Microstache.Type.html#displayMustacheException"><span class="hs-identifier hs-var">displayMustacheException</span></a></span><span class="hs-cpp">
+#endif
+</span><span>
+</span><span id="line-138"></span><span class="annot"><span class="hs-comment">-- | @since 1.0.1</span></span><span>
+</span><span id="line-139"></span><span class="hs-keyword">data</span><span> </span><span id="MustacheWarning"><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier hs-var">MustacheWarning</span></a></span></span><span>
+</span><span id="line-140"></span><span>  </span><span class="hs-glyph">=</span><span> </span><span id="MustacheVariableNotFound"><span class="annot"><a href="Text.Microstache.Type.html#MustacheVariableNotFound"><span class="hs-identifier hs-var">MustacheVariableNotFound</span></a></span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span>
+</span><span id="line-141"></span><span>    </span><span class="annot"><span class="hs-comment">-- ^ The template contained a variable for which there was no data counterpart in the current context</span></span><span>
+</span><span id="line-142"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span id="MustacheDirectlyRenderedValue"><span class="annot"><a href="Text.Microstache.Type.html#MustacheDirectlyRenderedValue"><span class="hs-identifier hs-var">MustacheDirectlyRenderedValue</span></a></span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span>
+</span><span id="line-143"></span><span>    </span><span class="annot"><span class="hs-comment">-- ^ A complex value such as an Object or Array was directly rendered into the template</span></span><span>
+</span><span id="line-144"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679092003"><span id="local-6989586621679092007"><span class="annot"><span class="annottext">MustacheWarning -&gt; MustacheWarning -&gt; Bool
+(MustacheWarning -&gt; MustacheWarning -&gt; Bool)
+-&gt; (MustacheWarning -&gt; MustacheWarning -&gt; Bool)
+-&gt; Eq MustacheWarning
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: MustacheWarning -&gt; MustacheWarning -&gt; Bool
+== :: MustacheWarning -&gt; MustacheWarning -&gt; Bool
+$c/= :: MustacheWarning -&gt; MustacheWarning -&gt; Bool
+/= :: MustacheWarning -&gt; MustacheWarning -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679092011"><span id="local-6989586621679092017"><span id="local-6989586621679092021"><span class="annot"><span class="annottext">Int -&gt; MustacheWarning -&gt; ShowS
+[MustacheWarning] -&gt; ShowS
+MustacheWarning -&gt; [Char]
+(Int -&gt; MustacheWarning -&gt; ShowS)
+-&gt; (MustacheWarning -&gt; [Char])
+-&gt; ([MustacheWarning] -&gt; ShowS)
+-&gt; Show MustacheWarning
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; [Char]) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; MustacheWarning -&gt; ShowS
+showsPrec :: Int -&gt; MustacheWarning -&gt; ShowS
+$cshow :: MustacheWarning -&gt; [Char]
+show :: MustacheWarning -&gt; [Char]
+$cshowList :: [MustacheWarning] -&gt; ShowS
+showList :: [MustacheWarning] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679092024"><span id="local-6989586621679092026"><span class="annot"><span class="annottext">(forall x. MustacheWarning -&gt; Rep MustacheWarning x)
+-&gt; (forall x. Rep MustacheWarning x -&gt; MustacheWarning)
+-&gt; Generic MustacheWarning
+forall x. Rep MustacheWarning x -&gt; MustacheWarning
+forall x. MustacheWarning -&gt; Rep MustacheWarning x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cfrom :: forall x. MustacheWarning -&gt; Rep MustacheWarning x
+from :: forall x. MustacheWarning -&gt; Rep MustacheWarning x
+$cto :: forall x. Rep MustacheWarning x -&gt; MustacheWarning
+to :: forall x. Rep MustacheWarning x -&gt; MustacheWarning
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Generic</span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="annot"><span class="hs-comment">-- | @since 1.0.1</span></span><span>
+</span><span id="line-147"></span><span class="annot"><a href="Text.Microstache.Type.html#displayMustacheWarning"><span class="hs-identifier hs-type">displayMustacheWarning</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier hs-type">MustacheWarning</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-148"></span><span id="displayMustacheWarning"><span class="annot"><span class="annottext">displayMustacheWarning :: MustacheWarning -&gt; [Char]
+</span><a href="Text.Microstache.Type.html#displayMustacheWarning"><span class="hs-identifier hs-var hs-var">displayMustacheWarning</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#MustacheVariableNotFound"><span class="hs-identifier hs-type">MustacheVariableNotFound</span></a></span><span> </span><span id="local-6989586621679092028"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092028"><span class="hs-identifier hs-var">key</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-149"></span><span>    </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Referenced value was not provided, key: &quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Char]
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Text
+</span><a href="Text.Microstache.Type.html#showKey"><span class="hs-identifier hs-var">showKey</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092028"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-150"></span><span class="annot"><a href="Text.Microstache.Type.html#displayMustacheWarning"><span class="hs-identifier hs-var">displayMustacheWarning</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Microstache.Type.html#MustacheDirectlyRenderedValue"><span class="hs-identifier hs-type">MustacheDirectlyRenderedValue</span></a></span><span> </span><span id="local-6989586621679092029"><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092029"><span class="hs-identifier hs-var">key</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-151"></span><span>    </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Complex value rendered as such, key: &quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Char]
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key -&gt; Text
+</span><a href="Text.Microstache.Type.html#showKey"><span class="hs-identifier hs-var">showKey</span></a></span><span> </span><span class="annot"><span class="annottext">Key
+</span><a href="#local-6989586621679092029"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679092035"><span id="local-6989586621679092039"><span class="annot"><span class="hs-identifier hs-type">Exception</span></span><span> </span><span class="annot"><a href="Text.Microstache.Type.html#MustacheWarning"><span class="hs-identifier hs-type">MustacheWarning</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span class="hs-cpp">
+#if MIN_VERSION_base(4,8,0)
+</span><span>    </span><span id="local-6989586621679092042"><span class="annot"><span class="annottext">displayException :: MustacheWarning -&gt; [Char]
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">displayException</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">MustacheWarning -&gt; [Char]
+</span><a href="Text.Microstache.Type.html#displayMustacheWarning"><span class="hs-identifier hs-var">displayMustacheWarning</span></a></span><span class="hs-cpp">
+#endif
+</span></pre></body></html>
