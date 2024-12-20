@@ -1,25 +1,26 @@
-{-# LANGUAGE ExplicitNamespaces #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE BlockArguments #-}
 
-module SAT.Monad (SolverM, getPropagationStack, SolverState(..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals(..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, initWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, learn, increaseDecisionLevel, getClauseDB) where
+module SAT.Monad (SolverM, getPropagationStack, SolverState (..), SolverLog, Trail, Reason, ImplicationGraph, WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, initWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, learn, increaseDecisionLevel, getClauseDB) where
 
-import SAT.CNF (type CNF (CNF), type Clause, type Literal, type Assignment, type DecisionLevel)
-import Data.IntMap (IntMap)
-import SAT.VSIDS (type VSIDS)
-import Control.Monad.RWS.Strict (RWST, tell, modify)
+import Control.Monad (guard, type MonadPlus)
+import Control.Monad.RWS.Strict (modify, tell, type RWST)
 import Control.Monad.State.Strict (gets)
+import Control.Parallel.Strategies (type NFData)
 import Data.Bool (bool)
-import Control.Monad (MonadPlus, guard)
-import Data.IntSet (IntSet)
-import Data.Map (Map)
-import qualified Data.IntMap as IntMap
-import qualified Data.Map as Map
-import GHC.Generics (Generic)
-import Control.Parallel.Strategies (NFData)
+import Data.IntMap.Strict (IntMap)
+import qualified Data.IntMap.Strict as IntMap
+import Data.IntSet (type IntSet)
+import Data.Map.Strict (type Map)
+import qualified Data.Map.Strict as Map
+import GHC.Generics (type Generic)
+import SAT.CNF (type Assignment, type CNF (CNF), type Clause, type DecisionLevel, type Literal)
+import SAT.VSIDS (type VSIDS)
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]
@@ -31,31 +32,36 @@ type Reason = Clause
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
 
 -- | Watched literals (literals in clauses that are being watched).
-data WatchedLiterals = WatchedLiterals {
-  literals :: IntMap [Clause],
-  clauses :: Map Clause [Literal]
-} deriving stock (Show, Eq, Ord, Read, Generic)
+data WatchedLiterals = WatchedLiterals
+  { literals :: IntMap [Clause],
+    clauses :: Map Clause [Literal]
+  }
+  deriving stock (Show, Eq, Ord, Read, Generic)
 
 deriving anyclass instance NFData WatchedLiterals
 
 initWatchedLiterals :: CNF -> WatchedLiterals
-initWatchedLiterals (CNF cs) = do 
-  let getWatched clause = do 
-        case clause of 
+initWatchedLiterals (CNF cs) = do
+  let getWatched clause = do
+        case clause of
           [l] -> [l]
           l1 : l2 : _ -> [l1, l2]
           _ -> []
 
-  let getDS clause = do 
+  let getDS clause = do
         let lits = getWatched clause
-        let litMap = IntMap.fromList $ map (, [clause]) lits
+        let litMap = IntMap.fromList $ map (,[clause]) lits
         let clauseMap = Map.fromList [(clause, lits)]
         (litMap, clauseMap)
 
-  let (l, c) = foldr (\clause (lits, cls) -> do
-          let (l', c') = getDS clause
-          (IntMap.unionWith (++) lits l', Map.unionWith (++) cls c')
-        ) (mempty, mempty) cs
+  let (l, c) =
+        foldr
+          ( \clause (lits, cls) -> do
+              let (l', c') = getDS clause
+              (IntMap.unionWith (++) lits l', Map.unionWith (++) cls c')
+          )
+          (mempty, mempty)
+          cs
 
   WatchedLiterals l c
 
@@ -64,26 +70,26 @@ type ClauseDB = [Clause]
 
 -- | The solver state.
 -- Contains information for solving and any optimisations.
-data SolverState = SolverState {
-  assignment :: Assignment,
-  trail :: Trail,
-  implicationGraph :: ImplicationGraph,
-  watchedLiterals :: WatchedLiterals,
-  decisionLevel :: DecisionLevel,
-  clauseDB :: ClauseDB,
-  vsids :: VSIDS,
-  variables :: IntSet,
-  propagationStack :: [Literal],
-  lubyCount :: Int,
-  lubyThreshold :: Int
-} deriving stock (Show)
-
+data SolverState = SolverState
+  { assignment :: Assignment,
+    trail :: Trail,
+    implicationGraph :: ImplicationGraph,
+    watchedLiterals :: WatchedLiterals,
+    decisionLevel :: DecisionLevel,
+    clauseDB :: ClauseDB,
+    vsids :: VSIDS,
+    variables :: IntSet,
+    propagationStack :: [Literal],
+    lubyCount :: Int,
+    lubyThreshold :: Int
+  }
+  deriving stock (Show)
 
 -- | The solver log.
 type SolverLog = [String]
+
 -- | The solver monad.
 type SolverM = RWST CNF SolverLog SolverState Maybe
-
 
 -- | State methods
 
@@ -138,10 +144,11 @@ def add_learnt_clause(formula, clause, assignments, lit2clauses, clause2lits):
 -}
 
 learn :: Clause -> SolverM ()
-learn clause = modify $ \s -> s { clauseDB = clause : clauseDB s }
+learn clause = modify \s -> s {clauseDB = clause : clauseDB s}
 {-# INLINEABLE learn #-}
+
 -- learn :: Clause -> SolverM ()
--- learn clause = do 
+-- learn clause = do
 --   learned <- getLearnedClauses
 --   clauses <- getClauseDB
 --   assignments <- getAssignment
@@ -159,7 +166,7 @@ learn clause = modify $ \s -> s { clauseDB = clause : clauseDB s }
 --         watchedLiterals = updatedWatched,
 --         learnedClauses = learned'
 --     })
-  
+
 --   modify $ \s -> s { learnedClauses = clause : learnedClauses s, clauseDB = clause : clauseDB s }
 -- {-# INLINEABLE learn #-}
 
@@ -184,15 +191,18 @@ logM :: String -> SolverM ()
 logM = tell . pure
 {-# INLINEABLE logM #-}
 
-ifM :: Monad m => m Bool -> m a -> m a -> m a
+ifM :: (Monad m) => m Bool -> m a -> m a -> m a
 ifM p t f = p >>= bool f t
+{-# INLINEABLE ifM #-}
 
-guardM :: MonadPlus m => m Bool -> m ()
+guardM :: (MonadPlus m) => m Bool -> m ()
 guardM = (>>= guard)
+{-# INLINEABLE guardM #-}
 
-notM :: Monad m => m Bool -> m Bool
+notM :: (Monad m) => m Bool -> m Bool
 notM = fmap not
+{-# INLINEABLE notM #-}
 
 increaseDecisionLevel :: SolverM ()
-increaseDecisionLevel = modify $ \s -> s { decisionLevel = decisionLevel s + 1}
+increaseDecisionLevel = modify \s -> s {decisionLevel = decisionLevel s + 1}
 {-# INLINEABLE increaseDecisionLevel #-}

@@ -1,10 +1,9 @@
-{-|
-Module      : Parser
-Description : Exports the parser module.
--}
-
 {-# LANGUAGE Safe #-}
+{-# LANGUAGE Strict #-}
 
+-- |
+-- Module      : Parser
+-- Description : Exports the parser module.
 module Parser
   ( module Parser.Parsec,
     module Parser.Error,

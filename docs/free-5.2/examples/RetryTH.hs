@@ -1,7 +1,8 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE FlexibleContexts #-}
+
 module Main where
 
 import Control.Monad
@@ -16,10 +17,10 @@ import Text.Read (readMaybe)
 
 -- | A data type representing basic commands for a retriable eDSL.
 data RetryF next where
-  Output    :: String -> next -> RetryF next
-  Input     :: Read a => (a -> next) -> RetryF next
+  Output :: String -> next -> RetryF next
+  Input :: (Read a) => (a -> next) -> RetryF next
   WithRetry :: Retry a -> (a -> next) -> RetryF next
-  Retry     :: RetryF next
+  Retry :: RetryF next
 
 -- | Unfortunately this Functor instance cannot yet be derived
 -- automatically by GHC.
@@ -42,10 +43,14 @@ makeFreeCon 'Input
 makeFreeCon 'Retry
 
 makeFreeCon_ 'WithRetry
+
 -- | Run a retryable block.
-withRetry :: MonadFree RetryF m =>
-             Retry a  -- ^ Computation to retry.
-          -> m a      -- ^ Computation that retries until succeeds.
+withRetry ::
+  (MonadFree RetryF m) =>
+  -- | Computation to retry.
+  Retry a ->
+  -- | Computation that retries until succeeds.
+  m a
 
 -- The following functions have been made available:
 --
@@ -63,13 +68,11 @@ runRetry = iterM run
     run (Output s next) = do
       liftIO $ putStrLn s
       next
-
     run (Input next) = do
       s <- liftIO getLine
       case readMaybe s of
-        Just x  -> next x
+        Just x -> next x
         Nothing -> Fail.fail "invalid input"
-
     run (WithRetry block next) = do
       -- Here we use
       -- runRetry :: MonadIO m => Retry a -> MaybeT (m a)
@@ -77,7 +80,6 @@ runRetry = iterM run
       -- We repeatedly run retriable block until we get it to work.
       Just x <- runMaybeT . F.msum $ repeat (runRetry block)
       next x
-
     run Retry = Fail.fail "forced retry"
 
 -- | Sample program.

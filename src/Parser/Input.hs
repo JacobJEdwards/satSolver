@@ -1,8 +1,3 @@
-{-|
-Module      : Parser.Input
-Description : Defines the 'Input' type class for parsing input types.
--}
-
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -10,6 +5,9 @@ Description : Defines the 'Input' type class for parsing input types.
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 
+-- |
+-- Module      : Parser.Input
+-- Description : Defines the 'Input' type class for parsing input types.
 module Parser.Input (type Input (..)) where
 
 import Data.ByteString.Char8 qualified as BS
@@ -24,12 +22,16 @@ type Input :: Type -> Constraint
 class (Eq i, IsString i, Monoid i) => Input (i :: Type) where
   -- | The token type of the input.
   type Token i
+
   -- | Uncons the input.
   uncons :: i -> Maybe (Token i, i)
+
   -- | Get the head of the input.
   head :: i -> Maybe (Token i)
+
   -- | Check if the input is empty.
   null :: i -> Bool
+
   -- | Unpack the input to a string.
   unpack :: i -> String
 

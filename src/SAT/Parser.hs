@@ -1,23 +1,22 @@
-{-|
-Module      : SAT.Parser
-Description : Exports the SAT parser module.
--}
-
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE Strict #-}
 
+-- |
+-- Module      : SAT.Parser
+-- Description : Exports the SAT parser module.
 module SAT.Parser (parse) where
 
 import Control.Applicative ((<|>))
 import Data.Functor (($>))
 import Data.Text (type Text)
 import Parser (anySymbol, chainl1, digit, parens, runParser, some, type Parser, type Result (Errors, Result))
-import SAT.Expr (type Expr (And, Not, Or, Val, Var, Implies))
+import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
 
 -- | Parses an expression from a string.
 -- Returns 'Nothing' if the input is invalid.
 -- Returns 'Just' the expression otherwise.
--- 
+--
 -- >>> parse "1 and 2 or 3"
 -- Just (1 `And` (2 `Or` 3))
 parse :: Text -> Maybe (Expr Int)
@@ -43,7 +42,7 @@ factor = parens expr <|> notOp <|> literal <|> var
 
 -- | Parses a variable.
 var :: Parser Text Text (Expr Int)
-var = Var <$> (read <$> some digit)
+var = Var . read <$> some digit
 
 -- | Parses a not operation.
 notOp :: Parser Text Text (Expr Int)
@@ -65,10 +64,10 @@ impliesOp = anySymbol ["=>", "implies"] $> Implies
 literal :: Parser Text Text (Expr a)
 literal = Val <$> (true <|> false)
   where
-    -- | Parses a true literal.
+    -- \| Parses a true literal.
     true :: Parser Text Text Bool
     true = anySymbol ["true"] $> True
 
-    -- | Parses a false literal.
+    -- \| Parses a false literal.
     false :: Parser Text Text Bool
     false = anySymbol ["false"] $> False

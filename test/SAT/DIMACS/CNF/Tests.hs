@@ -1,21 +1,20 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module SAT.DIMACS.CNF.Tests (tests) where
 
-import SAT.DIMACS.CNF
-import Data.Set qualified as Set
 import Data.List
+import Data.Set qualified as Set
+import SAT.DIMACS.CNF
 import Test.Tasty
 import Test.Tasty.HUnit
-import Test.Tasty.QuickCheck as QC
 import Test.Tasty.QuickCheck ((==>))
-import Data.Set qualified as Set
+import Test.Tasty.QuickCheck as QC
 
---type DIMACS :: Type
---data DIMACS = DIMACS
+-- type DIMACS :: Type
+-- data DIMACS = DIMACS
 --  { numVars :: Integer,
 --    numClauses :: Integer,
 --    clauses :: [Clause],
@@ -31,13 +30,12 @@ instance Arbitrary DIMACS where
     let numVars = genericLength $ Set.toList $ Set.fromList $ concat clauses
     let numClauses = genericLength clauses
     pure $ DIMACS {numVars, numClauses, clauses, comments}
-    
+
 tests :: TestTree
 tests = testGroup "DIMACS CNF Tests" [properties, unitTests]
 
 properties :: TestTree
 properties = testGroup "Properties" []
-    
+
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" []
-    

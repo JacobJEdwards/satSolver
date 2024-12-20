@@ -4,6 +4,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE Strict #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -11,20 +12,19 @@
 -- Description : Exports the CNF module.
 module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative, tseitin, toTseitin, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
 
-import Control.Monad.State.Strict (State, get, put, runState)
-import Control.Parallel.Strategies (NFData)
-import Data.IntMap ((!?), type IntMap)
-import GHC.Generics (Generic)
+import Control.Monad.State.Strict (get, put, runState, type State)
+import Control.Parallel.Strategies (type NFData)
+import Data.IntMap.Strict ((!?), type IntMap)
+import Data.IntSet (type IntSet)
+import GHC.Generics (type Generic)
 import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
-import Data.IntSet (IntSet)
 
 type DecisionLevel = Int
 
 type Assignment = IntMap Bool
 
 initAssignment :: IntSet -> Assignment
-initAssignment =  mempty
-
+initAssignment = mempty
 
 -- data cnf is list of clauses
 
@@ -58,18 +58,19 @@ varOfLiteral = abs
 
 -- | Returns the value of a variable in an assignment.
 varValue :: Assignment -> Int -> Maybe Bool
-varValue assignment n = assignment !? n
+varValue = (!?)
 {-# INLINEABLE varValue #-}
 
 -- | Returns the value of a literal in an assignment.
 literalValue :: Assignment -> Literal -> Maybe Bool
-literalValue assignment l = varValue assignment (varOfLiteral l) >>= \b -> Just $ if isNegative l then not b else b
+literalValue assignment l = do 
+  val <- varValue assignment $ varOfLiteral l
+  return $ if isNegative l then not val else val
 {-# INLINEABLE literalValue #-}
 
 negateLiteral :: Literal -> Literal
 negateLiteral = negate
 {-# INLINEABLE negateLiteral #-}
-
 
 -- https://en.wikipedia.org/wiki/Tseytin_transformation -> look into this
 
@@ -122,8 +123,8 @@ applyLaws expr
 toCNF :: Expr Int -> CNF
 toCNF expr = CNF $ map unique $ toClauses cnf
   where
-    unique :: Ord a => [a] -> [a]
-    unique = foldr (\x acc -> if x `elem` acc then acc else x : acc) []
+    unique :: (Ord a) => [a] -> [a]
+    unique = foldr (\x acc -> if x `elem` acc then acc else x : acc) mempty
 
     cnf :: Expr Int
     cnf = applyLaws expr
@@ -151,7 +152,7 @@ toTseitin expr = CNF clauses
     tseitin'' :: State Int CNF
     tseitin'' = do
       (CNF clauses', l) <- tseitin'
-      return $ CNF $ [[l]] <> clauses'
+      return $ CNF $ pure [l] <> clauses'
 
     (CNF clauses, _) = runState tseitin'' (highestVar expr + 1)
 {-# INLINEABLE toTseitin #-}
@@ -191,9 +192,9 @@ highestVar :: Expr Int -> Int
 highestVar (Var n) = n
 highestVar (Val _) = 0
 highestVar (Not e) = highestVar e
-highestVar (And e1 e2) = max (highestVar e1) (highestVar e2)
-highestVar (Or e1 e2) = max (highestVar e1) (highestVar e2)
-highestVar (Implies e1 e2) = max (highestVar e1) (highestVar e2)
+highestVar (And e1 e2) = max (highestVar e1) $ highestVar e2
+highestVar (Or e1 e2) = max (highestVar e1) $ highestVar e2
+highestVar (Implies e1 e2) = max (highestVar e1) $ highestVar e2
 
 tseitin :: Expr Int -> State Int (CNF, Literal)
 tseitin (Var n) = return (CNF [], n)
@@ -208,7 +209,7 @@ tseitin (And e1 e2) = do
   (CNF clauses2, l2) <- tseitin e2
   l' <- freshVariable
   let clauses = [[-l', l1], [-l', l2], [l', -l1, -l2]]
-  return (CNF (clauses <> clauses1 <> clauses2), l')
+  return (CNF $ clauses <> clauses1 <> clauses2, l')
 tseitin (Or e1 e2) = do
   (CNF clauses1, l1) <- tseitin e1
   (CNF clauses2, l2) <- tseitin e2

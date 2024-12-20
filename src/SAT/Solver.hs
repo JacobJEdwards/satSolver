@@ -1,9 +1,16 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Strict #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE BlockArguments #-}
+
+-- TODO: check luby restarts
+-- TODO: check more preprocessing
+-- TODO: watch literals
+-- TODO: dsa
 
 -- |
 -- Module      : SAT.Solver
@@ -30,13 +37,6 @@
 -- simplify simplify simpify
 --
 -- issue with using partial assignment to check for isSat is learned clauses
-
-
--- TODO: check luby restarts
--- TODO: check more preprocessing
--- TODO: watch literals
--- TODO: dsa
-
 module SAT.Solver
   ( satisfiable,
     type Solutions,
@@ -49,24 +49,25 @@ module SAT.Solver
     withPureLiteralAndUnitPropagation,
     pureLitOnlyAsPreprocess,
     literalEvery100,
-    withTautologyElimination
+    withTautologyElimination,
   )
 where
 
 import Control.Applicative ((<|>))
+import Control.Monad.RWS.Strict (get, modify)
 import Control.Monad.RWS.Strict qualified as RWST
-import Data.IntMap qualified as IntMap
-import Data.IntSet qualified as IntSet
-import Data.Maybe (listToMaybe)
-import SAT.CNF (toCNF, type Assignment, type CNF (CNF), type Clause, type Literal, initAssignment)
-import SAT.Expr (Expr, type Solutions)
-import SAT.Monad (SolverM, SolverState (SolverState, assignment, trail, implicationGraph, watchedLiterals, decisionLevel, vsids, clauseDB, variables, propagationStack, lubyCount, lubyThreshold) , getAssignment, ifM, learn, increaseDecisionLevel, initWatchedLiterals)
-import SAT.Optimisers (assignM, collectLiterals, eliminateLiterals, substitute, unitPropagate, unitPropagateM, analyseConflict, backtrack, addDecision, collectLiteralsToSet, decayM, adjustScoresM, pickLiteralM, assign)
-import SAT.VSIDS (initVSIDS)
-import Control.Monad.RWS (get, modify)
+import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (IntSet)
+import Data.IntSet qualified as IntSet
+import Data.Maybe (listToMaybe, isJust)
+import SAT.CNF (initAssignment, toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
+import SAT.Expr (Expr, type Solutions)
+import SAT.Monad (SolverM, SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), getAssignment, ifM, increaseDecisionLevel, initWatchedLiterals, learn)
+import SAT.Optimisers (addDecision, adjustScoresM, assign, assignM, collectLiterals, collectLiteralsToSet, decayM, eliminateLiterals, pickLiteralM, substitute, unitPropagate, unitPropagateM)
+import SAT.CDCL (analyseConflict, backtrack)
 import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
+import SAT.VSIDS (initVSIDS)
 
 -- | Initializes the solver state.
 initState :: CNF -> SolverState
@@ -90,7 +91,6 @@ findFreeVariable :: CNF -> Maybe Literal
 findFreeVariable = listToMaybe . collectLiterals
 {-# INLINEABLE findFreeVariable #-}
 
-
 -- | Checks if a value is in the solutions.
 --
 -- >>> checkValue (IntSet.fromList [1, 2, 3]) 2
@@ -109,8 +109,8 @@ solutions = solutionsFromAssignment <$> getAssignment
 
 -- i think this is close, slightly wrong, but close ! (maybe)
 getSolutions :: CNF -> Maybe Solutions
-getSolutions cnf' = do
-  (solutions', _) <- RWST.evalRWST run cnf' (initState cnf')
+getSolutions !cnf' = do
+  (solutions', _) <- RWST.evalRWST run cnf' $ initState cnf'
   solutions'
   where
     run :: SolverM (Maybe Solutions)
@@ -140,39 +140,37 @@ getSolutions cnf' = do
     propagate = do
       unitPropagateM >>= \case
         Just c -> handleConflict c
-        Nothing ->  solver
+        Nothing -> solver
 
     handleConflict :: Clause -> SolverM (Maybe Solutions)
-    handleConflict c = do 
+    handleConflict c = do
       (clause, dl) <- analyseConflict c
-      if dl < 0 then return mempty else do
-        decayM
-        adjustScoresM clause
-        learn clause
-        increaseLubyCount
-        ifM shouldRestart restart $ do 
-          backtrack dl
-          solver
-
+      if dl < 0
+        then return mempty
+        else do
+          decayM
+          adjustScoresM clause
+          learn clause
+          increaseLubyCount
+          ifM shouldRestart restart do
+            backtrack dl
+            solver
 
     shouldRestart :: SolverM Bool
     shouldRestart = do
-      SolverState { lubyCount } <- get
+      SolverState {lubyCount} <- get
       let nextThreshold = computeNextLubyThreshold $ lubyCount + 1
       return $ lubyCount >= nextThreshold
 
     restart :: SolverM (Maybe Solutions)
     restart = do
-      modify $ \s -> s { assignment = mempty, decisionLevel = 0, trail = mempty, implicationGraph = mempty }
+      modify \s -> s {assignment = mempty, decisionLevel = 0, trail = mempty, implicationGraph = mempty}
       solver
-
 {-# INLINEABLE getSolutions #-}
 
 -- | Checks if a CNF is satisfiable.
 satisfiable :: CNF -> Bool
-satisfiable cnf = case getSolutions cnf of
-  Nothing -> False
-  Just _ -> True
+satisfiable = isJust . getSolutions
 {-# INLINEABLE satisfiable #-}
 
 bruteForce :: Expr Int -> Maybe Solutions
@@ -189,7 +187,6 @@ bruteForce expr = let cnf = toCNF expr in go cnf mempty
         isSat :: CNF -> Bool
         isSat (CNF clauses) = null clauses
 {-# INLINEABLE bruteForce #-}
-
 
 withUnitPropagation :: Expr Int -> Maybe Solutions
 withUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
@@ -316,11 +313,11 @@ allAssignments = IntMap.keysSet
 
 allVariablesAssigned :: SolverM Bool
 allVariablesAssigned = do
-  SolverState { variables, assignment } <- get
+  SolverState {variables, assignment} <- get
   return $ IntSet.null $ variables `IntSet.difference` allAssignments assignment
 
 removeTautologies :: CNF -> CNF
 removeTautologies (CNF cs) = CNF $ filter (not . isTautology) cs
-  where 
+  where
     isTautology :: Clause -> Bool
     isTautology c = any (\l -> IntSet.member (negate l) (IntSet.fromList c)) c

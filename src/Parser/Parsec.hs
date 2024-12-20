@@ -1,8 +1,4 @@
-{-|
-Module      : Parser.Parsec
-Description : Exports the Parsec parser module.
--}
-
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -13,8 +9,11 @@ Description : Exports the Parsec parser module.
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE BlockArguments #-}
 
+-- |
+-- Module      : Parser.Parsec
+-- Description : Exports the Parsec parser module.
 module Parser.Parsec
   ( type Parser (..),
     satisfy,
@@ -66,7 +65,7 @@ newtype Parser i e o = Parser {runParser :: i -> Result i e (i, o)}
 
 -- | The 'Functor' instance for the parser type.
 instance Functor (Parser i e) where
-  -- | Maps a function over the result of the parser.
+  -- \| Maps a function over the result of the parser.
   fmap :: (a -> b) -> Parser i e a -> Parser i e b
   fmap f parser = Parser $ \input -> do
     (rest, x) <- runParser parser input
@@ -74,11 +73,11 @@ instance Functor (Parser i e) where
 
 -- | The 'Applicative' instance for the parser type.
 instance Applicative (Parser i e) where
-  -- | Lifts a value to a parser.
+  -- \| Lifts a value to a parser.
   pure :: a -> Parser i e a
   pure x = Parser $ pure . (,x)
 
-  -- | Applies a function in the parser to a value in the parser.
+  -- \| Applies a function in the parser to a value in the parser.
   (<*>) :: Parser i e (a -> b) -> Parser i e a -> Parser i e b
   (<*>) pf po = Parser $ \input -> do
     (rest, f) <- runParser pf input
@@ -87,11 +86,11 @@ instance Applicative (Parser i e) where
 
 -- | The 'Alternative' instance for the parser type.
 instance Alternative (Parser i e) where
-  -- | The empty parser.
+  -- \| The empty parser.
   empty :: Parser i e a
   empty = Parser $ const empty
 
-  -- | Choice of two parsers.
+  -- \| Choice of two parsers.
   (<|>) :: Parser i e a -> Parser i e a -> Parser i e a
   (<|>) p1 p2 = Parser $ \input -> case runParser p1 input of
     Errors _ -> runParser p2 input
@@ -99,11 +98,11 @@ instance Alternative (Parser i e) where
 
 -- | The 'Monad' instance for the parser type.
 instance Monad (Parser i e) where
-  -- | Returns a value in the parser.
+  -- \| Returns a value in the parser.
   return :: a -> Parser i e a
   return = pure
 
-  -- | Binds a parser to a function.
+  -- \| Binds a parser to a function.
   (>>=) :: Parser i e a -> (a -> Parser i e b) -> Parser i e b
   (>>=) parser f = Parser $ \input -> case runParser parser input of
     Errors errs -> Errors errs
@@ -111,13 +110,13 @@ instance Monad (Parser i e) where
 
 -- | The 'Semigroup' instance for the parser type.
 instance (Semigroup a) => Semigroup (Parser i e a) where
-  -- | Combines two parsers.
+  -- \| Combines two parsers.
   (<>) :: Parser i e a -> Parser i e a -> Parser i e a
   (<>) = liftA2 (<>)
 
 -- | The 'Monoid' instance for the parser type.
 instance (Semigroup a) => Monoid (Parser i e a) where
-  -- | The empty parser.
+  -- \| The empty parser.
   mempty :: Parser i e a
   mempty = empty
 
@@ -164,7 +163,7 @@ string t = fromString <$> traverse char (unpack t)
 -- >>> runParser spaceNoNewline " a"
 -- Result ("a",' ')
 spaceNoNewline :: (Input i, Token i ~ Char) => Parser i e Char
-spaceNoNewline = satisfy $ \c -> isSpace c && c /= '\n'
+spaceNoNewline = satisfy \c -> isSpace c && c /= '\n'
 {-# INLINEABLE spaceNoNewline #-}
 
 -- | Parses a sequence of space characters that are not newlines.
@@ -273,7 +272,7 @@ eof = Parser $ \case
 lookahead :: (Input i, Token i ~ Char) => Parser i i (Maybe Char)
 lookahead = Parser $ \case
   input
-    | Parser.Input.null input -> Errors [EndOfInput]
+    | Parser.Input.null input -> Errors $ pure EndOfInput
     | otherwise -> Result (input, Parser.Input.head input)
 {-# INLINEABLE lookahead #-}
 

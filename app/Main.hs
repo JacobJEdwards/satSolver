@@ -1,15 +1,13 @@
-{-|
-Module      : Main
-Description : Main module for the SAT solver application.
-
-This module contains the main function for the SAT solver application.
--}
-
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- Module      : Main
+-- Description : Main module for the SAT solver application.
+--
+-- This module contains the main function for the SAT solver application.
 module Main (main) where
 
 import Control.Monad.IO.Class (liftIO)
@@ -116,7 +114,7 @@ runNonogram file = do
   print nonogram'
   let solution = solve nonogram'
   maybe (putStrLn "No solution found") print solution
-  
+
 -- | Run the application.
 -- Parse the command line arguments and run the appropriate mode.
 run :: IO ()

@@ -1,20 +1,18 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 
-
 module SAT.Optimisers.Tests (tests) where
 
-import SAT.CNF qualified as SAT
-import SAT.Polarity qualified as SAT
-import SAT qualified
-import Data.IntSet qualified as IntSet
 import Data.IntMap qualified as IntMap
+import Data.IntSet qualified as IntSet
+import SAT qualified
+import SAT.CNF qualified as SAT
+import SAT.CNF.Tests ()
+import SAT.Optimisers (collectLiterals, collectLiteralsToSet, eliminateLiterals)
+import SAT.Polarity qualified as SAT
 import Test.Tasty
 import Test.Tasty.HUnit
-import Test.Tasty.QuickCheck as QC
 import Test.Tasty.QuickCheck ((==>))
-import SAT.CNF.Tests ()
-import SAT.Optimisers ( collectLiterals, collectLiteralsToSet, eliminateLiterals)
-
+import Test.Tasty.QuickCheck as QC
 
 tests :: TestTree
 tests = testGroup "Optimiser Tests" [properties, unitTests]
@@ -26,10 +24,12 @@ unitTests :: TestTree
 unitTests = testGroup "Unit tests" [test_collectLiterals]
 
 collectLiteralsProps :: TestTree
-collectLiteralsProps = testGroup "collectLiterals"
-  [ QC.testProperty "collectLiterals" prop_collectLiterals
-    , QC.testProperty "collectLiteralsToSet" prop_collectLiteralsToSet
-  ]
+collectLiteralsProps =
+  testGroup
+    "collectLiterals"
+    [ QC.testProperty "collectLiterals" prop_collectLiterals,
+      QC.testProperty "collectLiteralsToSet" prop_collectLiteralsToSet
+    ]
 
 prop_collectLiterals :: SAT.CNF -> Bool
 prop_collectLiterals cnf = IntSet.fromList (collectLiterals cnf) == collectLiteralsToSet cnf
@@ -37,21 +37,20 @@ prop_collectLiterals cnf = IntSet.fromList (collectLiterals cnf) == collectLiter
 prop_collectLiteralsToSet :: SAT.CNF -> Bool
 prop_collectLiteralsToSet cnf = IntSet.fromList (collectLiterals cnf) == collectLiteralsToSet cnf
 
-
-
--- unit tests 
+-- unit tests
 test_collectLiterals :: TestTree
-test_collectLiterals = testGroup "collectLiterals"
-  [ testCase "empty CNF" $
-      collectLiterals (SAT.CNF []) @?= []
-  , testCase "CNF with one clause" $
-      collectLiterals (SAT.CNF [[1, 2, 3]]) @?= [1, 2, 3]
-  , testCase "CNF with multiple clauses" $
-      collectLiterals (SAT.CNF [[1, 2], [2, 3], [3, 4]]) @?= [1, 2, 2, 3, 3, 4]
-  , testCase "CNF with negatives" $
-      collectLiterals (SAT.CNF [[1, -2], [-2, -3], [3, 4]]) @?= [1, 2, 2, 3, 3, 4]
-  ]
-
+test_collectLiterals =
+  testGroup
+    "collectLiterals"
+    [ testCase "empty CNF" $
+        collectLiterals (SAT.CNF []) @?= [],
+      testCase "CNF with one clause" $
+        collectLiterals (SAT.CNF [[1, 2, 3]]) @?= [1, 2, 3],
+      testCase "CNF with multiple clauses" $
+        collectLiterals (SAT.CNF [[1, 2], [2, 3], [3, 4]]) @?= [1, 2, 2, 3, 3, 4],
+      testCase "CNF with negatives" $
+        collectLiterals (SAT.CNF [[1, -2], [-2, -3], [3, 4]]) @?= [1, 2, 2, 3, 3, 4]
+    ]
 
 -- test_literalPolarities :: TestTree
 -- test_literalPolarities = testGroup "literalPolarities"
@@ -64,7 +63,6 @@ test_collectLiterals = testGroup "collectLiterals"
 --   , testCase "CNF with negatives" $
 --       literalPolarities (SAT.CNF [[1, -2], [-2, -3], [3, 4]]) @?= IntMap.fromList [(1, SAT.Positive), (2, SAT.Negative), (3, SAT.Mixed), (4, SAT.Positive)]
 --   ]
-
 
 -- eliminateLiterals :: CNF -> Assignment -> DecisionLevel -> Assignment
 -- test_eliminateLiterals :: TestTree

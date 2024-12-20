@@ -1,8 +1,3 @@
-{-|
-Module      : Options
-Description : Exports the command line options parser module.
--}
-
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -13,7 +8,11 @@ Description : Exports the command line options parser module.
 {-# LANGUAGE Safe #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE Strict #-}
 
+-- |
+-- Module      : Options
+-- Description : Exports the command line options parser module.
 module Options (type Flag (..), parseArgs) where
 
 import Control.Monad (unless)
@@ -52,7 +51,8 @@ deriving stock instance Data Flag
 -- | Command line options.
 type Options :: Type
 newtype Options = Options
-  { optMode :: Flag -- ^ The mode to run in.
+  { -- | The mode to run in.
+    optMode :: Flag
   }
   deriving stock (Show)
 
@@ -100,10 +100,10 @@ options =
 
 -- | Parse command line arguments.
 -- Returns the parsed command line options.
--- 
+--
 -- >>> parseArgs ["-i"]
 -- Interactive
--- 
+--
 -- >>> parseArgs ["-d"]
 -- Demo
 parseArgs :: [String] -> IO Flag

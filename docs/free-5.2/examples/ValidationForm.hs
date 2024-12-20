@@ -1,15 +1,12 @@
 module Main where
 
 import Control.Applicative.Free
-import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.State
-
-import Data.Monoid (Sum(..))
-
-import Text.Read (readEither)
-import Text.Printf
-
+import Data.Monoid (Sum (..))
 import System.IO
+import Text.Printf
+import Text.Read (readEither)
 
 -- | Field reader tries to read value or generates error message.
 type FieldReader a = String -> Either String a
@@ -22,9 +19,12 @@ type Help = String
 
 -- | A single field of a form.
 data Field a = Field
-  { fName     :: Name           -- ^ Name.
-  , fValidate :: FieldReader a  -- ^ Pure validation function.
-  , fHelp     :: Help           -- ^ Help message.
+  { -- | Name.
+    fName :: Name,
+    -- | Pure validation function.
+    fValidate :: FieldReader a,
+    -- | Help message.
+    fHelp :: Help
   }
 
 -- | Validation form is just a free applicative over Field.
@@ -42,8 +42,9 @@ string n h = field n Right h
 available :: [String] -> Name -> Help -> Form String
 available xs n h = field n check h
   where
-    check x | x `elem` xs = Left "the value is not available"
-            | otherwise   = Right x
+    check x
+      | x `elem` xs = Left "the value is not available"
+      | otherwise = Right x
 
 -- | Singleton integer field form.
 int :: Name -> Form Int
@@ -83,26 +84,28 @@ input m = evalStateT (runAp inputField m) 1
           inputField f
         -- validate otherwise
         _ -> case g x of
-               Right y -> do
-                 modify (+ 1)
-                 return y
-               Left  e -> do
-                 liftIO . putStrLn $ "error: " ++ e
-                 inputField f
+          Right y -> do
+            modify (+ 1)
+            return y
+          Left e -> do
+            liftIO . putStrLn $ "error: " ++ e
+            inputField f
 
 -- | User datatype.
 data User = User
-  { userName     :: String
-  , userFullName :: String
-  , userAge      :: Int }
+  { userName :: String,
+    userFullName :: String,
+    userAge :: Int
+  }
   deriving (Show)
 
 -- | Form for User.
 form :: [String] -> Form User
-form us = User
-  <$> available us  "Username"  "any vacant username"
-  <*> string        "Full name" "your full name (e.g. John Smith)"
-  <*> int           "Age"
+form us =
+  User
+    <$> available us "Username" "any vacant username"
+    <*> string "Full name" "your full name (e.g. John Smith)"
+    <*> int "Age"
 
 main :: IO ()
 main = do
@@ -110,4 +113,3 @@ main = do
   putStrLn "Please, fill the form:"
   user <- input (form ["bob", "alice"])
   putStrLn $ "Successfully created user \"" ++ userName user ++ "\"!"
-

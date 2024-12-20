@@ -2,27 +2,25 @@
 
 module Main (main) where
 
-import Criterion.Main (bench, bgroup, defaultMain, nf, Benchmark)
+import Criterion.Main (Benchmark, bench, bgroup, defaultMain, nf)
 import Nonogram qualified
-import Problem qualified
 import Problem (Problem)
+import Problem qualified
 import SAT qualified
+import SAT.Solver qualified as SAT
 import Sudoku qualified
-import qualified SAT.Solver as SAT
 
 genGroup :: [(String, SAT.Expr Int)] -> String -> (SAT.Expr Int -> Maybe SAT.Solutions) -> Benchmark
 genGroup problems name solver = bgroup name $ map (\(n, p) -> bench n $ nf (Problem.solveWith solver) p) problems
 
-
-displayInfo :: Problem a => a -> String -> IO ()
-displayInfo p name = do 
+displayInfo :: (Problem a) => a -> String -> IO ()
+displayInfo p name = do
   let cnf = Problem.toCNF p
   print $ "Problem info:" ++ name
   print $ "Number of clauses: " ++ show (Problem.getNumClauses cnf)
   print $ "Number of distinct variables: " ++ show (Problem.getNumVars cnf)
   print $ "Total number of literals: " ++ show (Problem.getTotalNumLiterals cnf)
   print $ "Average clause length: " ++ show (Problem.averageClauseLength cnf)
-
 
 main :: IO ()
 main = do

@@ -1,18 +1,16 @@
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module SAT.VSIDS.Tests where
 
-import SAT.VSIDS
-import SAT.CNF (CNF(..), Clause)
-
-import Test.Tasty
-import Test.Tasty.HUnit
-import Test.Tasty.QuickCheck as QC
-import Test.Tasty.QuickCheck ((==>))
-
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
+import SAT.CNF (CNF (..), Clause)
+import SAT.VSIDS
+import Test.Tasty
+import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck ((==>))
+import Test.Tasty.QuickCheck as QC
 
 tests :: TestTree
 tests = testGroup "VISIDS Tests" [properties, unitTests]
@@ -32,4 +30,3 @@ test_initVSIDS = testCase "initVSIDS" $ do
   let cnf = CNF [[1, 2], [2, 3], [3, 4]]
   let vsids = initVSIDS cnf
   assertEqual "initVSIDS" (IntMap.fromList [(1, 1), (2, 2), (3, 2), (4, 1)]) vsids
-  

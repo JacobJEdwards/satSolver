@@ -1,22 +1,20 @@
-{-|
-Module: Parser.Error
-Description: Defines the error type for the parser.
--}
-
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE Safe #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE StandaloneKindSignatures #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE Safe #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 
-module Parser.Error (type Error(..)) where
-  
-import Data.Kind (Type)
-  
+-- |
+-- Module: Parser.Error
+-- Description: Defines the error type for the parser.
+module Parser.Error (type Error (..)) where
+
+import Data.Kind (type Type)
+
 -- | The error type for the parser.
 type Error :: Type -> Type -> Type
 data Error :: Type -> Type -> Type where
@@ -69,7 +67,6 @@ instance (Semigroup i, Semigroup e) => Semigroup (Error i e) where
 instance (Monoid i, Monoid e) => Monoid (Error i e) where
   mempty :: Error i e
   mempty = Empty
-  
+
   mappend :: Error i e -> Error i e -> Error i e
   mappend = (<>)
-  

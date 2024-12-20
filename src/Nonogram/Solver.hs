@@ -1,21 +1,19 @@
-{-|
-Module      : Nonogram.Solver
-Description : Exports the Nonogram solver module.
--}
-
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneKindSignatures #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE Strict #-}
+{-# LANGUAGE TypeFamilies #-}
 
+-- |
+-- Module      : Nonogram.Solver
+-- Description : Exports the Nonogram solver module.
 module Nonogram.Solver
-  ( 
-    type Nonogram (..),
+  ( type Nonogram (..),
     type Variable (..),
     type Cell (..),
     type Constraint,
@@ -28,18 +26,18 @@ module Nonogram.Solver
     fiveByFive2,
     twoByTwo,
     oneByOne,
-    eightByEight
+    eightByEight,
   )
 where
 
+import Control.Parallel.Strategies (type NFData)
 import Data.Kind (type Type)
-import SAT (ands, checkValue, ors, applyLaws, toVar, uniqueOnly, type Expr, type Solutions)
+import GHC.Generics (type Generic)
+import SAT (ands, applyLaws, checkValue, ors, toVar, uniqueOnly, type Expr, type Solutions)
 import SAT.DIMACS qualified as DIMACS
-import GHC.Generics (Generic)
-import Control.Parallel.Strategies (NFData)
 
 imap :: (Int -> a -> b) -> [a] -> [b]
-imap f = zipWith f [0 ..]
+imap = flip zipWith [0 ..]
 
 -- | Represents a cell in a nonogram.
 type Cell :: Type
@@ -49,13 +47,13 @@ data Cell = Filled | Unfilled | Unknown
 deriving anyclass instance NFData Cell
 
 -- | Show instance for the 'Cell' type.
--- 
+--
 -- >>> show Filled
 -- "#"
--- 
+--
 -- >>> show Unfilled
 -- "."
--- 
+--
 -- >>> show Unknown
 -- " "
 instance Show Cell where
@@ -65,13 +63,13 @@ instance Show Cell where
   show Unknown = " "
 
 -- | Enum instance for the 'Cell' type.
--- 
+--
 -- >>> fromEnum Filled
 -- 2
--- 
+--
 -- >>> fromEnum Unfilled
 -- 1
--- 
+--
 -- >>> fromEnum Unknown
 -- 0
 instance Enum Cell where
@@ -87,10 +85,10 @@ instance Enum Cell where
   toEnum _ = error "Invalid cell"
 
 -- | Bounded instance for the 'Cell' type.
--- 
+--
 -- >>> minBound :: Cell
 -- Unknown
--- 
+--
 -- >>> maxBound :: Cell
 -- Filled
 instance Bounded Cell where
@@ -124,12 +122,12 @@ data Nonogram = Nonogram
 deriving anyclass instance NFData Nonogram
 
 -- | Show instance for the 'Nonogram' type.
--- 
+--
 -- >>> putStrLn $ show exampleNonogram
 -- cols: [[1,1],[1,2],[3],[2,1],[1,1]]
 instance Show Nonogram where
   show :: Nonogram -> String
-  show (Nonogram rows' cols' solution') = "cols: " ++ show cols' ++ "\n" ++ "rows: " ++ show rows' ++ "\n" ++ "solution: \n" ++ unlines (map (unwords . map show) solution')
+  show (Nonogram rows' cols' solution') = "cols: " <> show cols' <> "\n" <> "rows: " <> show rows' <> "\n" <> "solution: \n" <> unlines (map (unwords . map show) solution')
 
 -- | Represents a variable in a nonogram.
 type Variable :: Type
@@ -143,7 +141,7 @@ data Variable = Variable
 deriving anyclass instance NFData Variable
 
 -- | Encodes a variable to an integer.
--- 
+--
 -- >>> encodeVar exampleNonogram (Variable 1 1 Filled)
 -- 2
 encodeVar :: Nonogram -> Variable -> DIMACS.Literal
@@ -153,7 +151,7 @@ encodeVar (Nonogram rs cs _) (Variable r c f) = (r - 1) * boardWidth * 2 + (c - 
     boardWidth = max (length cs) (length rs)
 
 -- | Decodes the solution to the nonogram.
--- 
+--
 -- >>> decodeSolution exampleNonogram (Solutions [])
 -- ...
 decodeSolution :: Nonogram -> Solutions -> Nonogram
@@ -163,7 +161,7 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
     cellValue r c =
       case [f | f <- [Filled, Unfilled], checkVar $ Variable r c f] of
         [f] -> f
-        xs -> error $ "Invalid values for cell (" ++ show r ++ ", " ++ show c ++ ")" ++ show xs
+        xs -> error $ "Invalid values for cell (" <> show r <> ", " <> show c <> ")" <> show xs
 
     checkValue' :: Int -> Bool
     checkValue' = SAT.checkValue solution'
@@ -175,7 +173,7 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
     checkVar = checkValue' . encodeVar'
 
 -- | Converts a nonogram to DIMACS format.
--- 
+--
 -- >>> toDIMACS exampleNonogram
 -- DIMACS {numVars = 20, numClauses = 0, clauses = ..., comments = ["Nonogram"]}
 toDIMACS :: Nonogram -> DIMACS.DIMACS
@@ -187,7 +185,9 @@ toDIMACS puzzle =
       DIMACS.comments = ["Nonogram"]
     }
   where
-    clauses = SAT.uniqueOnly $ concat [rowClauses, colClauses, cellClauses, cellUniqueClauses] -- ++ solutionClauses
+    clauses :: [DIMACS.Clause]
+    clauses = concat [rowClauses, colClauses, cellClauses, cellUniqueClauses] -- ++ solutionClauses
+
     cellClauses :: [DIMACS.Clause]
     cellClauses =
       [[encodeVar' (Variable r c Filled), encodeVar' (Variable r c Unfilled)] | r <- [1 .. rowSize], c <- [1 .. colSize]]
@@ -221,7 +221,7 @@ toDIMACS puzzle =
 -- [0, 0, 1, 0, 1]
 
 -- | Encodes the row constraints to DIMACS format.
--- 
+--
 -- >>> encodeRowConstraints (encodeVar exampleNonogram) 5 [[1, 1]]
 -- [[2, 4], [2, 5], [3, 5], [6, 8], [6, 9], [7, 9]]
 encodeRowConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> [DIMACS.Clause]
@@ -232,15 +232,16 @@ encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
 
     encodeCell :: Int -> Mask -> Int -> DIMACS.Literal
     encodeCell rowIndex mask colIndex =
-      let cell = mask !! colIndex -- potentially gives incorrect results
+      let cell = mask !! colIndex
           row' = rowIndex
           col' = colIndex
-       in encodeVar' (Variable (row' + 1) (col' + 1) (if cell >= 1 then Filled else Unfilled))
+       in encodeVar' $ Variable (row' + 1) (col' + 1) $ if cell >= 1 then Filled else Unfilled
 
 -- issue here was i was finding the index with equality, whereas i had to pass it in as i needed referential in case two
 -- cells had the same value
+
 -- | Encodes the column constraints to DIMACS format.
--- 
+--
 -- >>> encodeColConstraints (encodeVar exampleNonogram) 5 [[1, 1]]
 -- [[2, 4], [2, 5], [3, 5], [6, 8], [6, 9], [7, 9]]
 encodeColConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> [DIMACS.Clause]
@@ -254,12 +255,13 @@ encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
       let cell = mask !! rowIndex -- potentially gives incorrect results
           row' = rowIndex
           col' = colIndex
-       in encodeVar' (Variable (row' + 1) (col' + 1) (if cell >= 1 then Filled else Unfilled))
+       in encodeVar' $ Variable (row' + 1) (col' + 1) $ if cell >= 1 then Filled else Unfilled
 
 -- columns had the same number of filled cells
 ---- https://www.kbyte.io/projects/201908_nonogram/
+
 -- | Generates all possible solutions for a given constraint.
--- 
+--
 -- >>> generatePossibleSolutions (encodeCell 0) 5 [1, 1]
 -- [[2, 4], [2, 5], [3, 5], [6, 8], [6, 9], [7, 9]]
 generatePossibleSolutions :: (Mask -> Int -> DIMACS.Literal) -> Size -> Constraint -> [DIMACS.Clause]
@@ -277,7 +279,7 @@ generatePossibleSolutions encodeCell size combinations =
           ]
 
       fillMask :: Mask -> Int -> Int -> Int -> Mask
-      fillMask mask mark startPosition c = take startPosition mask ++ replicate c mark ++ drop (startPosition + c) mask
+      fillMask mask mark startPosition c = take startPosition mask <> replicate c mark <> drop (startPosition + c) mask
    in toCNF $ generate combinations 1 0 $ replicate size 0
   where
     convertToOrExpr :: [[DIMACS.Literal]] -> Expr DIMACS.Literal
@@ -320,29 +322,28 @@ fiveByFive =
 -- | Example nonogram.
 twoByTwo :: Nonogram
 twoByTwo =
- Nonogram
-   { rows = [[2], [1]],
-     cols = [[2], [1]],
-     solution =
-       [ [Unknown, Unknown],
-         [Unknown, Unknown]
-       ]
-   }
+  Nonogram
+    { rows = [[2], [1]],
+      cols = [[2], [1]],
+      solution =
+        [ [Unknown, Unknown],
+          [Unknown, Unknown]
+        ]
+    }
 
 -- 8 by 8
+
 -- | Example nonogram.
 eightByEight :: Nonogram
 eightByEight =
- Nonogram
-   { cols =
-     [ [4], [6], [4],[3],[2],[2],[3, 2],[3,4],[6,2],[6,3] ],
-     rows =
-     [ [5], [5], [4], [2], [2,2], [4,4], [5,2], [4,1,1], [2,3], [2,2] ],
-     solution =
-       []
-       }
-            
-
+  Nonogram
+    { cols =
+        [[4], [6], [4], [3], [2], [2], [3, 2], [3, 4], [6, 2], [6, 3]],
+      rows =
+        [[5], [5], [4], [2], [2, 2], [4, 4], [5, 2], [4, 1, 1], [2, 3], [2, 2]],
+      solution =
+        []
+    }
 
 -- exampleNonogram :: Nonogram
 -- exampleNonogram =
@@ -368,27 +369,35 @@ eightByEight =
 -- | Example nonogram.
 fiveByFive2 :: Nonogram
 fiveByFive2 =
- Nonogram {
-   rows = [
-     [1], [1], [3], [4], [4]
-     ],
-   cols = [
-     [1,2], [2], [3], [3], [1,1]
-     ],
-   solution = [
-     [Unknown, Unknown, Unknown, Unknown, Unknown],
-     [Unknown, Unknown, Unknown, Unknown, Unknown],
-     [Unknown, Unknown, Unknown, Unknown, Unknown],
-     [Unknown, Unknown, Unknown, Unknown, Unknown],
-     [Unknown, Unknown, Unknown, Unknown, Unknown]
-   ]
- }
+  Nonogram
+    { rows =
+        [ [1],
+          [1],
+          [3],
+          [4],
+          [4]
+        ],
+      cols =
+        [ [1, 2],
+          [2],
+          [3],
+          [3],
+          [1, 1]
+        ],
+      solution =
+        [ [Unknown, Unknown, Unknown, Unknown, Unknown],
+          [Unknown, Unknown, Unknown, Unknown, Unknown],
+          [Unknown, Unknown, Unknown, Unknown, Unknown],
+          [Unknown, Unknown, Unknown, Unknown, Unknown],
+          [Unknown, Unknown, Unknown, Unknown, Unknown]
+        ]
+    }
 
 -- | Example nonogram.
 oneByOne :: Nonogram
 oneByOne =
- Nonogram {
-   rows = [[1]],
-   cols = [[1]],
-   solution = [[Unknown]]
- }
+  Nonogram
+    { rows = [[1]],
+      cols = [[1]],
+      solution = [[Unknown]]
+    }

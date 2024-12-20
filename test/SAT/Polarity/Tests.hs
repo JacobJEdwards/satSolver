@@ -4,12 +4,11 @@
 
 module SAT.Polarity.Tests (tests) where
 
-import Test.Tasty(TestTree, testGroup)
-import Test.Tasty.QuickCheck qualified as QC
-import Test.Tasty.QuickCheck ((==>))
-import Test.Tasty.HUnit (testCase, (@?=)) 
-
 import SAT.Polarity qualified as SAT
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (testCase, (@?=))
+import Test.Tasty.QuickCheck ((==>))
+import Test.Tasty.QuickCheck qualified as QC
 
 tests :: TestTree
 tests = testGroup "Polarity Tests" [properties, unitTests]
@@ -22,46 +21,55 @@ instance QC.Arbitrary SAT.Polarity where
   arbitrary = QC.elements [SAT.Positive, SAT.Negative, SAT.Mixed]
 
 test_monoid_flip :: TestTree
-test_monoid_flip = testCase "monoid" $ 
-  SAT.Positive <> SAT.Negative @?= SAT.Mixed
+test_monoid_flip =
+  testCase "monoid" $
+    SAT.Positive <> SAT.Negative @?= SAT.Mixed
 
 test_monoid_same :: TestTree
-test_monoid_same = testCase "monoid" $ 
-  SAT.Positive <> SAT.Positive @?= SAT.Positive
-  
+test_monoid_same =
+  testCase "monoid" $
+    SAT.Positive <> SAT.Positive @?= SAT.Positive
+
 test_monoid_same' :: TestTree
-test_monoid_same' = testCase "monoid" $
-  SAT.Negative <> SAT.Negative @?= SAT.Negative
-  
+test_monoid_same' =
+  testCase "monoid" $
+    SAT.Negative <> SAT.Negative @?= SAT.Negative
+
 test_monoid_same'' :: TestTree
-test_monoid_same'' = testCase "monoid" $
-  SAT.Mixed <> SAT.Mixed @?= SAT.Mixed
-  
+test_monoid_same'' =
+  testCase "monoid" $
+    SAT.Mixed <> SAT.Mixed @?= SAT.Mixed
+
 test_monoid_same''' :: TestTree
-test_monoid_same''' = testCase "monoid" $
-  SAT.Mixed <> SAT.Positive @?= SAT.Mixed
-  
+test_monoid_same''' =
+  testCase "monoid" $
+    SAT.Mixed <> SAT.Positive @?= SAT.Mixed
+
 test_monoid_same'''' :: TestTree
-test_monoid_same'''' = testCase "monoid" $
-  SAT.Mixed <> SAT.Negative @?= SAT.Mixed
-  
+test_monoid_same'''' =
+  testCase "monoid" $
+    SAT.Mixed <> SAT.Negative @?= SAT.Mixed
+
 unitTests :: TestTree
 unitTests = testGroup "Unit tests" [test_monoid_flip, test_monoid_same, test_monoid_same', test_monoid_same'', test_monoid_same''', test_monoid_same'''']
-  
 
 flipProps :: TestTree
-flipProps = testGroup "flipPolarity"
-  [ QC.testProperty "flipPolarity" prop_flip
-  ]
-  
+flipProps =
+  testGroup
+    "flipPolarity"
+    [ QC.testProperty "flipPolarity" prop_flip
+    ]
+
 monoidProps :: TestTree
-monoidProps = testGroup "Monoid"
-  [ QC.testProperty "monoid" prop_monoid
-  , QC.testProperty "monoid_neq" prop_monoid_neq
-  , QC.testProperty "monoid_eq" prop_monoid_eq
-  , QC.testProperty "monoid_eq'" prop_monoid_eq'
-  , QC.testProperty "monoid_neq'" prop_monoid_neq'
-  ]
+monoidProps =
+  testGroup
+    "Monoid"
+    [ QC.testProperty "monoid" prop_monoid,
+      QC.testProperty "monoid_neq" prop_monoid_neq,
+      QC.testProperty "monoid_eq" prop_monoid_eq,
+      QC.testProperty "monoid_eq'" prop_monoid_eq',
+      QC.testProperty "monoid_neq'" prop_monoid_neq'
+    ]
 
 prop_flip :: SAT.Polarity -> Bool
 prop_flip p = SAT.flipPolarity (SAT.flipPolarity p) == p

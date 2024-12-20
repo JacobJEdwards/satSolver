@@ -1,20 +1,18 @@
-{-|
-Module      : SAT.DIMACS.Parser
-Description : Exports the DIMACS parser module.
--}
-
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+-- |
+-- Module      : SAT.DIMACS.Parser
+-- Description : Exports the DIMACS parser module.
 module SAT.DIMACS.Parser (parseCNF, parseFile, parse) where
 
 import Data.Char (isDigit)
 import Data.Text (type Text)
 import Data.Text qualified as Text
 import Parser (char, digit, many, optional, runParser, satisfy, some, spaces, symbol, type Parser, type Result (Result))
-import SAT.DIMACS.CNF (type DIMACS (DIMACS, clauses, comments, numClauses, numVars), type Clause, type Literal)
+import SAT.DIMACS.CNF (type Clause, type DIMACS (DIMACS, clauses, comments, numClauses, numVars), type Literal)
 
 -- | Parses a comment.
 parseComment :: Parser Text Text Text
@@ -49,7 +47,7 @@ parseLiteral = do
 -- | Parses a clause.
 parseClause :: Parser Text Text Clause
 parseClause = do
-  parsedClause <- some (parseLiteral <* spaces)
+  parsedClause <- some $ parseLiteral <* spaces
   _ <- char '0'
   return parsedClause
 
@@ -86,7 +84,7 @@ parse input = case parseCNF input of
 -- | Parses a DIMACS formula from a file.
 parseFile :: Text -> IO (Maybe DIMACS)
 parseFile filename = do
-  contents <- readFile (Text.unpack filename)
-  case runParser parseCNF' (Text.pack contents) of
-    Result (_, cnf) -> return $ Just cnf
+  contents <- readFile $ Text.unpack filename
+  case runParser parseCNF' $ Text.pack contents of
+    Result (_, cnf) -> return $ pure cnf
     _ -> return Nothing

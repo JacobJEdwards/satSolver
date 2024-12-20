@@ -1,9 +1,7 @@
-{-|
-Module      : SAT.Expr
-Description : Exports the SAT expression module.
--}
-
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE GADTs #-}
@@ -12,10 +10,11 @@ Description : Exports the SAT expression module.
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE Strict #-}
 
+-- |
+-- Module      : SAT.Expr
+-- Description : Exports the SAT expression module.
 module SAT.Expr
   ( type Expr (..),
     (.||.),
@@ -30,12 +29,11 @@ module SAT.Expr
   )
 where
 
-
-import Data.Data (type Data)
-import Data.Kind (type Type)
-import Data.IntSet (type IntSet)
-import GHC.Generics (Generic)
 import Control.Parallel.Strategies (NFData)
+import Data.Data (type Data)
+import Data.IntSet (type IntSet)
+import Data.Kind (type Type)
+import GHC.Generics (Generic)
 
 -- | The solutions type.
 type Solutions = IntSet
@@ -71,9 +69,13 @@ deriving stock instance (Data a) => Data (Expr a)
 deriving stock instance (Read a) => Read (Expr a)
 
 deriving stock instance Functor Expr
+
 deriving stock instance Foldable Expr
+
 deriving stock instance Traversable Expr
+
 deriving stock instance Generic (Expr a)
+
 deriving anyclass instance (NFData a) => NFData (Expr a)
 
 (.||.) :: Expr a -> Expr a -> Expr a
@@ -81,12 +83,10 @@ deriving anyclass instance (NFData a) => NFData (Expr a)
 
 infixr 3 .||.
 
-
 (.&&.) :: Expr a -> Expr a -> Expr a
 (.&&.) = And
 
 infixr 3 .&&.
-
 
 (.!.) :: Expr a -> Expr a
 (.!.) = Not
@@ -95,7 +95,7 @@ infixr 3 .!.
 
 -- | Shows a pair of expressions.
 showDuo :: (Show a) => String -> Expr a -> Expr a -> String
-showDuo op e1 e2 = "(" ++ show e1 ++ " " ++ op ++ " " ++ show e2 ++ ")"
+showDuo op e1 e2 = "(" <> show e1 <> " " <> op <> " " <> show e2 ++ ")"
 {-# INLINE showDuo #-}
 
 -- | Shows an 'And' expression.
@@ -109,19 +109,20 @@ showOr = showDuo "∨"
 {-# INLINE showOr #-}
 
 -- look into show prec, migh tprevent the nested bracket thing
+
 -- | Show instance for the 'Expr' type.
 instance (Show a) => Show (Expr a) where
   {-# INLINEABLE show #-}
   show :: Expr a -> String
   show (Var v) = show v
-  show (Not e) = "¬" ++ show e
+  show (Not e) = "¬" <> show e
   show (And e1 e2) = showAnd e1 e2
   show (Or e1 e2) = showOr e1 e2
   show (Val b) = show b
   show (Implies e1 e2) = showDuo "=>" e1 e2
 
 -- | Semigroup instance for the 'Expr' type.
--- 
+--
 -- >>> Var 1 <> Var 2
 -- Or (Var 1) (Var 2)
 instance Semigroup (Expr a) where
@@ -130,7 +131,7 @@ instance Semigroup (Expr a) where
   (<>) = Or
 
 -- | Monoid instance for the 'Expr' type.
--- 
+--
 -- >>> mempty :: Expr Int
 -- Val False
 instance Monoid (Expr a) where
@@ -138,34 +139,34 @@ instance Monoid (Expr a) where
   mempty :: Expr a
   mempty = Val False
 
-
 -- | Applicative instance for the 'Expr' type.
--- 
+--
 -- >>> pure 1 :: Expr Int
 -- Var 1
 instance Applicative Expr where
   {-# INLINEABLE pure #-}
   {-# INLINEABLE (<*>) #-}
-  -- | Lifts a value to an expression.
+
+  -- \| Lifts a value to an expression.
   pure :: a -> Expr a
   pure = Var
 
-  -- | Applies a function in an expression to a value in an expression.
+  -- \| Applies a function in an expression to a value in an expression.
   (<*>) :: Expr (a -> b) -> Expr a -> Expr b
   (<*>) (Var f) e = f <$> e
-  (<*>) (Not f) e = Not (f <*> e)
+  (<*>) (Not f) e = Not $ f <*> e
   (<*>) (And f1 f2) e = And (f1 <*> e) (f2 <*> e)
   (<*>) (Or f1 f2) e = Or (f1 <*> e) (f2 <*> e)
   (<*>) (Implies f1 f2) e = Implies (f1 <*> e) (f2 <*> e)
   (<*>) (Val b) _ = Val b
 
 -- | Monad instance for the 'Expr' type.
--- 
+--
 -- >>> Var 1 >>= \x -> Var (x + 1)
 -- Var 2
 instance Monad Expr where
   {-# INLINEABLE (>>=) #-}
-  -- | Binds a value in an expression to a function.
+  -- \| Binds a value in an expression to a function.
   (>>=) :: Expr a -> (a -> Expr b) -> Expr b
   (>>=) (Var v) f = f v
   (>>=) (Not e) f = Not (e >>= f)
@@ -173,8 +174,9 @@ instance Monad Expr where
   (>>=) (Or e1 e2) f = Or (e1 >>= f) (e2 >>= f)
   (>>=) (Implies e1 e2) f = Implies (e1 >>= f) (e2 >>= f)
   (>>=) (Val b) _ = Val b
-  
+
 -- propagate error to caller with maybe or leave as is ?
+
 -- | Gets the value of a constant expression.
 unVal :: Expr a -> Bool
 unVal (Val b) = b
@@ -182,7 +184,7 @@ unVal _ = error "Not a constant"
 {-# INLINEABLE unVal #-}
 
 -- | Converts an expression to a list.
--- 
+--
 -- >>> toList (Var 1 .&&. Var 2)
 -- [1, 2]
 toList :: Expr a -> [a]
@@ -190,7 +192,7 @@ toList = foldr (:) []
 {-# INLINEABLE toList #-}
 
 -- | Combines a list of expressions with 'Or'.
--- 
+--
 -- >>> ors [Var 1, Var 2]
 -- Or (Var 1) (Var 2)
 ors :: [Expr a] -> Expr a
@@ -198,7 +200,7 @@ ors = foldr1 Or
 {-# INLINEABLE ors #-}
 
 -- | Combines a list of expressions with 'And'.
--- 
+--
 -- >>> ands [Var 1, Var 2]
 -- And (Var 1) (Var 2)
 ands :: [Expr a] -> Expr a
@@ -206,10 +208,10 @@ ands = foldr1 And
 {-# INLINEABLE ands #-}
 
 -- | Converts a literal to a variable.
--- 
+--
 -- >>> toVar 1
 -- Var 1
--- 
+--
 -- >>> toVar (-1)
 -- Not (Var 1)
 toVar :: Int -> Expr Int

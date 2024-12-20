@@ -1,2 +1,1 @@
 module Sudoku.Tests where
-

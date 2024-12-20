@@ -36,6 +36,7 @@ library
       Parser.Result
       Problem
       SAT
+      SAT.CDCL
       SAT.CNF
       SAT.DIMACS
       SAT.DIMACS.CNF

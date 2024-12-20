@@ -1,27 +1,28 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Main where
 
-import System.CPUTime.Rdtsc
-import System.IO.Unsafe
-import Data.IORef
-import Data.Word
 import Control.Monad
-import Control.Monad.IO.Class (MonadIO(..))
 import qualified Control.Monad.Fail as Fail (MonadFail)
 import Control.Monad.Free
-import Control.Monad.Free.TH
 import qualified Control.Monad.Free.Church as Church
+import Control.Monad.Free.TH
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Trans.State.Strict
+import Data.IORef
+import Data.Word
+import System.CPUTime.Rdtsc
+import System.IO.Unsafe
 import Text.Printf
 
 -- | A data type representing basic commands for our performance-testing eDSL.
 data PerfF next where
-  Output    :: String -> next -> PerfF next
-  Input     :: (Show a, Read a) => (a -> next) -> PerfF next
+  Output :: String -> next -> PerfF next
+  Input :: (Show a, Read a) => (a -> next) -> PerfF next
 
 -- | Unfortunately this Functor instance cannot yet be derived
 -- automatically by GHC.
@@ -51,9 +52,9 @@ g_print_time_since_prev_call = liftIO $ do
 -- | Free-based interpreter
 runPerfFree :: (MonadIO m) => [String] -> Free PerfF () -> m ()
 runPerfFree [] _ = return ()
-runPerfFree (s:ss) x = case x of
+runPerfFree (s : ss) x = case x of
   Free (Output _o next) -> do
-    runPerfFree (s:ss) next
+    runPerfFree (s : ss) next
   Free (Input next) -> do
     g_print_time_since_prev_call
     runPerfFree ss (next (read s))
@@ -65,18 +66,19 @@ runPerfF :: (Fail.MonadFail m, MonadIO m) => [String] -> Church.F PerfF () -> m 
 runPerfF [] _ = return ()
 runPerfF ss0 f =
   fst `liftM` do
-  flip runStateT ss0 $ Church.iterM go f where
+    flip runStateT ss0 $ Church.iterM go f
+  where
     go (Output _o next) = do
       next
     go (Input next) = do
       g_print_time_since_prev_call
-      (s:ss) <- get
+      (s : ss) <- get
       put ss
       next (read s)
 
 -- | Test input is the same for all cases
 test_input :: [String]
-test_input = [show i | i<-([1..9999] ++ [0 :: Int])]
+test_input = [show i | i <- ([1 .. 9999] ++ [0 :: Int])]
 
 -- | Tail-recursive program
 test_tail :: (MonadFree PerfF m) => m ()
@@ -87,10 +89,9 @@ test_tail = do
   when (n > 0) $ do
     test_tail
 
-run_tail_free,run_tail_f :: IO ()
+run_tail_free, run_tail_f :: IO ()
 run_tail_free = runPerfFree test_input test_tail
 run_tail_f = runPerfF test_input test_tail
-
 
 -- | Deep-recursive program
 test_loop :: (MonadFree PerfF m) => m ()
@@ -101,15 +102,17 @@ test_loop = do
     test_loop
   output $ "Just entered: " ++ (show n)
 
-run_loop_free,run_loop_f :: IO ()
+run_loop_free, run_loop_f :: IO ()
 run_loop_free = runPerfFree test_input test_loop
 run_loop_f = runPerfF test_input test_loop
 
 main :: IO ()
 main = do
-  putStr $ unlines [
-      "Running two kinds of FreeMonad programs against two kinds of interpreters.",
-      "Counters represent approx. number of CPU ticks per program iteration" ]
+  putStr $
+    unlines
+      [ "Running two kinds of FreeMonad programs against two kinds of interpreters.",
+        "Counters represent approx. number of CPU ticks per program iteration"
+      ]
   putStrLn ">> (1/4) Tail-recursive program/Free interpreter"
   run_tail_free
   putStrLn "\n>> (2/4) Tail-recursive program/Church interpreter"
@@ -119,4 +122,3 @@ main = do
   putStrLn "\n>> (4/4) Deep-recursive program/Church interpreter"
   run_loop_f
   putStrLn "\n"
-

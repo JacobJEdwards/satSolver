@@ -3,19 +3,17 @@
 
 module SAT.CNF.Tests (tests) where
 
-import SAT.CNF
-import Data.Set qualified as Set
 import Data.List
+import Data.Set qualified as Set
+import SAT.CNF
 import Test.Tasty
 import Test.Tasty.HUnit
-import Test.Tasty.QuickCheck as QC
 import Test.Tasty.QuickCheck ((==>))
-import Data.Set qualified as Set
-
+import Test.Tasty.QuickCheck as QC
 
 instance Arbitrary CNF where
   arbitrary :: Gen CNF
-  arbitrary =  CNF <$> arbitrary
+  arbitrary = CNF <$> arbitrary
 
 tests :: TestTree
 tests = testGroup "CNF Tests" [properties, unitTests]
