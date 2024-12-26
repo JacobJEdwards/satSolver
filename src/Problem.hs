@@ -4,11 +4,13 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      : Problem
 -- Description : Exports the problem module. Represents a problem that can be solved by the SAT solver.
-module Problem (Problem (..), parseFile, solve, toExpr, toCNF, isSatisfiable, getNumClauses, getNumVars, solveWith, averageClauseLength, getTotalNumLiterals) where
+module Problem (type Problem (toDIMACS, decode, example, parse), parseFile, solve, toExpr, toCNF, isSatisfiable, getNumClauses, getNumVars, solveWith, averageClauseLength, getTotalNumLiterals) where
 
 import Data.Kind (type Constraint, type Type)
 import Data.List (genericLength)
@@ -22,21 +24,19 @@ import SAT.DIMACS.CNF qualified as DIMACS
 import SAT.DIMACS.Parser qualified as DIMACS
 import Sudoku qualified
 import Sudoku.Solver (type Sudoku)
+import SAT.Encode (type Encodable (encode, type Code))
 
 -- | Represents a problem that can be solved by the SAT solver.
 type Problem :: Type -> Constraint
-class Problem (a :: Type) where
+class (Encodable a (Variable a)) => Problem (a :: Type) where
   -- | The type of variables in the problem.
-  type Variable a
+  type Variable a :: Type
 
   -- | Converts the problem to DIMACS format.
   toDIMACS :: a -> DIMACS.DIMACS
 
   -- | Decodes the solution to the problem.
   decode :: a -> Solutions -> a
-
-  -- | Encodes a variable to an integer.
-  encodeVar :: a -> Variable a -> Int
 
   -- | Parses a problem from a string.
   example :: a
@@ -57,10 +57,6 @@ instance Problem Sudoku where
   decode :: Sudoku -> Solutions -> Sudoku
   decode = Sudoku.decodeSolution
   {-# INLINEABLE decode #-}
-
-  encodeVar :: Sudoku -> Sudoku.Variable -> Int
-  encodeVar = Sudoku.encodeVar
-  {-# INLINEABLE encodeVar #-}
 
   parse :: Text -> Maybe Sudoku
   parse = Sudoku.parse
@@ -83,10 +79,6 @@ instance Problem Nonogram where
   decode = Nonogram.decodeSolution
   {-# INLINEABLE decode #-}
 
-  encodeVar :: Nonogram -> Nonogram.Variable -> Int
-  encodeVar = Nonogram.encodeVar
-  {-# INLINEABLE encodeVar #-}
-
   parse :: Text -> Maybe Nonogram
   parse = Nonogram.parse
   {-# INLINEABLE parse #-}
@@ -107,10 +99,6 @@ instance Problem DIMACS.DIMACS where
   decode = const
   {-# INLINEABLE decode #-}
 
-  encodeVar :: DIMACS.DIMACS -> Int -> Int
-  encodeVar = const id
-  {-# INLINEABLE encodeVar #-}
-
   parse :: Text -> Maybe DIMACS.DIMACS
   parse = DIMACS.parse
   {-# INLINEABLE parse #-}
@@ -120,26 +108,22 @@ instance Problem DIMACS.DIMACS where
   {-# INLINEABLE example #-}
 
 -- | SAT problem.
-instance Problem (Expr Int) where
-  type Variable (Expr Int) = Int
+instance (Read a, Encodable (Expr a) a, Integral (Code (Expr a) a)) => Problem (Expr a) where
+  type Variable (Expr a) = a
 
-  toDIMACS :: Expr Int -> DIMACS.DIMACS
-  toDIMACS = DIMACS.fromExpr . SAT.applyLaws
+  toDIMACS :: Expr a -> DIMACS.DIMACS
+  toDIMACS e = DIMACS.fromExpr . SAT.applyLaws . fmap (fromIntegral . encode e) $ e
   {-# INLINEABLE toDIMACS #-}
 
-  decode :: Expr Int -> Solutions -> Expr Int
+  decode :: Expr a -> Solutions -> Expr a
   decode = const
   {-# INLINEABLE decode #-}
 
-  encodeVar :: Expr Int -> Int -> Int
-  encodeVar = const id
-  {-# INLINEABLE encodeVar #-}
-
-  parse :: Text -> Maybe (Expr Int)
+  parse :: Text -> Maybe (Expr a)
   parse = SAT.parse
   {-# INLINEABLE parse #-}
 
-  example :: Expr Int
+  example :: Expr a
   example = undefined
   {-# INLINEABLE example #-}
 
@@ -154,10 +138,6 @@ instance Problem CNF where
   decode :: CNF -> Solutions -> CNF
   decode = const
   {-# INLINEABLE decode #-}
-
-  encodeVar :: CNF -> Int -> Int
-  encodeVar = const id
-  {-# INLINEABLE encodeVar #-}
 
   parse :: Text -> Maybe CNF
   parse = undefined
