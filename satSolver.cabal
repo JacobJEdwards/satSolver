@@ -29,11 +29,6 @@ library
       Nonogram.Parser
       Nonogram.Solver
       Options
-      Parser
-      Parser.Error
-      Parser.Input
-      Parser.Parsec
-      Parser.Result
       Problem
       SAT
       SAT.CDCL
@@ -64,7 +59,8 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wmissing-import-lists -Wredundant-constraints -Wnoncanonical-monad-instances
   build-depends:
-      QuickCheck
+      Parser
+    , QuickCheck
     , base >=4.7 && <5
     , bytestring
     , containers
@@ -89,7 +85,8 @@ executable satSolver-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wmissing-import-lists -Wredundant-constraints -Wnoncanonical-monad-instances -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      QuickCheck
+      Parser
+    , QuickCheck
     , base >=4.7 && <5
     , bytestring
     , containers
@@ -139,7 +136,8 @@ test-suite satSolver-test
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wmissing-import-lists -Wredundant-constraints -Wnoncanonical-monad-instances -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      QuickCheck
+      Parser
+    , QuickCheck
     , base >=4.7 && <5
     , bytestring
     , containers
@@ -166,7 +164,8 @@ benchmark satSolver-bench
       bench
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wmissing-import-lists -Wredundant-constraints -Wnoncanonical-monad-instances -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      QuickCheck
+      Parser
+    , QuickCheck
     , base >=4.7 && <5
     , bytestring
     , containers

@@ -3,7 +3,18 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages: []
+packages:
+- completed:
+    name: Parser
+    pantry-tree:
+      sha256: 66af8e5283f1590aedca4f9b08772ef726bc2080d94f58692aa6e9e63e3c9801
+      size: 798
+    sha256: 065611dee51589d4682fbf02be0dd10505485342d2ee4641cb208a6d23234059
+    size: 7875
+    url: https://github.com/JacobJEdwards/Parser/archive/fe0e0a7.tar.gz
+    version: 0.1.0.0
+  original:
+    url: https://github.com/JacobJEdwards/Parser/archive/fe0e0a7.tar.gz
 snapshots:
 - completed:
     sha256: 098936027eaa1ef14e2b8eb39d9933a973894bb70a68684a1bbf00730249879b

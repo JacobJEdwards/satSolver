@@ -33,6 +33,7 @@ dependencies:
 - tasty-hunit
 - tasty-quickcheck
 - criterion
+- Parser
 
 ghc-options:
 - -Wall
@@ -61,6 +62,7 @@ executables:
     dependencies:
     - satSolver
     - haskeline
+    - Parser
 
 tests:
   satSolver-test:
