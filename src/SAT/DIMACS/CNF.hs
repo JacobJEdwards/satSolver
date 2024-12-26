@@ -22,7 +22,7 @@ import Data.Kind (type Type)
 import Data.Set qualified as Set
 import Data.Text (type Text)
 import GHC.Generics (Generic)
-import SAT.CNF (type CNF (CNF), varOfLiteral)
+import SAT.CNF (varOfLiteral, type CNF (CNF))
 import SAT.CNF qualified as CNF
 import SAT.Expr (type Expr (And, Implies, Not, Or, Var))
 
@@ -48,10 +48,10 @@ deriving anyclass instance NFData DIMACS
 
 -- | Converts a list of clauses to an expression.
 toExpr :: [Clause] -> Expr Literal
-toExpr = foldr1 And . map toOr
+toExpr = foldr1 And . fmap toOr
   where
     toOr :: Clause -> Expr Literal
-    toOr = foldr1 Or . map toLiteral
+    toOr = foldr1 Or . fmap toLiteral
 
     toLiteral :: Literal -> Expr Literal
     toLiteral n
@@ -78,13 +78,13 @@ fromExpr expr =
     -- \| Converts an expression to a list of clauses.
     fromAnd :: Expr Literal -> [Clause]
     fromAnd (And e1 e2) = fromAnd e1 <> fromAnd e2
-    fromAnd e = [fromOr e]
+    fromAnd e = pure $ fromOr e
 
     -- \| Converts an expression to a clause.
     fromOr :: Expr Literal -> Clause
     fromOr (Or e1 e2) = fromOr e1 <> fromOr e2
     fromOr (Implies e1 e2) = fromOr $ Or (Not e1) e2
-    fromOr e = [fromLiteral e]
+    fromOr e = pure $ fromLiteral e
 
     -- \| Converts an expression to a literal.
     fromLiteral :: Expr Literal -> Literal
@@ -94,7 +94,7 @@ fromExpr expr =
 
     -- \| The number of variables.
     numVars' :: Integer
-    numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList
+    numVars' = fromIntegral . Set.size . Set.fromList . fmap abs $ concat clauseList
 
 invert :: Literal -> Literal
 invert = negate
@@ -107,10 +107,10 @@ toCNF :: DIMACS -> CNF
 toCNF = CNF . toCNF' . clauses
   where
     toCNF' :: [Clause] -> [CNF.Clause]
-    toCNF' = map toClause
+    toCNF' = fmap toClause
 
     toClause :: Clause -> CNF.Clause
-    toClause = map toLiteral
+    toClause = fmap toLiteral
 
     toLiteral :: Literal -> CNF.Literal
     toLiteral = id
@@ -129,16 +129,16 @@ fromCNF (CNF clauses') =
     }
   where
     clauseList :: [Clause]
-    clauseList = map fromClause clauses'
+    clauseList = fmap fromClause clauses'
 
     fromClause :: CNF.Clause -> Clause
-    fromClause = map fromLiteral
+    fromClause = fmap fromLiteral
 
     fromLiteral :: CNF.Literal -> Literal
     fromLiteral = id
 
     numVars' :: Integer
-    numVars' = fromIntegral . Set.size . Set.fromList . map abs $ concat clauseList
+    numVars' = fromIntegral . Set.size . Set.fromList . fmap abs $ concat clauseList
 
 -- | An example DIMACS formula.
 exampleDIMACS :: DIMACS

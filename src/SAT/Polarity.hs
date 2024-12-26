@@ -21,7 +21,7 @@ import GHC.Generics (type Generic)
 
 -- | The 'Polarity' type.
 type Polarity :: Type
-data Polarity = Positive | Negative | Mixed deriving stock (Eq, Ord, Show, Generic, Read)
+data Polarity = Positive | Negative | Mixed deriving stock (Eq, Ord, Show, Generic, Read, Enum, Bounded)
 
 deriving anyclass instance NFData Polarity
 

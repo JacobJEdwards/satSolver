@@ -1,11 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Strict #-}
-{-# LANGUAGE BlockArguments #-}
 
 -- TODO: check luby restarts
 -- TODO: check more preprocessing
@@ -57,14 +57,14 @@ import Control.Applicative ((<|>))
 import Control.Monad.RWS.Strict (get, modify)
 import Control.Monad.RWS.Strict qualified as RWST
 import Data.IntMap.Strict qualified as IntMap
-import Data.IntSet (IntSet)
+import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
-import Data.Maybe (listToMaybe, isJust)
-import SAT.CNF (initAssignment, toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
-import SAT.Expr (Expr, type Solutions)
-import SAT.Monad (SolverM, SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), getAssignment, ifM, increaseDecisionLevel, initWatchedLiterals, learn)
-import SAT.Optimisers (addDecision, adjustScoresM, assign, assignM, collectLiterals, collectLiteralsToSet, decayM, eliminateLiterals, pickLiteralM, substitute, unitPropagate, unitPropagateM)
+import Data.Maybe (isJust, listToMaybe)
 import SAT.CDCL (analyseConflict, backtrack)
+import SAT.CNF (initAssignment, toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
+import SAT.Expr (type Expr, type Solutions)
+import SAT.Monad (type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), getAssignment, ifM, increaseDecisionLevel, initWatchedLiterals, learn)
+import SAT.Optimisers (addDecision, adjustScoresM, assign, assignM, collectLiterals, collectLiteralsToSet, decayM, eliminateLiterals, pickLiteralM, substitute, unitPropagate, unitPropagateM)
 import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
 import SAT.VSIDS (initVSIDS)
@@ -107,7 +107,6 @@ solutionsFromAssignment = IntMap.keysSet . IntMap.filter id
 solutions :: SolverM Solutions
 solutions = solutionsFromAssignment <$> getAssignment
 
--- i think this is close, slightly wrong, but close ! (maybe)
 getSolutions :: CNF -> Maybe Solutions
 getSolutions !cnf' = do
   (solutions', _) <- RWST.evalRWST run cnf' $ initState cnf'

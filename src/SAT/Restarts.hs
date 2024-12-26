@@ -1,5 +1,5 @@
-{-# LANGUAGE Strict #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE Strict #-}
 
 module SAT.Restarts (computeNextLubyThreshold, luby, increaseLubyCount) where
 
@@ -13,13 +13,13 @@ computeNextLubyThreshold :: Int -> Int
 computeNextLubyThreshold = (scale *) . luby
 
 luby :: Int -> Int
-luby k = go k 1 1
+luby i = go i 1
   where
-    go 1 _ _ = 1
-    go n power level
-      | n == power + level - 1 = level
-      | n < power + level - 1 = go n power $ level `div` 2
-      | otherwise = go n (power * 2) $ level * 2
+    go :: Int -> Int -> Int
+    go n size
+      | n == size = 1
+      | n >= 2 * size = go (n - size) (2 * size)
+      | otherwise = 2 * go (n - (size `div` 2)) (size `div` 2)
 
 increaseLubyCount :: SolverM ()
 increaseLubyCount = modify \s -> s {lubyCount = lubyCount s + 1}

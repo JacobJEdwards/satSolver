@@ -12,7 +12,7 @@
 -- Description : Exports the CNF module.
 module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative, tseitin, toTseitin, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
 
-import Control.Monad.State.Strict (get, put, runState, type State)
+import Control.Monad.State.Strict (get, put, evalState, type State)
 import Control.Parallel.Strategies (type NFData)
 import Data.IntMap.Strict ((!?), type IntMap)
 import Data.IntSet (type IntSet)
@@ -63,7 +63,7 @@ varValue = (!?)
 
 -- | Returns the value of a literal in an assignment.
 literalValue :: Assignment -> Literal -> Maybe Bool
-literalValue assignment l = do 
+literalValue assignment l = do
   val <- varValue assignment $ varOfLiteral l
   return $ if isNegative l then not val else val
 {-# INLINEABLE literalValue #-}
@@ -108,11 +108,12 @@ distributiveLaws e = e
 --
 -- >>> applyLaws (Or (And (Var 1) (Var 2)) (Not (Var 3)))
 -- And (Or (Not (Var 3)) (Var 1)) (Or (Not (Var 3)) (Var 2))
-applyLaws :: (Eq a) => Expr a -> Expr a
+applyLaws :: forall a . (Eq a) => Expr a -> Expr a
 applyLaws expr
   | expr == expr' = expr
   | otherwise = applyLaws expr'
   where
+    expr' :: Expr a
     expr' = distributiveLaws $ deMorgansLaws expr
 {-# INLINEABLE applyLaws #-}
 
@@ -121,7 +122,7 @@ applyLaws expr
 -- >>> toCNF (Or (And (Var 1) (Var 2)) (Not (Var 3)))
 -- CNF [[-3,1],[-3,2]]
 toCNF :: Expr Int -> CNF
-toCNF expr = CNF $ map unique $ toClauses cnf
+toCNF expr = CNF $ unique <$> toClauses cnf
   where
     unique :: (Ord a) => [a] -> [a]
     unique = foldr (\x acc -> if x `elem` acc then acc else x : acc) mempty
@@ -144,7 +145,7 @@ toCNF expr = CNF $ map unique $ toClauses cnf
 {-# INLINEABLE toCNF #-}
 
 toTseitin :: Expr Int -> CNF
-toTseitin expr = CNF clauses
+toTseitin expr = cnf
   where
     tseitin' :: State Int (CNF, Literal)
     tseitin' = tseitin expr
@@ -152,9 +153,9 @@ toTseitin expr = CNF clauses
     tseitin'' :: State Int CNF
     tseitin'' = do
       (CNF clauses', l) <- tseitin'
-      return $ CNF $ pure [l] <> clauses'
+      return $ CNF $ pure l : clauses'
 
-    (CNF clauses, _) = runState tseitin'' (highestVar expr + 1)
+    cnf = evalState tseitin'' $ highestVar expr + 1
 {-# INLINEABLE toTseitin #-}
 
 -- | Adds a clause to a CNF.
@@ -162,8 +163,9 @@ toTseitin expr = CNF clauses
 -- >>> addClause (CNF [[1,2]]) [3]
 -- CNF [[3],[1,2]]
 addClause :: CNF -> Clause -> CNF
-addClause (CNF clauses) clause = CNF $ pure clause <> clauses
+addClause (CNF clauses) = CNF . (: clauses)
 {-# INLINEABLE addClause #-}
+
 
 -- | Checks if a literal is negative.
 --
@@ -197,8 +199,8 @@ highestVar (Or e1 e2) = max (highestVar e1) $ highestVar e2
 highestVar (Implies e1 e2) = max (highestVar e1) $ highestVar e2
 
 tseitin :: Expr Int -> State Int (CNF, Literal)
-tseitin (Var n) = return (CNF [], n)
-tseitin (Val b) = return (CNF [], if b then 1 else -1)
+tseitin (Var n) = return (CNF mempty, n)
+tseitin (Val b) = return (CNF mempty, if b then 1 else -1)
 tseitin (Not e) = do
   (CNF clauses, l) <- tseitin e
   l' <- freshVariable

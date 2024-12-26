@@ -169,7 +169,7 @@ instance Monad Expr where
   -- \| Binds a value in an expression to a function.
   (>>=) :: Expr a -> (a -> Expr b) -> Expr b
   (>>=) (Var v) f = f v
-  (>>=) (Not e) f = Not (e >>= f)
+  (>>=) (Not e) f = Not $ e >>= f
   (>>=) (And e1 e2) f = And (e1 >>= f) (e2 >>= f)
   (>>=) (Or e1 e2) f = Or (e1 >>= f) (e2 >>= f)
   (>>=) (Implies e1 e2) f = Implies (e1 >>= f) (e2 >>= f)

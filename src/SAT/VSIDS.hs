@@ -26,14 +26,14 @@ decayFactor = 0.96
 -- WAS fromList [(1,0.99),(2,1.98),(3,2.97)]
 -- NOW fromList [(1,0.99),(2,1.98),(3,2.9699999999999998)]
 decay :: VSIDS -> VSIDS
-decay = IntMap.map (* decayFactor)
+decay = fmap (* decayFactor)
 
 -- | Initializes the VSIDS.
 --
 -- >>> initVSIDS (CNF [[1, 2], [2, 3], [3, 4]])
 -- fromList [(1,1.0),(2,2.0),(3,2.0),(4,1.0)]
 initVSIDS :: CNF -> VSIDS
-initVSIDS (CNF clauses) = foldl' updateVSIDS IntMap.empty clauses
+initVSIDS (CNF clauses) = foldl' updateVSIDS mempty clauses
   where
     updateVSIDS :: VSIDS -> Clause -> VSIDS
     updateVSIDS = foldl' \vs l -> IntMap.insertWith (+) (varOfLiteral l) 1 vs
@@ -51,7 +51,7 @@ adjustScore l = IntMap.insertWith (+) (varOfLiteral l) 1
 -- >>> updateScore 1 2 (IntMap.fromList [(1, 1), (2, 2), (3, 3)])
 -- fromList [(1,2.0),(2,2.0),(3,3.0)]
 updateScore :: Literal -> Double -> VSIDS -> VSIDS
-updateScore l = IntMap.insert $ varOfLiteral l
+updateScore = IntMap.insert . varOfLiteral
 {-# INLINEABLE updateScore #-}
 
 adjustScores :: VSIDS -> Clause -> VSIDS

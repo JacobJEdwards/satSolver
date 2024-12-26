@@ -1,11 +1,11 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE Strict #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE Strict #-}
 
 -- |
 -- Module      : SAT.Optimisers
@@ -46,25 +46,25 @@ import Data.IntMap.Strict (type IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
-import Data.List (find, partition)
+import Data.Kind (type Type)
+import Data.List (find)
 import Data.Set (type Set)
 import Data.Set qualified as Set
-import SAT.CNF (CNF (CNF), Clause, literalValue, varOfLiteral, type Assignment, type DecisionLevel, type Literal)
-import SAT.Monad (getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getTrail, getVSIDS, type SolverM, type SolverState (..))
+import SAT.CNF (type CNF (CNF), Clause, literalValue, varOfLiteral, type Assignment, type DecisionLevel, type Literal)
+import SAT.DIMACS.CNF (invert)
+import SAT.Monad (getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getVSIDS, type SolverM, type SolverState (..))
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (adjustScores, decay, pickLiteral, type VSIDS)
-import SAT.DIMACS.CNF (invert)
-import Data.Kind (Type)
 
 -- | Collects all literals in a CNF.
 --
 -- >>> collectLiterals (CNF [[1, 2], [2, 3], [3, 4]])
 -- [1,2,2,3,3,4]
 collectLiterals :: CNF -> [Int]
-collectLiterals (CNF clauses') = concatMap getVars clauses'
+collectLiterals (CNF clauses) = concatMap getVars clauses
   where
     getVars :: Clause -> [Int]
-    getVars = map varOfLiteral
+    getVars = fmap varOfLiteral
 {-# INLINEABLE collectLiterals #-}
 
 -- | Collects all literals in a CNF and returns them as a set.
@@ -80,7 +80,7 @@ collectLiteralsToSet = IntSet.fromList . collectLiterals
 -- >>> literalPolarities (CNF [[1, 2], [-2, -3], [3, 4]])
 -- fromList [(1,Positive),(2,Mixed),(3,Mixed),(4,Positive)]
 literalPolarities :: CNF -> IntMap Polarity
-literalPolarities (CNF clauses') = foldl updatePolarity mempty $ concatMap clausePolarities clauses'
+literalPolarities (CNF clauses) = foldl updatePolarity mempty $ concatMap clausePolarities clauses
   where
     clausePolarities :: Clause -> [(Int, Polarity)]
     clausePolarities clause = [(varOfLiteral lit, literalPolarity lit) | lit <- clause]
@@ -145,7 +145,7 @@ eliminateLiteralsM = do
 -- >>> substitute 1 True (CNF [[1, 2], [2, 3], [3, 4]])
 -- CNF {clauses = [[2,3],[3,4]]}
 substitute :: Literal -> Bool -> CNF -> CNF
-substitute var val (CNF clauses) = CNF $ map eliminateClause $ filter clauseIsTrue clauses
+substitute var val (CNF clauses) = CNF $ eliminateClause <$> filter clauseIsTrue clauses
   where
     var' :: Int
     var' = varOfLiteral var
@@ -186,7 +186,7 @@ findUnitClause (CNF clauses) = do
     unitClause = find isUnitClause clauses
 
     isUnitClause :: Clause -> Bool
-    isUnitClause = (1==) . length
+    isUnitClause = (1 ==) . length
 {-# INLINEABLE findUnitClause #-}
 
 -- | Propagates a unit clause in a CNF.
@@ -209,10 +209,9 @@ type ClauseStatus :: Type
 data ClauseStatus = Unit Literal | UNSAT | SAT | Unresolved deriving (Eq, Show)
 
 partialAssignClause :: Assignment -> Clause -> Maybe Clause
-partialAssignClause m c =
-  if any (\l -> literalValue m l == Just True) c
-    then Nothing
-    else Just $ filter (\l -> literalValue m l /= Just False) c
+partialAssignClause m c 
+  | any (\l -> literalValue m l == Just True) c = Nothing
+  | otherwise = Just $ filter (\l -> literalValue m l /= Just False) c
 
 getClauseStatus :: Clause -> SolverM ClauseStatus
 getClauseStatus clause = do
@@ -295,7 +294,7 @@ assignM c v = do
 -- >>> partialAssignment (IntMap.fromList [(1, (True, 0))]) (CNF [[1, 2], [-2, -3], [3, 4]])
 -- CNF {clauses = [[2],[-3],[3,4]]}
 partialAssignment :: Assignment -> CNF -> CNF
-partialAssignment m (CNF clauses) = CNF $ map (filter isFalseLiteral) $ filter (not . isTrueClause) clauses
+partialAssignment m (CNF clauses) = CNF $ filter isFalseLiteral <$> filter (not . isTrueClause) clauses
   where
     isTrueClause :: Clause -> Bool
     isTrueClause = any isTrueLiteral
@@ -345,7 +344,7 @@ decayM = modify \s -> s {vsids = decay $ vsids s}
 -- >>> removeTautologies (CNF [[-2, 2], [-2, -3], [3, 4]])
 -- CNF {[[-2,-3],[3,4]]}
 removeTautologies :: CNF -> CNF
-removeTautologies (CNF clauses') = CNF $ filter tautology clauses'
+removeTautologies (CNF clauses) = CNF $ filter tautology clauses
   where
     tautology :: Clause -> Bool
     tautology c = not $ any (\x -> invert x `elem` c) c
@@ -380,7 +379,6 @@ isUnsat (CNF clauses) = any clauseIsUnsat clauses
 -- True
 clauseIsUnsat :: Clause -> Bool
 clauseIsUnsat = null
-
 
 addDecision :: Literal -> SolverM ()
 addDecision literal = do

@@ -43,8 +43,6 @@ subsumption = do
 
     isSubsumed :: Clause -> Clause -> Bool
     isSubsumed c1 c2 =
-      all (`elemSet` c2Set) c1
+      all (`Set.member` c2Set) c1
       where
         c2Set = Set.fromList c2
-
-    elemSet = Set.member

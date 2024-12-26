@@ -33,7 +33,7 @@ where
 import Control.Parallel.Strategies (type NFData)
 import Data.Kind (type Type)
 import GHC.Generics (type Generic)
-import SAT (ands, applyLaws, checkValue, ors, toVar, uniqueOnly, type Expr, type Solutions)
+import SAT (ands, applyLaws, checkValue, ors, toVar, type Expr, type Solutions)
 import SAT.DIMACS qualified as DIMACS
 
 imap :: (Int -> a -> b) -> [a] -> [b]
@@ -127,7 +127,7 @@ deriving anyclass instance NFData Nonogram
 -- cols: [[1,1],[1,2],[3],[2,1],[1,1]]
 instance Show Nonogram where
   show :: Nonogram -> String
-  show (Nonogram rows' cols' solution') = "cols: " <> show cols' <> "\n" <> "rows: " <> show rows' <> "\n" <> "solution: \n" <> unlines (map (unwords . map show) solution')
+  show (Nonogram rows' cols' solution') = "cols: " <> show cols' <> "\n" <> "rows: " <> show rows' <> "\n" <> "solution: \n" <> unlines (fmap (unwords . fmap show) solution')
 
 -- | Represents a variable in a nonogram.
 type Variable :: Type
@@ -187,7 +187,6 @@ toDIMACS puzzle =
   where
     clauses :: [DIMACS.Clause]
     clauses = concat [rowClauses, colClauses, cellClauses, cellUniqueClauses] -- ++ solutionClauses
-
     cellClauses :: [DIMACS.Clause]
     cellClauses =
       [[encodeVar' (Variable r c Filled), encodeVar' (Variable r c Unfilled)] | r <- [1 .. rowSize], c <- [1 .. colSize]]
@@ -228,7 +227,7 @@ encodeRowConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> 
 encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
   where
     encodeRow :: Int -> Constraint -> [DIMACS.Clause]
-    encodeRow rowIndex = generatePossibleSolutions (encodeCell rowIndex) size
+    encodeRow = generatePossibleSolutions size . encodeCell
 
     encodeCell :: Int -> Mask -> Int -> DIMACS.Literal
     encodeCell rowIndex mask colIndex =
@@ -248,7 +247,7 @@ encodeColConstraints :: (Variable -> DIMACS.Literal) -> Size -> [Constraint] -> 
 encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
   where
     encodeCol :: Int -> Constraint -> [DIMACS.Clause]
-    encodeCol colIndex = generatePossibleSolutions (encodeCell colIndex) size
+    encodeCol = generatePossibleSolutions size . encodeCell
 
     encodeCell :: Int -> Mask -> Int -> DIMACS.Literal
     encodeCell colIndex mask rowIndex =
@@ -264,11 +263,11 @@ encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
 --
 -- >>> generatePossibleSolutions (encodeCell 0) 5 [1, 1]
 -- [[2, 4], [2, 5], [3, 5], [6, 8], [6, 9], [7, 9]]
-generatePossibleSolutions :: (Mask -> Int -> DIMACS.Literal) -> Size -> Constraint -> [DIMACS.Clause]
-generatePossibleSolutions encodeCell size combinations =
+generatePossibleSolutions :: Size -> (Mask -> Int -> DIMACS.Literal) -> Constraint -> [DIMACS.Clause]
+generatePossibleSolutions size encodeCell combinations =
   --- returns a list of AND clauses that need to be ORed together
   let generate :: Constraint -> Int -> Int -> Mask -> [[DIMACS.Literal]]
-      generate [] _ _ mask = [map (encodeCell mask) [0 .. length mask - 1]]
+      generate [] _ _ mask = [fmap (encodeCell mask) [0 .. length mask - 1]]
       generate _ _ limit mask | limit >= length mask = []
       generate (c : cs) mark limit mask =
         concat
@@ -283,10 +282,10 @@ generatePossibleSolutions encodeCell size combinations =
    in toCNF $ generate combinations 1 0 $ replicate size 0
   where
     convertToOrExpr :: [[DIMACS.Literal]] -> Expr DIMACS.Literal
-    convertToOrExpr = ors . map convertToAndExpr
+    convertToOrExpr = ors . fmap convertToAndExpr
 
     convertToAndExpr :: [DIMACS.Literal] -> Expr DIMACS.Literal
-    convertToAndExpr = ands . map toVar
+    convertToAndExpr = ands . fmap toVar
 
     toCNF :: [[DIMACS.Literal]] -> [DIMACS.Clause]
     toCNF = DIMACS.clauses . DIMACS.fromExpr . applyLaws . convertToOrExpr

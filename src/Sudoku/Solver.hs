@@ -54,7 +54,7 @@ deriving anyclass instance NFData Sudoku
 -- | Show instance for Sudoku
 instance Show Sudoku where
   show :: Sudoku -> String
-  show (Sudoku board' _) = unlines $ map (unwords . map show) board'
+  show (Sudoku board' _) = unlines $ fmap (unwords . fmap show) board'
 
 -- | The Sudoku variable
 type Variable :: Type
