@@ -63,11 +63,12 @@ import Data.Maybe (isJust, listToMaybe)
 import SAT.CDCL (analyseConflict, backtrack)
 import SAT.CNF (initAssignment, toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
 import SAT.Expr (type Expr, type Solutions)
-import SAT.Monad (type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), getAssignment, ifM, increaseDecisionLevel, initWatchedLiterals, learn)
+import SAT.Monad (type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), getAssignment, ifM, increaseDecisionLevel)
 import SAT.Optimisers (addDecision, adjustScoresM, assign, assignM, collectLiterals, collectLiteralsToSet, decayM, eliminateLiterals, pickLiteralM, substitute, unitPropagate, unitPropagateM)
 import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
 import SAT.VSIDS (initVSIDS)
+import SAT.WL (initWatchedLiterals, learnWatched)
 
 -- | Initializes the solver state.
 initState :: CNF -> SolverState
@@ -86,6 +87,12 @@ initState cnf@(CNF clauses) =
       lubyThreshold = 1
     }
 
+learn :: Clause -> SolverM ()
+learn clause = do 
+  modify \s -> s {clauseDB = clause : clauseDB s}
+  learnWatched clause
+
+{-# INLINEABLE learn #-}
 -- | Finds a free variable at random.
 findFreeVariable :: CNF -> Maybe Literal
 findFreeVariable = listToMaybe . collectLiterals

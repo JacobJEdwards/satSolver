@@ -71,28 +71,28 @@ fromExpr expr =
       comments = ["This is a CNF formula generated from an expression."]
     }
   where
-    -- \| The list of clauses.
+    -- | The list of clauses.
     clauseList :: [Clause]
     clauseList = fromAnd expr
 
-    -- \| Converts an expression to a list of clauses.
+    -- | Converts an expression to a list of clauses.
     fromAnd :: Expr Literal -> [Clause]
     fromAnd (And e1 e2) = fromAnd e1 <> fromAnd e2
     fromAnd e = pure $ fromOr e
 
-    -- \| Converts an expression to a clause.
+    -- | Converts an expression to a clause.
     fromOr :: Expr Literal -> Clause
     fromOr (Or e1 e2) = fromOr e1 <> fromOr e2
     fromOr (Implies e1 e2) = fromOr $ Or (Not e1) e2
     fromOr e = pure $ fromLiteral e
 
-    -- \| Converts an expression to a literal.
+    -- | Converts an expression to a literal.
     fromLiteral :: Expr Literal -> Literal
     fromLiteral (Not (Var n)) = negate n
     fromLiteral (Var n) = n
     fromLiteral _ = error "Invalid literal"
 
-    -- \| The number of variables.
+    -- | The number of variables.
     numVars' :: Integer
     numVars' = fromIntegral . Set.size . Set.fromList . fmap abs $ concat clauseList
 

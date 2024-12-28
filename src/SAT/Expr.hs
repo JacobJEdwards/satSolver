@@ -47,6 +47,10 @@ data Expr (a :: Type) where
   Or :: Expr a -> Expr a -> Expr a
   Val :: Bool -> Expr a
   Implies :: Expr a -> Expr a -> Expr a
+  XOr :: Expr a -> Expr a -> Expr a
+  XNor :: Expr a -> Expr a -> Expr a
+  NAnd :: Expr a -> Expr a -> Expr a
+  NOr :: Expr a -> Expr a -> Expr a
 
 -- | Eq instance for the 'Expr' type.
 -- Defined over derived in order to specialize it.
@@ -60,6 +64,10 @@ instance (Eq a) => Eq (Expr a) where
   Or e1 e2 == Or e1' e2' = e1 == e1' && e2 == e2'
   Val b1 == Val b2 = b1 == b2
   Implies e1 e2 == Implies e1' e2' = e1 == e1' && e2 == e2'
+  XOr e1 e2 == XOr e1' e2' = e1 == e1' && e2 == e2'
+  XNor e1 e2 == XNor e1' e2' = e1 == e1' && e2 == e2'
+  NAnd e1 e2 == NAnd e1' e2' = e1 == e1' && e2 == e2'
+  NOr e1 e2 == NOr e1' e2' = e1 == e1' && e2 == e2'
   _ == _ = False
 
 deriving stock instance (Ord a) => Ord (Expr a)
@@ -120,6 +128,10 @@ instance (Show a) => Show (Expr a) where
   show (Or e1 e2) = showOr e1 e2
   show (Val b) = show b
   show (Implies e1 e2) = showDuo "=>" e1 e2
+  show (XOr e1 e2) = showDuo "⊕" e1 e2
+  show (XNor e1 e2) = showDuo "⊙" e1 e2
+  show (NAnd e1 e2) = showDuo "↑" e1 e2
+  show (NOr e1 e2) = showDuo "↓" e1 e2
 
 -- | Semigroup instance for the 'Expr' type.
 --
@@ -159,6 +171,10 @@ instance Applicative Expr where
   (<*>) (Or f1 f2) e = Or (f1 <*> e) (f2 <*> e)
   (<*>) (Implies f1 f2) e = Implies (f1 <*> e) (f2 <*> e)
   (<*>) (Val b) _ = Val b
+  (<*>) (XOr f1 f2) e = XOr (f1 <*> e) (f2 <*> e)
+  (<*>) (XNor f1 f2) e = XNor (f1 <*> e) (f2 <*> e)
+  (<*>) (NAnd f1 f2) e = NAnd (f1 <*> e) (f2 <*> e)
+  (<*>) (NOr f1 f2) e = NOr (f1 <*> e) (f2 <*> e)
 
 -- | Monad instance for the 'Expr' type.
 --
@@ -174,6 +190,10 @@ instance Monad Expr where
   (>>=) (Or e1 e2) f = Or (e1 >>= f) (e2 >>= f)
   (>>=) (Implies e1 e2) f = Implies (e1 >>= f) (e2 >>= f)
   (>>=) (Val b) _ = Val b
+  (>>=) (XOr e1 e2) f = XOr (e1 >>= f) (e2 >>= f)
+  (>>=) (XNor e1 e2) f = XNor (e1 >>= f) (e2 >>= f)
+  (>>=) (NAnd e1 e2) f = NAnd (e1 >>= f) (e2 >>= f)
+  (>>=) (NOr e1 e2) f = NOr (e1 >>= f) (e2 >>= f)
 
 -- propagate error to caller with maybe or leave as is ?
 

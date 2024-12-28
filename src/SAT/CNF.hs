@@ -17,7 +17,7 @@ import Control.Parallel.Strategies (type NFData)
 import Data.IntMap.Strict ((!?), type IntMap)
 import Data.IntSet (type IntSet)
 import GHC.Generics (type Generic)
-import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
+import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var, XOr, XNor, NOr, NAnd))
 
 type DecisionLevel = Int
 
@@ -40,7 +40,14 @@ deriving anyclass instance NFData CNF
 --   CNF :: (Traversable t, Semigroup (t Clause), Applicative t) => t Clause -> CNF
 
 -- | The clause type.
+-- data Clause = Clause {
+--   literals :: [Literal],
+--   watched :: (Literal, Literal)
+-- } deriving stock (Eq, Show, Ord, Generic)
+
 type Clause = [Literal]
+
+-- deriving anyclass instance NFData Clause
 
 -- | The literal type.
 type Literal = Int
@@ -89,7 +96,13 @@ deMorgansLaws (And e1 e2) = And (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Or e1 e2) = Or (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Not e) = Not $ deMorgansLaws e
 deMorgansLaws (Implies e1 e2) = Or (deMorgansLaws $ Not e1) (deMorgansLaws e2)
-deMorgansLaws e = e
+deMorgansLaws (XOr e1 e2) = Or (And (deMorgansLaws e1) (Not e2)) (And (Not e1) (deMorgansLaws e2))
+deMorgansLaws (XNor e1 e2) = Or (And e1 e2) (And (Not e1) (Not e2))
+deMorgansLaws (NAnd e1 e2) = Not $ And (deMorgansLaws e1) (deMorgansLaws e2)
+deMorgansLaws (NOr e1 e2) = Not $ Or (deMorgansLaws e1) (deMorgansLaws e2)
+deMorgansLaws (Var a) = Var a 
+deMorgansLaws (Val a) = Val a
+{-# INLINEABLE deMorgansLaws #-}
 
 -- | Applies the laws of distribution to an expression.
 --

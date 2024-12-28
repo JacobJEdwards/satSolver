@@ -37,7 +37,6 @@ import Data.Kind (type Type)
 import GHC.Generics (type Generic)
 import SAT (checkValue, type Solutions)
 import SAT.DIMACS qualified as DIMACS
-import SAT.Encode (Encodable (encode, decode, type Code))
 
 -- | The Sudoku board
 type Board :: Type
@@ -144,14 +143,6 @@ encodeVar puzzle (Variable r c n) = var
 
     var :: Int
     var = ((r - 1) * boardSize * boardSize + (c - 1) * boardSize + (n - 1)) + 1
-
-instance Encodable Sudoku Variable where
-  type Code Sudoku Variable = Int
-
-  encode :: Sudoku -> Variable -> Int
-  encode = encodeVar
-  decode :: Int -> Sudoku -> Variable
-  decode = undefined
 
 -- | Decodes a solution to a Sudoku
 --

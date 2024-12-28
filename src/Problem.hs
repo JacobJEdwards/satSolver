@@ -28,10 +28,7 @@ import SAT.Encode (type Encodable (encode, type Code))
 
 -- | Represents a problem that can be solved by the SAT solver.
 type Problem :: Type -> Constraint
-class (Encodable a (Variable a)) => Problem (a :: Type) where
-  -- | The type of variables in the problem.
-  type Variable a :: Type
-
+class Problem (a :: Type) where
   -- | Converts the problem to DIMACS format.
   toDIMACS :: a -> DIMACS.DIMACS
 
@@ -48,8 +45,6 @@ class (Encodable a (Variable a)) => Problem (a :: Type) where
 
 -- | Sudoku problem.
 instance Problem Sudoku where
-  type Variable Sudoku = Sudoku.Variable
-
   toDIMACS :: Sudoku -> DIMACS.DIMACS
   toDIMACS = Sudoku.toDIMACS
   {-# INLINEABLE toDIMACS #-}
@@ -69,8 +64,6 @@ instance Problem Sudoku where
 
 -- | Nonogram problem.
 instance Problem Nonogram where
-  type Variable Nonogram = Nonogram.Variable
-
   toDIMACS :: Nonogram -> DIMACS.DIMACS
   toDIMACS = Nonogram.toDIMACS
   {-# INLINEABLE toDIMACS #-}
@@ -89,8 +82,6 @@ instance Problem Nonogram where
 
 -- | DIMACS problem.
 instance Problem DIMACS.DIMACS where
-  type Variable DIMACS.DIMACS = Int
-
   toDIMACS :: DIMACS.DIMACS -> DIMACS.DIMACS
   toDIMACS = id
   {-# INLINEABLE toDIMACS #-}
@@ -108,11 +99,9 @@ instance Problem DIMACS.DIMACS where
   {-# INLINEABLE example #-}
 
 -- | SAT problem.
-instance (Read a, Encodable (Expr a) a, Integral (Code (Expr a) a)) => Problem (Expr a) where
-  type Variable (Expr a) = a
-
+instance (Read a, Encodable a, Num a, Integral (Code a)) => Problem (Expr a) where
   toDIMACS :: Expr a -> DIMACS.DIMACS
-  toDIMACS e = DIMACS.fromExpr . SAT.applyLaws . fmap (fromIntegral . encode e) $ e
+  toDIMACS = DIMACS.fromExpr . SAT.applyLaws . fmap (fromIntegral . encode)
   {-# INLINEABLE toDIMACS #-}
 
   decode :: Expr a -> Solutions -> Expr a
@@ -124,13 +113,11 @@ instance (Read a, Encodable (Expr a) a, Integral (Code (Expr a) a)) => Problem (
   {-# INLINEABLE parse #-}
 
   example :: Expr a
-  example = undefined
+  example = SAT.And (SAT.Var 1) (SAT.Var 2) 
   {-# INLINEABLE example #-}
 
 -- | CNF problem.
 instance Problem CNF where
-  type Variable CNF = Int
-
   toDIMACS :: CNF -> DIMACS.DIMACS
   toDIMACS = DIMACS.fromCNF
   {-# INLINEABLE toDIMACS #-}
@@ -253,6 +240,10 @@ toExpr = DIMACS.toExpr . DIMACS.clauses . toDIMACS
 --
 -- >>> toCNF (SAT.toCNF (SAT.fromExpr (SAT.Not (SAT.Var 1)) `SAT.And` SAT.fromExpr (SAT.Var 1)))
 -- CNF [[-1][1]]
-toCNF :: (Problem a) => a -> CNF
-toCNF = SAT.toCNF . toExpr
+toCNF :: Problem a => a -> CNF
+toCNF = SAT.CNF . DIMACS.clauses . toDIMACS
 {-# INLINEABLE toCNF #-}
+
+simplify :: (Problem a) => a -> a
+simplify = undefined
+{-# INLINEABLE simplify #-}

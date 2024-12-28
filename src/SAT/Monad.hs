@@ -4,9 +4,8 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE ImportQualifiedPost #-}
 
-module SAT.Monad (type SolverM, getPropagationStack, type SolverState (..), type SolverLog, type Trail, type Reason, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, initWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, learn, increaseDecisionLevel, getClauseDB, learnWatched) where
+module SAT.Monad (type SolverM, getPropagationStack, type SolverState (..), type SolverLog, type Trail, type Reason, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, increaseDecisionLevel, getClauseDB) where
 
 import Control.Monad (guard, type MonadPlus)
 import Control.Monad.RWS.Strict (modify, tell, type RWST)
@@ -14,14 +13,11 @@ import Control.Monad.State.Strict (gets)
 import Control.Parallel.Strategies (type NFData)
 import Data.Bool (bool)
 import Data.IntMap.Strict (type IntMap)
-import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (type IntSet)
 import Data.Map.Strict (type Map)
-import Data.Map.Strict qualified as Map
 import GHC.Generics (type Generic)
-import SAT.CNF (type Assignment, type CNF (CNF), type Clause, type DecisionLevel, type Literal)
+import SAT.CNF (type Assignment, type CNF, type Clause, type DecisionLevel, type Literal)
 import SAT.VSIDS (type VSIDS)
-import Data.List (foldl')
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]
@@ -41,63 +37,6 @@ data WatchedLiterals = WatchedLiterals
 
 deriving anyclass instance NFData WatchedLiterals
 
-getWatched :: Clause -> [Literal]
-getWatched clause =
-  case clause of
-    [l] -> [l]
-    l1 : l2 : _ -> [l1, l2]
-    _ -> []
-
-initWatchedLiterals :: CNF -> WatchedLiterals
-initWatchedLiterals (CNF cs) =
-  let
-
-    accumulate (litAcc, clsAcc) clause =
-      let watched = getWatched clause
-          litUpdates = [(lit, [clause]) | lit <- watched]
-          clsUpdates = [(clause, watched)]
-      in (litUpdates ++ litAcc, clsUpdates ++ clsAcc)
-
-    (litList, clsList) = foldl' accumulate ([], []) cs
-
-    litMap = IntMap.fromListWith (++) litList
-    clsMap = Map.fromList clsList
-  in
-    WatchedLiterals litMap clsMap
-
-learnWatched :: Clause -> SolverM ()
-learnWatched clause = do 
-  wl <- getWatchedLiterals
-  let watched = getWatched clause
-  let updatedLiterals = foldl' (\acc lit -> IntMap.insertWith (++) lit [clause] acc) (literals wl) watched
-  let updatedClauses = Map.insertWith (++) clause watched $ clauses wl
-  modify \s -> s {watchedLiterals = WatchedLiterals updatedLiterals updatedClauses}
-
-
--- initWatchedLiterals :: CNF -> WatchedLiterals
--- initWatchedLiterals (CNF cs) = do
---   let getWatched clause = do
---         case clause of
---           [l] -> [l]
---           l1 : l2 : _ -> [l1, l2]
---           _ -> []
-
---   let getDS clause = do
---         let lits = getWatched clause
---         let litMap = IntMap.fromList $ map (, pure clause) lits
---         let clauseMap = Map.fromList $ pure (clause, lits)
---         (litMap, clauseMap)
-
---   let (l, c) =
---         foldr
---           ( \clause (lits, cls) -> do
---               let (l', c') = getDS clause
---               (IntMap.unionWith (<>) lits l', Map.unionWith (<>) cls c')
---           )
---           (mempty, mempty)
---           cs
-
---   WatchedLiterals l c
 
 -- | The clause database.
 type ClauseDB = [Clause]
@@ -176,57 +115,6 @@ def add_learnt_clause(formula, clause, assignments, lit2clauses, clause2lits):
         else:
             break
 -}
-
-learn :: Clause -> SolverM ()
-learn clause = do 
-  modify \s -> s {clauseDB = clause : clauseDB s}
-  -- assignments <- getAssignment
-  -- let sortedLits = sortBy (comparing (\l -> fromMaybe (-1) $ decisionLevelOf l assignments)) clause
-
-  -- case take 2 sortedLits of
-  --   [l1, l2] -> do
-  --     modify \s -> s {watchedLiterals = updateWatched clause [l1, l2] (watchedLiterals s)}
-  --   _ -> return ()
-{-# INLINEABLE learn #-}
-
--- learn :: Clause -> SolverM ()
--- learn clause = do
---   learned <- getLearnedClauses
---   clauses <- getClauseDB
---   assignments <- getAssignment
---   let learned' = clause : learned
---   wLits <- getWatchedLiterals
-
---   let updatedClauses = clause : clauses
---   let sortedLiterals = sortBy (compareDecisionLevel assignments) clause
-
---   let (watchedLits, _) = splitAt 2 sortedLiterals
---   let updatedWatched = foldl (updateWatched clause) wLits watchedLits
-
---   modify (\s -> s {
---         clauseDB = updatedClauses,
---         watchedLiterals = updatedWatched,
---         learnedClauses = learned'
---     })
-
---   modify $ \s -> s { learnedClauses = clause : learnedClauses s, clauseDB = clause : clauseDB s }
--- {-# INLINEABLE learn #-}
-
--- compareDecisionLevel :: Assignment -> Literal -> Literal -> Ordering
--- compareDecisionLevel assignments lit1 lit2 =
---     compare (getDL lit2) (getDL lit1)
---   where
---     getDL lit = fromMaybe 0 $ do
---       (b, dl) <- IntMap.lookup (varOfLiteral lit) assignments
---       if b then Just dl else Nothing
-
--- -- Update watched literals for a given literal
--- updateWatched :: Clause -> WatchedLiterals -> Literal -> WatchedLiterals
--- updateWatched clause wLits lit =
---     let litMap = literals wLits
---         clauseMap = clauses wLits
---         updatedLitMap = IntMap.insertWith (++) (varOfLiteral lit) [clause] litMap
---     in wLits { literals = updatedLitMap, clauses = Map.insertWith (++) clause [lit] clauseMap }
 
 -- | Logs a message.
 logM :: String -> SolverM ()

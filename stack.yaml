@@ -42,6 +42,8 @@ packages:
 extra-deps:
 - github: JacobJEdwards/Parser
   commit: fe0e0a7
+- github: JacobJEdwards/Stack 
+  commit: 133c3ad
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

@@ -15,6 +15,17 @@ packages:
     version: 0.1.0.0
   original:
     url: https://github.com/JacobJEdwards/Parser/archive/fe0e0a7.tar.gz
+- completed:
+    name: Stack
+    pantry-tree:
+      sha256: d1adb5b8075b3c47ea6e21b66ed6a0dd2892c6b5ad020bf22b9a93cfc3208c48
+      size: 609
+    sha256: 809e60c0d01809449b46de76407797b64ef80bea11337175a0625b994ccbd2a3
+    size: 4905
+    url: https://github.com/JacobJEdwards/Stack/archive/133c3ad.tar.gz
+    version: 0.1.0.0
+  original:
+    url: https://github.com/JacobJEdwards/Stack/archive/133c3ad.tar.gz
 snapshots:
 - completed:
     sha256: 098936027eaa1ef14e2b8eb39d9933a973894bb70a68684a1bbf00730249879b

@@ -243,11 +243,15 @@ unitPropagateM = do
             SAT -> process cs' updated
             UNSAT -> return $ Just c
             Unit l -> do
-              let p = l > 0
-              assignM l p
-              addPropagation (varOfLiteral l) c
+              assignUnit l c
               process cs' True
             Unresolved -> process cs' updated
+
+        assignUnit :: Literal -> Clause -> SolverM ()
+        assignUnit l reason = do
+          let p = l > 0
+          assignM l p
+          addPropagation (varOfLiteral l) reason
 
 findCanditateWatchedLiteral :: Clause -> SolverM (Maybe Literal)
 findCanditateWatchedLiteral clause = do

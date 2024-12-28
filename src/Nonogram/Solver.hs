@@ -36,7 +36,6 @@ import Data.Kind (type Type)
 import GHC.Generics (type Generic)
 import SAT (ands, applyLaws, checkValue, ors, toVar, type Expr, type Solutions)
 import SAT.DIMACS qualified as DIMACS
-import SAT.Encode (Encodable (encode, decode, Code))
 
 imap :: (Int -> a -> b) -> [a] -> [b]
 imap = flip zipWith [0 ..]
@@ -141,15 +140,6 @@ data Variable = Variable
   deriving stock (Eq, Show, Generic)
 
 deriving anyclass instance NFData Variable
-
-instance Encodable Nonogram Variable where
-  type Code Nonogram Variable = DIMACS.Literal
-
-  encode :: Nonogram -> Variable -> DIMACS.Literal
-  encode = encodeVar
-
-  decode :: DIMACS.Literal -> Nonogram -> Variable
-  decode = error "Not implemented"
 
 -- | Encodes a variable to an integer.
 --

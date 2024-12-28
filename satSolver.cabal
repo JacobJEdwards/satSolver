@@ -48,6 +48,7 @@ library
       SAT.Restarts
       SAT.Solver
       SAT.VSIDS
+      SAT.WL
       Sudoku
       Sudoku.Parser
       Sudoku.Solver
@@ -62,6 +63,7 @@ library
   build-depends:
       Parser
     , QuickCheck
+    , Stack
     , base >=4.7 && <5
     , bytestring
     , containers
@@ -88,6 +90,7 @@ executable satSolver-exe
   build-depends:
       Parser
     , QuickCheck
+    , Stack
     , base >=4.7 && <5
     , bytestring
     , containers
@@ -139,6 +142,7 @@ test-suite satSolver-test
   build-depends:
       Parser
     , QuickCheck
+    , Stack
     , base >=4.7 && <5
     , bytestring
     , containers
@@ -167,6 +171,7 @@ benchmark satSolver-bench
   build-depends:
       Parser
     , QuickCheck
+    , Stack
     , base >=4.7 && <5
     , bytestring
     , containers
