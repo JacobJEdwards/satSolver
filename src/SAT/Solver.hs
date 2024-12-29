@@ -43,13 +43,7 @@ module SAT.Solver
     checkValue,
     findFreeVariable,
     getSolutions,
-    bruteForce,
-    withUnitPropagation,
-    withPureLiteralElimination,
-    withPureLiteralAndUnitPropagation,
-    pureLitOnlyAsPreprocess,
-    literalEvery100,
-    withTautologyElimination,
+    satisfied,
   )
 where
 
@@ -61,14 +55,18 @@ import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Maybe (isJust, listToMaybe)
 import SAT.CDCL (analyseConflict, backtrack)
-import SAT.CNF (initAssignment, toCNF, type Assignment, type CNF (CNF), type Clause, type Literal)
-import SAT.Expr (type Expr, type Solutions)
-import SAT.Monad (type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), getAssignment, ifM, increaseDecisionLevel)
-import SAT.Optimisers (addDecision, adjustScoresM, assign, assignM, collectLiterals, collectLiteralsToSet, decayM, eliminateLiterals, pickLiteralM, substitute, unitPropagate, unitPropagateM)
+import SAT.CNF (initAssignment, type Assignment, type CNF (CNF), type Clause (Clause, literals, watched), type Literal, literalValue, varOfLiteral)
+import SAT.Expr (type Solutions)
+import SAT.Monad (type WatchedLiterals (WatchedLiterals), getAssignment, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), getClauseDB, Reason)
+import SAT.Optimisers (addDecision, adjustScoresM, assignM, collectLiterals, collectLiteralsToSet, decayM, pickLiteralM, unitPropagateM)
 import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
-import SAT.VSIDS (initVSIDS)
-import SAT.WL (initWatchedLiterals, learnWatched)
+import SAT.VSIDS (initVSIDS, decay)
+import SAT.WL (initClauseWatched, initWatchedLiterals)
+import Control.Monad (guard)
+import Debug.Trace (traceM, trace)
+import qualified Stack
+import Data.List (foldl')
 
 -- | Initializes the solver state.
 initState :: CNF -> SolverState
@@ -77,22 +75,42 @@ initState cnf@(CNF clauses) =
     { assignment = initAssignment $ collectLiteralsToSet cnf,
       trail = mempty,
       implicationGraph = mempty,
-      watchedLiterals = initWatchedLiterals cnf,
+      watchedLiterals = initWatchedLiterals watchedCnf,
       decisionLevel = 0,
       vsids = initVSIDS cnf,
-      clauseDB = clauses,
+      clauseDB = watchedClauses,
       variables = collectLiteralsToSet cnf,
-      propagationStack = mempty,
+      propagationStack = initialPropagationStack watchedClauses,
       lubyCount = 0,
       lubyThreshold = 1
     }
+  where
+    !watchedCnf@(CNF !watchedClauses) = CNF $ map initClauseWatched clauses
 
-learn :: Clause -> SolverM ()
-learn clause = do 
-  modify \s -> s {clauseDB = clause : clauseDB s}
-  learnWatched clause
+initialPropagationStack :: [Clause] -> [(Literal, Bool, Maybe Reason)]
+initialPropagationStack = 
+  foldl' (\acc c@(Clause {literals, watched = (a, b)}) -> if a == b then (abs $ literals !! a, literals !! a > 0, Just c) : acc else acc) []
+{-# INLINEABLE initialPropagationStack #-}
 
+learn :: [Literal] -> SolverM ()
+learn literals = do
+  let (a, b) = getInitialWatched literals
+  let clause = Clause {literals, watched = (a, b)}
+
+  WatchedLiterals lits <- getWatchedLiterals
+
+  if a == b
+    then modify \s -> s { propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
+    else modify \s -> s {watchedLiterals = WatchedLiterals $ IntMap.insertWith (<>) (varOfLiteral $ literals !! a) [clause] $ IntMap.insertWith (<>) (varOfLiteral $ literals !! b) [clause] lits, clauseDB = clause : clauseDB s}
+  where
+    getInitialWatched :: [Literal] -> (Literal, Literal)
+    getInitialWatched clause =
+      case clause of
+        [_] -> (0, 0)
+        _ : _ : _ -> (0, 1)
+        _ -> error "Empty clause"
 {-# INLINEABLE learn #-}
+
 -- | Finds a free variable at random.
 findFreeVariable :: CNF -> Maybe Literal
 findFreeVariable = listToMaybe . collectLiterals
@@ -121,9 +139,16 @@ getSolutions !cnf' = do
   where
     run :: SolverM (Maybe Solutions)
     run = do
+      clauseDb <- getClauseDB
+
+      guard $ not $ null clauseDb
+      guard $ not $ any (null . literals) clauseDb
+
       preprocess >>= \case
-        Just _ -> return mempty -- failure from the start
-        Nothing -> solver
+        Just _ -> do
+          return Nothing -- failure from the start
+        Nothing -> do 
+          solver
 
     solver :: SolverM (Maybe Solutions)
     solver = do
@@ -133,13 +158,12 @@ getSolutions !cnf' = do
     branch = pickLiteralM >>= try
 
     try :: Literal -> SolverM (Maybe Solutions)
-    try c = tryAssign c True <|> tryAssign c False
+    try = tryAssign
 
-    tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
-    tryAssign c v = do
+    tryAssign :: Literal -> SolverM (Maybe Solutions)
+    tryAssign c = do
       increaseDecisionLevel
       addDecision c
-      assignM c v
       propagate
 
     propagate :: SolverM (Maybe Solutions)
@@ -149,7 +173,7 @@ getSolutions !cnf' = do
         Nothing -> solver
 
     handleConflict :: Clause -> SolverM (Maybe Solutions)
-    handleConflict c = do
+    handleConflict !c = do
       (clause, dl) <- analyseConflict c
       if dl < 0
         then return mempty
@@ -170,160 +194,42 @@ getSolutions !cnf' = do
 
     restart :: SolverM (Maybe Solutions)
     restart = do
-      modify \s -> s {assignment = mempty, decisionLevel = 0, trail = mempty, implicationGraph = mempty}
+      modify \s -> s {assignment = mempty, decisionLevel = 0, trail = mempty, implicationGraph = mempty, propagationStack = mempty}
       solver
 {-# INLINEABLE getSolutions #-}
+
+-- | Checks if the solver is satisfied.
+satisfied :: SolverM Bool
+satisfied = do
+  assignment <- getAssignment
+  all (clauseIsSatisfied assignment) <$> getClauseDB
+
+-- | Checks if a clause is satisfied.
+clauseIsSatisfied :: Assignment -> Clause -> Bool
+clauseIsSatisfied m Clause {watched = (a, b)} = literalValue m a == Just True || literalValue m b == Just True
+{-# INLINEABLE clauseIsSatisfied #-}
 
 -- | Checks if a CNF is satisfiable.
 satisfiable :: CNF -> Bool
 satisfiable = isJust . getSolutions
 {-# INLINEABLE satisfiable #-}
 
-bruteForce :: Expr Int -> Maybe Solutions
-bruteForce expr = let cnf = toCNF expr in go cnf mempty
-  where
-    go :: CNF -> Assignment -> Maybe Solutions
-    go cnf m = case findFreeVariable cnf of
-      Nothing -> if isSat cnf then Just (solutionsFromAssignment m) else Nothing
-      Just c -> try c True <|> try c False
-      where
-        try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf) (assign m c v)
-
-        isSat :: CNF -> Bool
-        isSat (CNF clauses) = null clauses
-{-# INLINEABLE bruteForce #-}
-
-withUnitPropagation :: Expr Int -> Maybe Solutions
-withUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
-  where
-    go :: CNF -> Assignment -> Maybe Solutions
-    go cnf m = case findFreeVariable cnf' of
-      Nothing -> if isSat cnf' then Just (solutionsFromAssignment m') else Nothing
-      Just c -> try c True <|> try c False
-      where
-        try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf') (assign m' c v)
-
-        isSat :: CNF -> Bool
-        isSat (CNF clauses) = null clauses
-
-        cnf' :: CNF
-        (m', cnf') = unitPropagate cnf m 0
-{-# INLINEABLE withUnitPropagation #-}
-
-withPureLiteralElimination :: Expr Int -> Maybe Solutions
-withPureLiteralElimination expr = let cnf = toCNF expr in go cnf mempty
-  where
-    go :: CNF -> Assignment -> Maybe Solutions
-    go cnf m = case findFreeVariable cnf' of
-      Nothing -> if isSat cnf' then Just (solutionsFromAssignment m') else Nothing
-      Just c -> try c True <|> try c False
-      where
-        try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf') (assign m' c v)
-
-        isSat :: CNF -> Bool
-        isSat (CNF clauses) = null clauses
-
-        cnf' :: CNF
-        (m', cnf') = eliminateLiterals cnf m
-{-# INLINEABLE withPureLiteralElimination #-}
-
-withPureLiteralAndUnitPropagation :: Expr Int -> Maybe Solutions
-withPureLiteralAndUnitPropagation expr = let cnf = toCNF expr in go cnf mempty
-  where
-    go :: CNF -> Assignment -> Maybe Solutions
-    go cnf m = case findFreeVariable cnf'' of
-      Nothing -> if isSat cnf'' then Just (solutionsFromAssignment m'') else Nothing
-      Just c -> try c True <|> try c False
-      where
-        try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf'') (assign m'' c v)
-
-        isSat :: CNF -> Bool
-        isSat (CNF clauses) = null clauses
-
-        cnf' :: CNF
-        (m', cnf') = eliminateLiterals cnf m
-
-        cnf'' :: CNF
-        (m'', cnf'') = unitPropagate cnf' m' 0
-{-# INLINEABLE withPureLiteralAndUnitPropagation #-}
-
-pureLitOnlyAsPreprocess :: Expr Int -> Maybe Solutions
-pureLitOnlyAsPreprocess expr = go cnf' m
-  where
-    cnf = toCNF expr
-    (m, cnf') = eliminateLiterals cnf mempty
-
-    go :: CNF -> Assignment -> Maybe Solutions
-    go cnf'' m' = case findFreeVariable cnf'' of
-      Nothing -> if isSat cnf'' then Just (solutionsFromAssignment m'') else Nothing
-      Just c -> try c True <|> try c False
-      where
-        try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf''') (assign m'' c v)
-
-        isSat :: CNF -> Bool
-        isSat (CNF clauses) = null clauses
-
-        (m'', cnf''') = unitPropagate cnf'' m' 0
-{-# INLINEABLE pureLitOnlyAsPreprocess #-}
-
-literalEvery100 :: Expr Int -> Maybe Solutions
-literalEvery100 expr = go cnf' m 0
-  where
-    cnf = toCNF expr
-    (m, cnf') = eliminateLiterals cnf mempty
-
-    go :: CNF -> Assignment -> Int -> Maybe Solutions
-    go cnf'' m' i = case findFreeVariable cnf'''' of
-      Nothing -> if isSat cnf'''' then Just (solutionsFromAssignment m''') else Nothing
-      Just c -> try c True <|> try c False
-      where
-        try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf'''') (assign m'' c v) (i + 1)
-
-        isSat :: CNF -> Bool
-        isSat (CNF clauses) = null clauses
-
-        (m'', cnf''') = unitPropagate cnf'' m' 0
-        (m''', cnf'''') = if i `mod` 100 == 0 then eliminateLiterals cnf''' m'' else (m'', cnf''')
-{-# INLINEABLE literalEvery100 #-}
-
-withTautologyElimination :: Expr Int -> Maybe Solutions
-withTautologyElimination expr = go init' m''
-  where
-    cnf'' = toCNF expr
-    (m'', i) = eliminateLiterals cnf'' mempty
-    init' = removeTautologies i
-
-    go :: CNF -> Assignment -> Maybe Solutions
-    go cnf m = case findFreeVariable cnf' of
-      Nothing -> if isSat cnf' then Just (solutionsFromAssignment m') else Nothing
-      Just c -> try c True <|> try c False
-      where
-        try :: Literal -> Bool -> Maybe Solutions
-        try c v = go (substitute c v cnf') (assign m' c v)
-
-        isSat :: CNF -> Bool
-        isSat (CNF clauses) = null clauses
-
-        cnf' :: CNF
-        (m', cnf') = unitPropagate cnf m 0
-{-# INLINEABLE withTautologyElimination #-}
-
 allAssignments :: Assignment -> IntSet
 allAssignments = IntMap.keysSet
+{-# INLINEABLE allAssignments #-}
+
+-- allVariablesAssigned :: SolverM Bool
+-- allVariablesAssigned = do
+--   SolverState {variables, assignment} <- get
+
+--   traceM $ "Variables: " <> (show $ IntSet.size variables)
+--   traceM $ "Assignments: " <> (show $ IntSet.size $ allAssignments assignment)
+
+--   return $ IntSet.size (allAssignments assignment) >= IntSet.size variables
+-- {-# INLINEABLE allVariablesAssigned #-}
 
 allVariablesAssigned :: SolverM Bool
 allVariablesAssigned = do
-  SolverState {variables, assignment} <- get
-  return $ IntSet.null $ variables `IntSet.difference` allAssignments assignment
-
-removeTautologies :: CNF -> CNF
-removeTautologies (CNF cs) = CNF $ filter (not . isTautology) cs
-  where
-    isTautology :: Clause -> Bool
-    isTautology c = any (\l -> IntSet.member (negate l) (IntSet.fromList c)) c
+  SolverState {variables, trail} <- get
+  -- return $ IntSet.null $ variables `IntSet.difference` allAssignments assignment
+  return $ Stack.size trail >= IntSet.size variables

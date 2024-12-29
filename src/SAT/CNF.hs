@@ -10,14 +10,14 @@
 -- |
 -- Module      : SAT.CNF
 -- Description : Exports the CNF module.
-module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause, type Literal, addClause, type Assignment, type DecisionLevel, isNegative, tseitin, toTseitin, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
+module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause (Clause, literals, watched), type Literal, addClause, type Assignment, type DecisionLevel, isNegative, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
 
-import Control.Monad.State.Strict (get, put, evalState, type State)
+import Control.Monad.State.Strict (evalState, get, put, type State)
 import Control.Parallel.Strategies (type NFData)
 import Data.IntMap.Strict ((!?), type IntMap)
 import Data.IntSet (type IntSet)
 import GHC.Generics (type Generic)
-import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var, XOr, XNor, NOr, NAnd))
+import SAT.Expr (type Expr (And, Implies, NAnd, NOr, Not, Or, Val, Var, XNor, XOr))
 
 type DecisionLevel = Int
 
@@ -40,14 +40,15 @@ deriving anyclass instance NFData CNF
 --   CNF :: (Traversable t, Semigroup (t Clause), Applicative t) => t Clause -> CNF
 
 -- | The clause type.
--- data Clause = Clause {
---   literals :: [Literal],
---   watched :: (Literal, Literal)
--- } deriving stock (Eq, Show, Ord, Generic)
+data Clause = Clause
+  { literals :: [Literal],
+    watched :: (Int, Int) -- indices of the literals being watched
+  }
+  deriving stock (Eq, Show, Ord, Generic)
 
-type Clause = [Literal]
+-- type Clause = [Literal]
 
--- deriving anyclass instance NFData Clause
+deriving anyclass instance NFData Clause
 
 -- | The literal type.
 type Literal = Int
@@ -100,7 +101,7 @@ deMorgansLaws (XOr e1 e2) = Or (And (deMorgansLaws e1) (Not e2)) (And (Not e1) (
 deMorgansLaws (XNor e1 e2) = Or (And e1 e2) (And (Not e1) (Not e2))
 deMorgansLaws (NAnd e1 e2) = Not $ And (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (NOr e1 e2) = Not $ Or (deMorgansLaws e1) (deMorgansLaws e2)
-deMorgansLaws (Var a) = Var a 
+deMorgansLaws (Var a) = Var a
 deMorgansLaws (Val a) = Val a
 {-# INLINEABLE deMorgansLaws #-}
 
@@ -121,7 +122,7 @@ distributiveLaws e = e
 --
 -- >>> applyLaws (Or (And (Var 1) (Var 2)) (Not (Var 3)))
 -- And (Or (Not (Var 3)) (Var 1)) (Or (Not (Var 3)) (Var 2))
-applyLaws :: forall a . (Eq a) => Expr a -> Expr a
+applyLaws :: forall a. (Eq a) => Expr a -> Expr a
 applyLaws expr
   | expr == expr' = expr
   | otherwise = applyLaws expr'
@@ -135,10 +136,10 @@ applyLaws expr
 -- >>> toCNF (Or (And (Var 1) (Var 2)) (Not (Var 3)))
 -- CNF [[-3,1],[-3,2]]
 toCNF :: Expr Int -> CNF
-toCNF expr = CNF $ unique <$> toClauses cnf
+toCNF expr = CNF $ toClauses cnf
   where
-    unique :: (Ord a) => [a] -> [a]
-    unique = foldr (\x acc -> if x `elem` acc then acc else x : acc) mempty
+    -- unique :: (Ord a) => [a] -> [a]
+    -- unique = foldr (\x acc -> if x `elem` acc then acc else x : acc) mempty
 
     cnf :: Expr Int
     cnf = applyLaws expr
@@ -148,8 +149,11 @@ toCNF expr = CNF $ unique <$> toClauses cnf
     toClauses e = pure $ toClause e
 
     toClause :: Expr Int -> Clause
-    toClause (Or e1 e2) = toClause e1 <> toClause e2
-    toClause e = pure $ toLiteral e
+    toClause (Or e1 e2) = do
+      let c1 = toClause e1
+      let c2 = toClause e2
+      Clause {literals = literals c1 <> literals c2, watched = (0, 0)}
+    toClause e = Clause {literals = pure $ toLiteral e, watched = (0, 0)}
 
     toLiteral :: Expr Int -> Literal
     toLiteral (Not (Var n)) = negate n
@@ -157,19 +161,19 @@ toCNF expr = CNF $ unique <$> toClauses cnf
     toLiteral l = error $ "Invalid literal" ++ show l
 {-# INLINEABLE toCNF #-}
 
-toTseitin :: Expr Int -> CNF
-toTseitin expr = cnf
-  where
-    tseitin' :: State Int (CNF, Literal)
-    tseitin' = tseitin expr
+-- toTseitin :: Expr Int -> CNF
+-- toTseitin expr = cnf
+--   where
+--     tseitin' :: State Int (CNF, Literal)
+--     tseitin' = tseitin expr
 
-    tseitin'' :: State Int CNF
-    tseitin'' = do
-      (CNF clauses', l) <- tseitin'
-      return $ CNF $ pure l : clauses'
+--     tseitin'' :: State Int CNF
+--     tseitin'' = do
+--       (CNF clauses', l) <- tseitin'
+--       return $ CNF $ (Clause {literals=pure l, watched = (0,0)}) : clauses'
 
-    cnf = evalState tseitin'' $ highestVar expr + 1
-{-# INLINEABLE toTseitin #-}
+--     cnf = evalState tseitin'' $ highestVar expr + 1
+-- {-# INLINEABLE toTseitin #-}
 
 -- | Adds a clause to a CNF.
 --
@@ -178,7 +182,6 @@ toTseitin expr = cnf
 addClause :: CNF -> Clause -> CNF
 addClause (CNF clauses) = CNF . (: clauses)
 {-# INLINEABLE addClause #-}
-
 
 -- | Checks if a literal is negative.
 --
@@ -203,32 +206,32 @@ freshVariable = do
 
 -- | Returns the highest variable in an expression.
 -- In order to know where to start the fresh variables.
-highestVar :: Expr Int -> Int
-highestVar (Var n) = n
-highestVar (Val _) = 0
-highestVar (Not e) = highestVar e
-highestVar (And e1 e2) = max (highestVar e1) $ highestVar e2
-highestVar (Or e1 e2) = max (highestVar e1) $ highestVar e2
-highestVar (Implies e1 e2) = max (highestVar e1) $ highestVar e2
+-- highestVar :: Expr Int -> Int
+-- highestVar (Var n) = n
+-- highestVar (Val _) = 0
+-- highestVar (Not e) = highestVar e
+-- highestVar (And e1 e2) = max (highestVar e1) $ highestVar e2
+-- highestVar (Or e1 e2) = max (highestVar e1) $ highestVar e2
+-- highestVar (Implies e1 e2) = max (highestVar e1) $ highestVar e2
 
-tseitin :: Expr Int -> State Int (CNF, Literal)
-tseitin (Var n) = return (CNF mempty, n)
-tseitin (Val b) = return (CNF mempty, if b then 1 else -1)
-tseitin (Not e) = do
-  (CNF clauses, l) <- tseitin e
-  l' <- freshVariable
-  let clauses' = [[-l', -l], [l', l]]
-  return (CNF (clauses <> clauses'), l')
-tseitin (And e1 e2) = do
-  (CNF clauses1, l1) <- tseitin e1
-  (CNF clauses2, l2) <- tseitin e2
-  l' <- freshVariable
-  let clauses = [[-l', l1], [-l', l2], [l', -l1, -l2]]
-  return (CNF $ clauses <> clauses1 <> clauses2, l')
-tseitin (Or e1 e2) = do
-  (CNF clauses1, l1) <- tseitin e1
-  (CNF clauses2, l2) <- tseitin e2
-  l' <- freshVariable
-  let clauses = [[l', -l1], [l', -l2], [-l', l1, l2]]
-  return (CNF (clauses <> clauses1 <> clauses2), l')
-tseitin (Implies e1 e2) = tseitin $ Or (Not e1) e2
+-- tseitin :: Expr Int -> State Int (CNF, Literal)
+-- tseitin (Var n) = return (CNF mempty, n)
+-- tseitin (Val b) = return (CNF mempty, if b then 1 else -1)
+-- tseitin (Not e) = do
+--   (CNF clauses, l) <- tseitin e
+--   l' <- freshVariable
+--   let clauses' = [[-l', -l], [l', l]]
+--   return (CNF (clauses <> clauses'), l')
+-- tseitin (And e1 e2) = do
+--   (CNF clauses1, l1) <- tseitin e1
+--   (CNF clauses2, l2) <- tseitin e2
+--   l' <- freshVariable
+--   let clauses = [[-l', l1], [-l', l2], [l', -l1, -l2]]
+--   return (CNF $ clauses <> clauses1 <> clauses2, l')
+-- tseitin (Or e1 e2) = do
+--   (CNF clauses1, l1) <- tseitin e1
+--   (CNF clauses2, l2) <- tseitin e2
+--   l' <- freshVariable
+--   let clauses = [[l', -l1], [l', -l2], [-l', l1, l2]]
+--   return (CNF (clauses <> clauses1 <> clauses2), l')
+-- tseitin (Implies e1 e2) = tseitin $ Or (Not e1) e2

@@ -14,13 +14,13 @@ import Control.Parallel.Strategies (type NFData)
 import Data.Bool (bool)
 import Data.IntMap.Strict (type IntMap)
 import Data.IntSet (type IntSet)
-import Data.Map.Strict (type Map)
 import GHC.Generics (type Generic)
 import SAT.CNF (type Assignment, type CNF, type Clause, type DecisionLevel, type Literal)
 import SAT.VSIDS (type VSIDS)
+import Stack (type Stack)
 
 -- | The trail type (the previous assignments).
-type Trail = [(Literal, DecisionLevel, Bool)]
+type Trail = Stack (Literal, DecisionLevel, Bool)
 
 -- | The reason for a conflict or assignment.
 type Reason = Clause
@@ -29,11 +29,8 @@ type Reason = Clause
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
 
 -- | Watched literals (literals in clauses that are being watched).
-data WatchedLiterals = WatchedLiterals
-  { literals :: !(IntMap [Clause]),
-    clauses :: !(Map Clause [Literal])
-  }
-  deriving stock (Show, Eq, Ord, Read, Generic)
+newtype WatchedLiterals = WatchedLiterals { literals :: IntMap [Clause] }
+  deriving stock (Show, Eq, Ord, Generic)
 
 deriving anyclass instance NFData WatchedLiterals
 
@@ -50,9 +47,9 @@ data SolverState = SolverState
     watchedLiterals :: !WatchedLiterals,
     decisionLevel :: !DecisionLevel,
     clauseDB :: !ClauseDB,
-    vsids :: !VSIDS,
+    vsids :: !(VSIDS Double),
     variables :: !IntSet,
-    propagationStack :: ![Literal],
+    propagationStack :: ![(Literal, Bool, Maybe Reason)],
     lubyCount :: !Int,
     lubyThreshold :: !Int
   }
@@ -67,7 +64,7 @@ type SolverM = RWST CNF SolverLog SolverState Maybe
 -- | State methods
 
 -- | Gets the propagation stack.
-getPropagationStack :: SolverM [Literal]
+getPropagationStack :: SolverM [(Literal, Bool, Maybe Reason)]
 getPropagationStack = gets propagationStack
 {-# INLINEABLE getPropagationStack #-}
 
@@ -97,7 +94,7 @@ getDecisionLevel = gets decisionLevel
 {-# INLINEABLE getDecisionLevel #-}
 
 -- | Gets the VSIDS.
-getVSIDS :: SolverM VSIDS
+getVSIDS :: SolverM (VSIDS Double)
 getVSIDS = gets vsids
 {-# INLINEABLE getVSIDS #-}
 

@@ -19,33 +19,33 @@ import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
 --
 -- >>> parse "1 and 2 or 3"
 -- Just (1 `And` (2 `Or` 3))
-parse :: Read a => Text -> Maybe (Expr a)
+parse :: (Read a) => Text -> Maybe (Expr a)
 parse input = case parseExpr input of
   Result (_, expr') -> Just expr'
   Errors _ -> Nothing
 
 -- | Parses an expression from a string.
-parseExpr :: Read a => Text -> Result Text Text (Text, Expr a)
+parseExpr :: (Read a) => Text -> Result Text Text (Text, Expr a)
 parseExpr = runParser expr
 
 -- | Parses an expression.
-expr :: Read a => Parser Text Text (Expr a)
+expr :: (Read a) => Parser Text Text (Expr a)
 expr = chainl1 term orOp <|> chainl1 term impliesOp
 
 -- | Parses a term.
-term :: Read a => Parser Text Text (Expr a)
+term :: (Read a) => Parser Text Text (Expr a)
 term = chainl1 factor andOp
 
 -- | Parses a factor.
-factor :: Read a => Parser Text Text (Expr a)
+factor :: (Read a) => Parser Text Text (Expr a)
 factor = parens expr <|> notOp <|> literal <|> var
 
 -- | Parses a variable.
-var :: Read a => Parser Text Text (Expr a)
+var :: (Read a) => Parser Text Text (Expr a)
 var = Var . read <$> some digit
 
 -- | Parses a not operation.
-notOp :: Read a => Parser Text Text (Expr a)
+notOp :: (Read a) => Parser Text Text (Expr a)
 notOp = Not <$> (anySymbol ["¬", "not"] *> factor)
 
 -- | Parses an and operation.

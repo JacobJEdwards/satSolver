@@ -6,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE Strict #-}
+{-# LANGUAGE BangPatterns #-}
 
 -- |
 -- Module      : SAT.Optimisers
@@ -19,7 +20,6 @@ module SAT.Optimisers
     eliminateLiterals,
     assign,
     partialAssignment,
-    pickVariable,
     pickVariableM,
     literalPolarities,
     decayM,
@@ -35,7 +35,6 @@ module SAT.Optimisers
     isSatisfied,
     adjustScoresM,
     getClauseStatus,
-    findCanditateWatchedLiteral,
     ClauseStatus (..),
     pickLiteralM,
   )
@@ -50,11 +49,18 @@ import Data.Kind (type Type)
 import Data.List (find)
 import Data.Set (type Set)
 import Data.Set qualified as Set
-import SAT.CNF (type CNF (CNF), Clause, literalValue, varOfLiteral, type Assignment, type DecisionLevel, type Literal)
+import SAT.CNF (Clause (Clause, literals, watched), literalValue, varOfLiteral, type Assignment, type CNF (CNF), type DecisionLevel, type Literal)
 import SAT.DIMACS.CNF (invert)
-import SAT.Monad (getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getVSIDS, type SolverM, type SolverState (..))
+import SAT.Monad (getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getVSIDS, type SolverM, type SolverState (..), getWatchedLiterals, WatchedLiterals (WatchedLiterals, literals), getPropagationStack, Reason)
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
-import SAT.VSIDS (adjustScores, decay, pickLiteral, type VSIDS)
+import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable, type VSIDS (VSIDS))
+import Data.Maybe (isNothing, fromMaybe)
+import Debug.Trace (traceM)
+import Stack (type Stack)
+import Stack qualified
+import Control.Monad (filterM, when, foldM)
+import Data.List (findIndex)
+
 
 -- | Collects all literals in a CNF.
 --
@@ -64,7 +70,7 @@ collectLiterals :: CNF -> [Int]
 collectLiterals (CNF clauses) = concatMap getVars clauses
   where
     getVars :: Clause -> [Int]
-    getVars = fmap varOfLiteral
+    getVars = fmap varOfLiteral . SAT.CNF.literals
 {-# INLINEABLE collectLiterals #-}
 
 -- | Collects all literals in a CNF and returns them as a set.
@@ -83,9 +89,9 @@ literalPolarities :: CNF -> IntMap Polarity
 literalPolarities (CNF clauses) = foldl updatePolarity mempty $ concatMap clausePolarities clauses
   where
     clausePolarities :: Clause -> [(Int, Polarity)]
-    clausePolarities clause = [(varOfLiteral lit, literalPolarity lit) | lit <- clause]
+    clausePolarities (Clause {SAT.CNF.literals}) = [(varOfLiteral lit, literalPolarity lit) | lit <- literals]
 
-    -- \| Finds the polarity of a literal.
+    -- | Finds the polarity of a literal.
     --
     -- >>> literalPolarity 1
     -- Positive
@@ -102,7 +108,7 @@ literalPolarities (CNF clauses) = foldl updatePolarity mempty $ concatMap clause
       | p > 0 = Positive
       | otherwise = Mixed
 
-    -- \| Updates the polarities.
+    -- | Updates the polarities.
     -- >>> updatePolarity (IntMap.fromList [(1, Positive)]) (2, Mixed)
     -- fromList [(1,Positive),(2,Mixed)]
     updatePolarity :: IntMap Polarity -> (Int, Polarity) -> IntMap Polarity
@@ -151,7 +157,7 @@ substitute var val (CNF clauses) = CNF $ eliminateClause <$> filter clauseIsTrue
     var' = varOfLiteral var
 
     clauseIsTrue :: Clause -> Bool
-    clauseIsTrue = not . any literalIsTrue'
+    clauseIsTrue (Clause {SAT.CNF.literals}) = not . any literalIsTrue' $ literals
 
     literalIsTrue' :: Literal -> Bool
     literalIsTrue' l = case l of
@@ -166,7 +172,9 @@ substitute var val (CNF clauses) = CNF $ eliminateClause <$> filter clauseIsTrue
       _ -> False
 
     eliminateClause :: Clause -> Clause
-    eliminateClause = filter $ not . literalIsFalse'
+    eliminateClause Clause {SAT.CNF.literals, watched} =
+      let lits = filter (not . literalIsFalse') literals
+       in Clause {SAT.CNF.literals = lits, watched = watched}
 {-# INLINEABLE substitute #-}
 
 -- | Finds a unit clause in a CNF (a clause with only one literal).
@@ -178,15 +186,15 @@ substitute var val (CNF clauses) = CNF $ eliminateClause <$> filter clauseIsTrue
 -- Just (1,True)
 findUnitClause :: CNF -> Maybe (Int, Bool)
 findUnitClause (CNF clauses) = do
-  clause <- unitClause
-  let p = head clause
+  Clause {SAT.CNF.literals} <- unitClause
+  let p = head literals
   return (varOfLiteral p, p > 0)
   where
     unitClause :: Maybe Clause
     unitClause = find isUnitClause clauses
 
     isUnitClause :: Clause -> Bool
-    isUnitClause = (1 ==) . length
+    isUnitClause Clause {SAT.CNF.literals} = (1 ==) . length $ literals
 {-# INLINEABLE findUnitClause #-}
 
 -- | Propagates a unit clause in a CNF.
@@ -209,9 +217,9 @@ type ClauseStatus :: Type
 data ClauseStatus = Unit Literal | UNSAT | SAT | Unresolved deriving (Eq, Show)
 
 partialAssignClause :: Assignment -> Clause -> Maybe Clause
-partialAssignClause m c 
-  | any (\l -> literalValue m l == Just True) c = Nothing
-  | otherwise = Just $ filter (\l -> literalValue m l /= Just False) c
+partialAssignClause m (Clause {SAT.CNF.literals, watched})
+  | any (\l -> literalValue m l == Just True) literals = Nothing
+  | otherwise = Just $ Clause {SAT.CNF.literals = filter (\l -> literalValue m l /= Just False) literals, watched}
 
 getClauseStatus :: Clause -> SolverM ClauseStatus
 getClauseStatus clause = do
@@ -219,47 +227,111 @@ getClauseStatus clause = do
   let c = partialAssignClause assignment clause
   case c of
     Nothing -> return SAT
-    Just [] -> return UNSAT
-    Just [l] -> return $ Unit l
+    Just (Clause {SAT.CNF.literals = []}) -> return UNSAT
+    Just (Clause {SAT.CNF.literals = [l]}) -> return $ Unit l
     Just _ -> return Unresolved
 
 unitPropagateM :: SolverM (Maybe Clause)
-unitPropagateM = do
-  clauses <- getClauseDB
-
-  loop clauses
+unitPropagateM = loop
   where
-    loop :: [Clause] -> SolverM (Maybe Clause)
-    loop clauses = process clauses False
+    loop :: SolverM (Maybe Clause)
+    loop = do
+      propagationStack <- getPropagationStack
+      process propagationStack
       where
-        process :: [Clause] -> Bool -> SolverM (Maybe Clause)
-        process [] updated =
-          if updated
-            then loop clauses
-            else return Nothing
-        process (c : cs') updated = do
-          status <- getClauseStatus c
-          case status of
-            SAT -> process cs' updated
-            UNSAT -> return $ Just c
-            Unit l -> do
-              assignUnit l c
-              process cs' True
-            Unresolved -> process cs' updated
+        process :: [(Literal, Bool, Maybe Reason)] -> SolverM (Maybe Clause)
+        process [] = return Nothing
+        process ((l, val, r) : ls) = do
+          assignM l val
+          addPropagation l r
+          modify \s -> s {propagationStack = ls}
+          wl <- getWatchedLiterals
+          let clauses = IntMap.findWithDefault [] l $ SAT.Monad.literals wl
+          conflict <- foldM processClause Nothing clauses
+          case conflict of
+            Just _ -> return conflict
+            Nothing -> loop
 
-        assignUnit :: Literal -> Clause -> SolverM ()
-        assignUnit l reason = do
-          let p = l > 0
-          assignM l p
-          addPropagation (varOfLiteral l) reason
+        processClause :: Maybe Clause -> Clause -> SolverM (Maybe Clause) -- (newWatch, maybe conflict clause)
+        processClause conflict clause@(Clause {watched=(a, b), SAT.CNF.literals}) = do
+          case conflict of
+            Just _ -> return conflict
+            Nothing -> do
+              assignment <- getAssignment
+              let first = literals !! a
+              let second = literals !! b
 
-findCanditateWatchedLiteral :: Clause -> SolverM (Maybe Literal)
-findCanditateWatchedLiteral clause = do
-  assignments <- getAssignment
-  return $ find (`isUnassigned` assignments) clause
+              let firstValue = literalValue assignment first
+              let secondValue = literalValue assignment second
 
-isUnassigned :: Literal -> Assignment -> Bool
-isUnassigned = IntMap.notMember . varOfLiteral
+              case (firstValue, secondValue) of
+                (Just True, _) -> return Nothing
+                (_, Just True) -> return Nothing
+                (Just False, Just False) -> do
+                  return $ Just clause -- UNSAT
+                (Nothing, Just False) -> do
+                  let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) literals
+
+                  case newWatch of
+                    Just i -> do
+                      let newClause = clause {watched = (a, i)}
+                      let l = literals !! i
+
+                      clauseDb <- getClauseDB
+                      let !clauseDB' = filter (/= clause) clauseDb
+                      modify \s -> s {clauseDB = newClause : clauseDB'}
+                      wl <- getWatchedLiterals
+
+                      let !aClauses = IntMap.findWithDefault [] (varOfLiteral first) $ SAT.Monad.literals wl
+                      let !aClauses' = newClause : filter (/= clause) aClauses
+
+                      let !bClauses = IntMap.findWithDefault [] (varOfLiteral second) $ SAT.Monad.literals wl
+                      let !bClauses' = filter (/= clause) bClauses
+
+                      let !lClauses = IntMap.findWithDefault [] (varOfLiteral l) $ SAT.Monad.literals wl
+                      let !lClauses' = newClause : lClauses
+
+                      let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral second) bClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
+
+                      modify \s -> s {watchedLiterals = WatchedLiterals newWl}
+
+                      return Nothing
+                    Nothing -> do
+                      let l = literals !! a
+                      modify \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack s}
+                      return Nothing
+                (Just False, Nothing) -> do
+                  let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) literals
+                  case newWatch of
+                    Just i -> do
+                      let newClause = clause {watched = (i, b)}
+                      let l = literals !! i
+
+                      clauseDb <- getClauseDB
+
+                      let !clauseDB' = filter (/= clause) clauseDb
+                      modify \s -> s {clauseDB = newClause : clauseDB'}
+
+                      wl <- getWatchedLiterals
+                      let aClauses = IntMap.findWithDefault [] (varOfLiteral first) $ SAT.Monad.literals wl
+                      let aClauses' = filter (/= clause) aClauses
+
+                      let bClauses = IntMap.findWithDefault [] (varOfLiteral second) $ SAT.Monad.literals wl
+                      let bClauses' = newClause : filter (/= clause) bClauses
+
+                      let lClauses = IntMap.findWithDefault [] (varOfLiteral l) $ SAT.Monad.literals wl
+                      let lClauses' = newClause : lClauses
+
+                      let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral second) bClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
+                      modify \s -> s {watchedLiterals = WatchedLiterals newWl}
+                      return Nothing
+                    Nothing -> do
+                      let l = literals !! b
+                      modify \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack s}
+                      return Nothing
+                (Nothing, Nothing) -> do
+                  return Nothing
+
 
 -- https://buffered.io/posts/a-better-nub/
 
@@ -288,7 +360,7 @@ assign m c v = IntMap.insertWith (const id) (varOfLiteral c) v m
 assignM :: Literal -> Bool -> SolverM ()
 assignM c v = do
   SolverState {assignment, trail, decisionLevel} <- get
-  let t = (c, decisionLevel, v) : trail
+  let t = Stack.push (c, decisionLevel, v) trail
   let m = assign assignment c v
   modify \s -> s {assignment = m, trail = t}
 {-# INLINEABLE assignM #-}
@@ -298,10 +370,10 @@ assignM c v = do
 -- >>> partialAssignment (IntMap.fromList [(1, (True, 0))]) (CNF [[1, 2], [-2, -3], [3, 4]])
 -- CNF {clauses = [[2],[-3],[3,4]]}
 partialAssignment :: Assignment -> CNF -> CNF
-partialAssignment m (CNF clauses) = CNF $ filter isFalseLiteral <$> filter (not . isTrueClause) clauses
+partialAssignment m (CNF clauses) = undefined -- CNF $ filter isFalseLiteral <$> filter (not . isTrueClause) clauses
   where
     isTrueClause :: Clause -> Bool
-    isTrueClause = any isTrueLiteral
+    isTrueClause (Clause {SAT.CNF.literals}) = any isTrueLiteral literals
 
     isTrueLiteral :: Literal -> Bool
     isTrueLiteral l = case literalValue m l of
@@ -318,13 +390,6 @@ partialAssignment m (CNF clauses) = CNF $ filter isFalseLiteral <$> filter (not 
 
 -- | Picks a variable.
 --
--- >>> pickVariable (IntMap.fromList [(1, 1), (2, 2), (3, 3)])
--- Just (3,fromList [(1,1.0),(2,2.0)])
-pickVariable :: VSIDS -> Maybe (Literal, VSIDS)
-pickVariable vs = do
-  ((k, _), vsids') <- IntMap.maxViewWithKey vs
-  return (k, vsids')
-{-# INLINEABLE pickVariable #-}
 
 pickVariableM :: SolverM (Maybe Literal)
 pickVariableM = do
@@ -351,7 +416,7 @@ removeTautologies :: CNF -> CNF
 removeTautologies (CNF clauses) = CNF $ filter tautology clauses
   where
     tautology :: Clause -> Bool
-    tautology c = not $ any (\x -> invert x `elem` c) c
+    tautology Clause {SAT.CNF.literals} = not $ any (\x -> invert x `elem` literals) literals
 {-# INLINEABLE removeTautologies #-}
 
 -- | Checks if a CNF is satisfied
@@ -382,21 +447,17 @@ isUnsat (CNF clauses) = any clauseIsUnsat clauses
 -- >>> clauseIsUnsat []
 -- True
 clauseIsUnsat :: Clause -> Bool
-clauseIsUnsat = null
+clauseIsUnsat = null . SAT.CNF.literals
 
 addDecision :: Literal -> SolverM ()
 addDecision literal = do
-  level <- getDecisionLevel
-  graph <- getImplicationGraph
-  let newNode = (literal, mempty, level)
-  let graph' = IntMap.insert (varOfLiteral literal) newNode graph
-  modify \s -> s {implicationGraph = graph'}
+  modify \s -> s {propagationStack = (abs literal, literal > 0, Nothing) : propagationStack s}
 
-addPropagation :: Literal -> Clause -> SolverM ()
+addPropagation :: Literal -> Maybe Clause -> SolverM ()
 addPropagation literal clause = do
   level <- getDecisionLevel
   graph <- getImplicationGraph
-  let newNode = (literal, pure clause, level)
+  let newNode = (literal, clause, level)
   let graph' = IntMap.insert (varOfLiteral literal) newNode graph
   modify \s -> s {implicationGraph = graph'}
 
@@ -406,9 +467,9 @@ isSatisfied = do
   all (clauseIsSat assignment) <$> getClauseDB
   where
     clauseIsSat :: Assignment -> Clause -> Bool
-    clauseIsSat m = any \l -> literalValue m l == Just True
+    clauseIsSat m (Clause {SAT.CNF.literals}) = any (\l -> literalValue m l == Just True) literals
 
-adjustScoresM :: Clause -> SolverM ()
+adjustScoresM :: [Literal] -> SolverM ()
 adjustScoresM clause = do
   vsids <- getVSIDS
   modify \s -> s {vsids = adjustScores vsids clause}

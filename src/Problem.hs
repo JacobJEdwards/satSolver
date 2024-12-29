@@ -1,10 +1,10 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -22,9 +22,9 @@ import SAT (getSolutions, type CNF, type Expr, type Solutions)
 import SAT qualified
 import SAT.DIMACS.CNF qualified as DIMACS
 import SAT.DIMACS.Parser qualified as DIMACS
+import SAT.Encode (type Encodable (encode, type Code))
 import Sudoku qualified
 import Sudoku.Solver (type Sudoku)
-import SAT.Encode (type Encodable (encode, type Code))
 
 -- | Represents a problem that can be solved by the SAT solver.
 type Problem :: Type -> Constraint
@@ -77,7 +77,7 @@ instance Problem Nonogram where
   {-# INLINEABLE parse #-}
 
   example :: Nonogram
-  example = Nonogram.eightByEight
+  example = Nonogram.fiveByFive
   {-# INLINEABLE example #-}
 
 -- | DIMACS problem.
@@ -113,7 +113,7 @@ instance (Read a, Encodable a, Num a, Integral (Code a)) => Problem (Expr a) whe
   {-# INLINEABLE parse #-}
 
   example :: Expr a
-  example = SAT.And (SAT.Var 1) (SAT.Var 2) 
+  example = SAT.And (SAT.Var 1) (SAT.Var 2)
   {-# INLINEABLE example #-}
 
 -- | CNF problem.
@@ -240,8 +240,8 @@ toExpr = DIMACS.toExpr . DIMACS.clauses . toDIMACS
 --
 -- >>> toCNF (SAT.toCNF (SAT.fromExpr (SAT.Not (SAT.Var 1)) `SAT.And` SAT.fromExpr (SAT.Var 1)))
 -- CNF [[-1][1]]
-toCNF :: Problem a => a -> CNF
-toCNF = SAT.CNF . DIMACS.clauses . toDIMACS
+toCNF :: (Problem a) => a -> CNF
+toCNF = DIMACS.toCNF . toDIMACS
 {-# INLINEABLE toCNF #-}
 
 simplify :: (Problem a) => a -> a
