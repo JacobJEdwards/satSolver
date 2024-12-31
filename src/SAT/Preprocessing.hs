@@ -2,17 +2,15 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE Strict #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
 module SAT.Preprocessing (preprocess) where
 
 import Control.Monad.RWS.Strict (modify)
 import Data.List (sortOn, nub)
 import qualified Data.Set as Set
-import SAT.CNF (type Clause (literals, Clause))
+import SAT.CNF (type Clause (literals))
 import SAT.Monad (clauseDB, getClauseDB, type SolverM)
 import SAT.Optimisers (unitPropagateM)
-import Data.Bits (xor)
 
 preprocess :: SolverM (Maybe Clause)
 preprocess = do

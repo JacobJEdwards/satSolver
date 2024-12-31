@@ -8,8 +8,7 @@ module SAT.CDCL (backtrack, analyseConflict) where
 import Control.Monad.State.Strict (get, modify)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import Data.List (partition)
-import SAT.CNF (Literal, varOfLiteral, type Clause (Clause, literals, watched), type DecisionLevel)
+import SAT.CNF (Literal, varOfLiteral, type Clause (Clause, literals), type DecisionLevel)
 import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, trail))
 import Stack qualified
 

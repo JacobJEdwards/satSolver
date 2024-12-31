@@ -1,4 +1,5 @@
 {-# LANGUAGE Strict #-}
+{-# OPTIONS_GHC -Wno-missing-import-lists #-}
 
 -- |
 -- Module      : SAT.DIMACS

@@ -19,11 +19,9 @@ module SAT.Optimisers
     uniqueOnly,
     eliminateLiterals,
     assign,
-    partialAssignment,
     pickVariableM,
     literalPolarities,
     decayM,
-    eliminateLiteralsM,
     findUnitClause,
     unitPropagateM,
     assignM,
@@ -46,20 +44,16 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Kind (type Type)
-import Data.List (find)
+import Data.List ( find, findIndex )
 import Data.Set (type Set)
 import Data.Set qualified as Set
 import SAT.CNF (Clause (Clause, literals, watched), literalValue, varOfLiteral, type Assignment, type CNF (CNF), type DecisionLevel, type Literal)
 import SAT.DIMACS.CNF (invert)
 import SAT.Monad (getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getVSIDS, type SolverM, type SolverState (..), getWatchedLiterals, WatchedLiterals (WatchedLiterals, literals), getPropagationStack, Reason)
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
-import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable, type VSIDS (VSIDS))
-import Data.Maybe (isNothing, fromMaybe)
-import Debug.Trace (traceM)
-import Stack (type Stack)
+import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable, VSIDS (VSIDS))
 import Stack qualified
-import Control.Monad (filterM, when, foldM)
-import Data.List (findIndex)
+import Control.Monad (foldM)
 
 
 -- | Collects all literals in a CNF.
@@ -137,14 +131,14 @@ eliminateLiterals cnf solutions = (solutions', cnf')
           value = p == Positive
 {-# INLINEABLE eliminateLiterals #-}
 
-eliminateLiteralsM :: SolverM ()
-eliminateLiteralsM = do
-  SolverState {assignment} <- get
-  clauses <- getClauseDB
-  let partial = partialAssignment assignment $ CNF clauses
-  let m = fst $ eliminateLiterals partial assignment
-  modify \s -> s {assignment = m}
-{-# INLINEABLE eliminateLiteralsM #-}
+-- eliminateLiteralsM :: SolverM ()
+-- eliminateLiteralsM = do
+--   SolverState {assignment} <- get
+--   clauses <- getClauseDB
+--   let partial = partialAssignment assignment $ CNF clauses
+--   let m = fst $ eliminateLiterals partial assignment
+--   modify \s -> s {assignment = m}
+-- {-# INLINEABLE eliminateLiteralsM #-}
 
 -- | Substitutes a literal in a CNF.
 --
@@ -277,9 +271,10 @@ unitPropagateM = loop
                       let newClause = clause {watched = (a, i)}
                       let l = literals !! i
 
-                      clauseDb <- getClauseDB
-                      let !clauseDB' = filter (/= clause) clauseDb
-                      modify \s -> s {clauseDB = newClause : clauseDB'}
+                      -- clauseDb <- getClauseDB
+                      -- let !clauseDB' = filter (/= clause) clauseDb
+                      -- modify \s -> s {clauseDB = newClause : clauseDB'}
+
                       wl <- getWatchedLiterals
 
                       let !aClauses = IntMap.findWithDefault [] (varOfLiteral first) $ SAT.Monad.literals wl
@@ -307,10 +302,9 @@ unitPropagateM = loop
                       let newClause = clause {watched = (i, b)}
                       let l = literals !! i
 
-                      clauseDb <- getClauseDB
-
-                      let !clauseDB' = filter (/= clause) clauseDb
-                      modify \s -> s {clauseDB = newClause : clauseDB'}
+                      -- clauseDb <- getClauseDB
+                      -- let !clauseDB' = filter (/= clause) clauseDb
+                      -- modify \s -> s {clauseDB = newClause : clauseDB'}
 
                       wl <- getWatchedLiterals
                       let aClauses = IntMap.findWithDefault [] (varOfLiteral first) $ SAT.Monad.literals wl
@@ -366,29 +360,6 @@ assignM c v = do
 {-# INLINEABLE assignM #-}
 
 -- | Applies a partial assignment to a CNF.
---
--- >>> partialAssignment (IntMap.fromList [(1, (True, 0))]) (CNF [[1, 2], [-2, -3], [3, 4]])
--- CNF {clauses = [[2],[-3],[3,4]]}
-partialAssignment :: Assignment -> CNF -> CNF
-partialAssignment m (CNF clauses) = undefined -- CNF $ filter isFalseLiteral <$> filter (not . isTrueClause) clauses
-  where
-    isTrueClause :: Clause -> Bool
-    isTrueClause (Clause {SAT.CNF.literals}) = any isTrueLiteral literals
-
-    isTrueLiteral :: Literal -> Bool
-    isTrueLiteral l = case literalValue m l of
-      Just True -> l > 0
-      Just False -> l < 0
-      _ -> False
-
-    isFalseLiteral :: Literal -> Bool
-    isFalseLiteral l = case literalValue m l of
-      Just False -> l >= 0
-      Just True -> l <= 0
-      _ -> True
-{-# INLINEABLE partialAssignment #-}
-
--- | Picks a variable.
 --
 
 pickVariableM :: SolverM (Maybe Literal)
@@ -475,4 +446,10 @@ adjustScoresM clause = do
   modify \s -> s {vsids = adjustScores vsids clause}
 
 pickLiteralM :: SolverM Literal
-pickLiteralM = pickLiteral <$> getVSIDS
+pickLiteralM = do 
+  assignment <- getAssignment
+  VSIDS vs <- getVSIDS
+
+  let vs' = IntMap.filterWithKey (\k _ -> literalValue assignment k == Nothing) vs
+
+  return $ pickLiteral (VSIDS vs')

@@ -12,7 +12,6 @@
 -- Description : Exports the CNF module.
 module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause (Clause, literals, watched), type Literal, addClause, type Assignment, type DecisionLevel, isNegative, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
 
-import Control.Monad.State.Strict (evalState, get, put, type State)
 import Control.Parallel.Strategies (type NFData)
 import Data.IntMap.Strict ((!?), type IntMap)
 import Data.IntSet (type IntSet)
@@ -196,13 +195,13 @@ isNegative :: Literal -> Bool
 isNegative = (< 0)
 {-# INLINEABLE isNegative #-}
 
-type FreshVariable = State Int
+-- type FreshVariable = State Int
 
-freshVariable :: FreshVariable Literal
-freshVariable = do
-  n <- get
-  put $ n + 1
-  return n
+-- freshVariable :: FreshVariable Literal
+-- freshVariable = do
+--   n <- get
+--   put $ n + 1
+--   return n
 
 -- | Returns the highest variable in an expression.
 -- In order to know where to start the fresh variables.

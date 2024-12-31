@@ -88,7 +88,7 @@ initState cnf@(CNF clauses) =
     !watchedCnf@(CNF !watchedClauses) = CNF $ map initClauseWatched clauses
 
 initialPropagationStack :: [Clause] -> [(Literal, Bool, Maybe Reason)]
-initialPropagationStack = 
+initialPropagationStack =
   foldl' (\acc c@(Clause {literals, watched = (a, b)}) -> if a == b then (abs $ literals !! a, literals !! a > 0, Just c) : acc else acc) []
 {-# INLINEABLE initialPropagationStack #-}
 
@@ -147,7 +147,8 @@ getSolutions !cnf' = do
       preprocess >>= \case
         Just _ -> do
           return Nothing -- failure from the start
-        Nothing -> do 
+        Nothing -> do
+          traceM "Preprocessing done"
           solver
 
     solver :: SolverM (Maybe Solutions)
@@ -162,6 +163,7 @@ getSolutions !cnf' = do
 
     tryAssign :: Literal -> SolverM (Maybe Solutions)
     tryAssign c = do
+      traceM $ "Trying " <> show c
       increaseDecisionLevel
       addDecision c
       propagate
@@ -175,6 +177,7 @@ getSolutions !cnf' = do
     handleConflict :: Clause -> SolverM (Maybe Solutions)
     handleConflict !c = do
       (clause, dl) <- analyseConflict c
+      traceM $ "Conflict at " <> show dl <> " with " <> show clause
       if dl < 0
         then return mempty
         else do
@@ -182,9 +185,9 @@ getSolutions !cnf' = do
           adjustScoresM clause
           learn clause
           increaseLubyCount
-          ifM shouldRestart restart do
-            backtrack dl
-            solver
+          -- ifM shouldRestart restart do
+          backtrack dl
+          solver
 
     shouldRestart :: SolverM Bool
     shouldRestart = do
@@ -230,6 +233,11 @@ allAssignments = IntMap.keysSet
 
 allVariablesAssigned :: SolverM Bool
 allVariablesAssigned = do
-  SolverState {variables, trail} <- get
-  -- return $ IntSet.null $ variables `IntSet.difference` allAssignments assignment
-  return $ Stack.size trail >= IntSet.size variables
+  SolverState {variables, trail, assignment} <- get
+  let isDone =  IntSet.null $ variables `IntSet.difference` allAssignments assignment
+  traceM $ "Variables: " <> show (IntSet.size variables)
+  traceM $ "Assignments: " <> show (IntSet.size $ allAssignments assignment)
+  traceM $ "Trail: " <> show (Stack.size trail)
+  traceM $ "Done: " <> show isDone
+  return isDone
+  -- return $ Stack.size trail >= IntSet.size variables
