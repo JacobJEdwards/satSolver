@@ -4,6 +4,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 module SAT.Monad (type SolverM, getPropagationStack, type SolverState (..), type SolverLog, type Trail, type Reason, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, increaseDecisionLevel, getClauseDB) where
 
@@ -17,10 +18,12 @@ import Data.IntSet (type IntSet)
 import GHC.Generics (type Generic)
 import SAT.CNF (type Assignment, type CNF, type Clause, type DecisionLevel, type Literal)
 import SAT.VSIDS (type VSIDS)
+import Data.Sequence qualified as Seq
+import Data.Sequence (type Seq)
 import Stack (type Stack)
 
 -- | The trail type (the previous assignments).
-type Trail = Stack (Literal, DecisionLevel, Bool)
+type Trail = [(Literal, DecisionLevel, Bool)]
 
 -- | The reason for a conflict or assignment.
 type Reason = Clause
@@ -29,7 +32,7 @@ type Reason = Clause
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
 
 -- | Watched literals (literals in clauses that are being watched).
-newtype WatchedLiterals = WatchedLiterals { literals :: IntMap [Clause] }
+newtype WatchedLiterals = WatchedLiterals { literals :: IntMap (Seq Clause) }
   deriving stock (Show, Eq, Ord, Generic)
 
 deriving anyclass instance NFData WatchedLiterals

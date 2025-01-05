@@ -44,7 +44,7 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Kind (type Type)
-import Data.List ( find, findIndex )
+import Data.List ( find, findIndex, elemIndex )
 import Data.Set (type Set)
 import Data.Set qualified as Set
 import SAT.CNF (Clause (Clause, literals, watched), literalValue, varOfLiteral, type Assignment, type CNF (CNF), type DecisionLevel, type Literal)
@@ -53,7 +53,12 @@ import SAT.Monad (getAssignment, getClauseDB, getDecisionLevel, getImplicationGr
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable, VSIDS (VSIDS))
 import Stack qualified
-import Control.Monad (foldM)
+import Control.Monad (foldM, when)
+import Debug.Trace (traceM)
+import Data.Maybe (isNothing, fromJust)
+import Data.List qualified
+import Data.Sequence qualified as Seq
+import Data.Sequence (type Seq)
 
 
 -- | Collects all literals in a CNF.
@@ -225,6 +230,9 @@ getClauseStatus clause = do
     Just (Clause {SAT.CNF.literals = [l]}) -> return $ Unit l
     Just _ -> return Unresolved
 
+removeAt :: Int -> [a] -> [a]
+removeAt i xs = let (ys, zs) = Data.List.splitAt i xs in ys ++ tail zs
+
 unitPropagateM :: SolverM (Maybe Clause)
 unitPropagateM = loop
   where
@@ -235,12 +243,15 @@ unitPropagateM = loop
       where
         process :: [(Literal, Bool, Maybe Reason)] -> SolverM (Maybe Clause)
         process [] = return Nothing
-        process ((l, val, r) : ls) = do
+        process rst = do
+          let (l, val, r) = head rst
+          let ls = tail rst
+
           assignM l val
-          addPropagation l r
+          addPropagation (varOfLiteral l) r
           modify \s -> s {propagationStack = ls}
           wl <- getWatchedLiterals
-          let clauses = IntMap.findWithDefault [] l $ SAT.Monad.literals wl
+          let clauses = IntMap.findWithDefault Seq.empty (varOfLiteral l) $ SAT.Monad.literals wl
           conflict <- foldM processClause Nothing clauses
           case conflict of
             Just _ -> return conflict
@@ -262,6 +273,9 @@ unitPropagateM = loop
                 (Just True, _) -> return Nothing
                 (_, Just True) -> return Nothing
                 (Just False, Just False) -> do
+                  traceM $ show clause
+                  traceM $ show $ all (\l -> literalValue assignment l == Just False) literals
+
                   return $ Just clause -- UNSAT
                 (Nothing, Just False) -> do
                   let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) literals
@@ -271,20 +285,17 @@ unitPropagateM = loop
                       let newClause = clause {watched = (a, i)}
                       let l = literals !! i
 
-                      -- clauseDb <- getClauseDB
-                      -- let !clauseDB' = filter (/= clause) clauseDb
-                      -- modify \s -> s {clauseDB = newClause : clauseDB'}
-
                       wl <- getWatchedLiterals
 
-                      let !aClauses = IntMap.findWithDefault [] (varOfLiteral first) $ SAT.Monad.literals wl
-                      let !aClauses' = newClause : filter (/= clause) aClauses
+                      let aClauses = IntMap.findWithDefault Seq.empty (varOfLiteral first) $ SAT.Monad.literals wl
+                      let aIndex = fromJust $ Seq.findIndexL (== clause) aClauses
+                      let aClauses' = Seq.update aIndex newClause aClauses
 
-                      let !bClauses = IntMap.findWithDefault [] (varOfLiteral second) $ SAT.Monad.literals wl
-                      let !bClauses' = filter (/= clause) bClauses
+                      let bClauses = IntMap.findWithDefault Seq.empty (varOfLiteral second) $ SAT.Monad.literals wl
+                      let bClauses' = Seq.filter (/= clause) bClauses
 
-                      let !lClauses = IntMap.findWithDefault [] (varOfLiteral l) $ SAT.Monad.literals wl
-                      let !lClauses' = newClause : lClauses
+                      let lClauses = IntMap.findWithDefault Seq.empty (varOfLiteral l) $ SAT.Monad.literals wl
+                      let lClauses' = newClause Seq.:<| lClauses
 
                       let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral second) bClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
 
@@ -293,7 +304,9 @@ unitPropagateM = loop
                       return Nothing
                     Nothing -> do
                       let l = literals !! a
-                      modify \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack s}
+                      propagationStack <- getPropagationStack
+                      when (isNothing (find (\(l', _, _) -> l' == varOfLiteral l) propagationStack)) do
+                        modify \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack}
                       return Nothing
                 (Just False, Nothing) -> do
                   let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) literals
@@ -302,26 +315,27 @@ unitPropagateM = loop
                       let newClause = clause {watched = (i, b)}
                       let l = literals !! i
 
-                      -- clauseDb <- getClauseDB
-                      -- let !clauseDB' = filter (/= clause) clauseDb
-                      -- modify \s -> s {clauseDB = newClause : clauseDB'}
-
                       wl <- getWatchedLiterals
-                      let aClauses = IntMap.findWithDefault [] (varOfLiteral first) $ SAT.Monad.literals wl
-                      let aClauses' = filter (/= clause) aClauses
+                      let aClauses = IntMap.findWithDefault Seq.empty (varOfLiteral first) $ SAT.Monad.literals wl
+                      let aClauses' = Seq.filter (/= clause) aClauses
 
-                      let bClauses = IntMap.findWithDefault [] (varOfLiteral second) $ SAT.Monad.literals wl
-                      let bClauses' = newClause : filter (/= clause) bClauses
+                      let bClauses = IntMap.findWithDefault Seq.empty (varOfLiteral second) $ SAT.Monad.literals wl
+                      let bIndex = fromJust $  Seq.findIndexL (== clause) bClauses
+                      let bClauses' = Seq.update bIndex newClause bClauses
 
-                      let lClauses = IntMap.findWithDefault [] (varOfLiteral l) $ SAT.Monad.literals wl
-                      let lClauses' = newClause : lClauses
+                      let lClauses = IntMap.findWithDefault Seq.empty (varOfLiteral l) $ SAT.Monad.literals wl
+                      let lClauses' = newClause Seq.:<| lClauses
 
                       let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral second) bClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
                       modify \s -> s {watchedLiterals = WatchedLiterals newWl}
+
                       return Nothing
                     Nothing -> do
                       let l = literals !! b
-                      modify \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack s}
+                      propagationStack <- getPropagationStack
+                      when (isNothing (find (\(l', _, _) -> l' == varOfLiteral l) propagationStack)) do
+                        modify \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack}
+
                       return Nothing
                 (Nothing, Nothing) -> do
                   return Nothing
@@ -354,7 +368,7 @@ assign m c v = IntMap.insertWith (const id) (varOfLiteral c) v m
 assignM :: Literal -> Bool -> SolverM ()
 assignM c v = do
   SolverState {assignment, trail, decisionLevel} <- get
-  let t = Stack.push (c, decisionLevel, v) trail
+  let t = (c, decisionLevel, v) : trail
   let m = assign assignment c v
   modify \s -> s {assignment = m, trail = t}
 {-# INLINEABLE assignM #-}
@@ -420,9 +434,9 @@ isUnsat (CNF clauses) = any clauseIsUnsat clauses
 clauseIsUnsat :: Clause -> Bool
 clauseIsUnsat = null . SAT.CNF.literals
 
-addDecision :: Literal -> SolverM ()
-addDecision literal = do
-  modify \s -> s {propagationStack = (abs literal, literal > 0, Nothing) : propagationStack s}
+addDecision :: Literal -> Bool ->  SolverM ()
+addDecision literal val = do
+  modify \s -> s {propagationStack = (abs literal, val, Nothing) : propagationStack s}
 
 addPropagation :: Literal -> Maybe Clause -> SolverM ()
 addPropagation literal clause = do
@@ -446,10 +460,10 @@ adjustScoresM clause = do
   modify \s -> s {vsids = adjustScores vsids clause}
 
 pickLiteralM :: SolverM Literal
-pickLiteralM = do 
-  assignment <- getAssignment
-  VSIDS vs <- getVSIDS
+pickLiteralM = pickLiteral <$> getVSIDS
+  -- assignment <- getAssignment
+  -- VSIDS vs <- getVSIDS
 
-  let vs' = IntMap.filterWithKey (\k _ -> literalValue assignment k == Nothing) vs
+  -- let vs' = IntMap.filterWithKey (\k _ -> literalValue assignment k == Nothing) vs
 
-  return $ pickLiteral (VSIDS vs')
+  -- return $ pickLiteral (VSIDS vs')

@@ -44,7 +44,7 @@ initVSIDS :: forall a.(Num a) => CNF -> VSIDS a
 initVSIDS (CNF !clauses) = foldl' updateVSIDS mempty clauses
   where
     updateVSIDS :: (Num a) => VSIDS a -> Clause -> VSIDS a
-    updateVSIDS (VSIDS m) (Clause {literals}) = VSIDS $ foldl' (\vs l -> IntMap.insertWith (+) l 1 vs) m literals
+    updateVSIDS (VSIDS m) (Clause {literals}) = VSIDS $ foldl' (\vs l -> IntMap.insertWith (+) (abs l) 1 vs) m literals
 {-# INLINEABLE initVSIDS #-}
 
 -- >>> pickVariable (IntMap.fromList [(1, 1), (2, 2), (3, 3)])

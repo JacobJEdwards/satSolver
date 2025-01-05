@@ -9,9 +9,30 @@ import Control.Monad.State.Strict (get, modify)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import SAT.CNF (Literal, varOfLiteral, type Clause (Clause, literals), type DecisionLevel)
-import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, trail))
+import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, trail, propagationStack))
 import Stack qualified
+import Data.List (partition)
 
+-- | Backtracks to a given decision level.
+-- backtrack :: DecisionLevel -> SolverM ()
+-- backtrack dl = do
+--   trail <- getTrail
+--   assignments <- getAssignment
+--   ig <- getImplicationGraph
+
+--   let popStackUntilDL :: Stack.Stack (Literal, DecisionLevel, Bool) -> IntSet.IntSet -> DecisionLevel -> (Stack.Stack (Literal, DecisionLevel, Bool), IntSet.IntSet)
+--       popStackUntilDL stack acc dl' = case Stack.pop stack of
+--         Just ((l, dl'', _), t') | dl'' <= dl' -> 
+--           (t', IntSet.insert (varOfLiteral l) acc)
+--         Just ((l, _, _), t') ->
+--           popStackUntilDL t' (IntSet.insert (varOfLiteral l) acc) dl'
+--         Nothing -> (stack, acc)
+
+--   let (trail', toRemove) = popStackUntilDL trail mempty dl
+--       assignments' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemove) assignments
+--       ig' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemove) ig
+
+--   modify \s -> s {trail = trail', assignment = assignments', implicationGraph = ig', decisionLevel = dl}
 -- | Backtracks to a given decision level.
 backtrack :: DecisionLevel -> SolverM ()
 backtrack dl = do
@@ -19,19 +40,13 @@ backtrack dl = do
   assignments <- getAssignment
   ig <- getImplicationGraph
 
-  let popStackUntilDL :: Stack.Stack (Literal, DecisionLevel, Bool) -> IntSet.IntSet -> DecisionLevel -> (Stack.Stack (Literal, DecisionLevel, Bool), IntSet.IntSet)
-      popStackUntilDL stack acc dl' = case Stack.pop stack of
-        Just ((l, dl'', _), t') | dl'' <= dl' -> 
-          (t', IntSet.insert (varOfLiteral l) acc)
-        Just ((l, _, _), t') ->
-          popStackUntilDL t' (IntSet.insert (varOfLiteral l) acc) dl'
-        Nothing -> (stack, acc)
+  let (trail', toRemove) = partition (\(_, dl', _) -> dl' < dl) trail
+      toRemoveKeys = IntSet.fromList $ fmap (\(l, _, _) -> l) toRemove
+      assignments' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemoveKeys) assignments
+      ig' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemoveKeys) ig
 
-  let (trail', toRemove) = popStackUntilDL trail mempty dl
-      assignments' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemove) assignments
-      ig' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemove) ig
+  modify \s -> s {trail = trail', assignment = assignments', implicationGraph = ig', decisionLevel = dl, propagationStack = []}
 
-  modify \s -> s {trail = trail', assignment = assignments', implicationGraph = ig', decisionLevel = dl}
 
 resolve :: [Literal] -> [Literal] -> Int -> [Literal]
 resolve a b x = IntSet.toList $ IntSet.fromList (a <> b) IntSet.\\ IntSet.fromList [x, -x]

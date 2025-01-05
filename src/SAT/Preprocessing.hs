@@ -6,7 +6,7 @@
 module SAT.Preprocessing (preprocess) where
 
 import Control.Monad.RWS.Strict (modify)
-import Data.List (sortOn, nub)
+import Data.List (sortOn)
 import qualified Data.Set as Set
 import SAT.CNF (type Clause (literals))
 import SAT.Monad (clauseDB, getClauseDB, type SolverM)
@@ -15,9 +15,6 @@ import SAT.Optimisers (unitPropagateM)
 preprocess :: SolverM (Maybe Clause)
 preprocess = do
   -- m <- getAssignment
-  clauseDB <- getClauseDB
-  let clauses = nub $ map (\c -> c {literals = nub $ literals c}) clauseDB
-  modify \s -> s {clauseDB = clauses}
   unitPropagateM >>= \case
     Just c -> return $ pure c
     Nothing -> do

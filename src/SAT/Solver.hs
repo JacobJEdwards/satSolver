@@ -65,7 +65,9 @@ import SAT.VSIDS (initVSIDS, decay)
 import SAT.WL (initClauseWatched, initWatchedLiterals)
 import Control.Monad (guard)
 import Debug.Trace (traceM, trace)
-import qualified Stack
+import Stack qualified 
+import Data.Sequence qualified as Seq
+import Data.Sequence (type Seq)
 import Data.List (foldl')
 
 -- | Initializes the solver state.
@@ -89,7 +91,7 @@ initState cnf@(CNF clauses) =
 
 initialPropagationStack :: [Clause] -> [(Literal, Bool, Maybe Reason)]
 initialPropagationStack =
-  foldl' (\acc c@(Clause {literals, watched = (a, b)}) -> if a == b then (abs $ literals !! a, literals !! a > 0, Just c) : acc else acc) []
+  foldl' (\acc c@(Clause {literals, watched = (a, b)}) -> if a == b then (abs $ literals !! a, literals !! a > 0, Just c) : acc else acc) mempty
 {-# INLINEABLE initialPropagationStack #-}
 
 learn :: [Literal] -> SolverM ()
@@ -101,7 +103,7 @@ learn literals = do
 
   if a == b
     then modify \s -> s { propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
-    else modify \s -> s {watchedLiterals = WatchedLiterals $ IntMap.insertWith (<>) (varOfLiteral $ literals !! a) [clause] $ IntMap.insertWith (<>) (varOfLiteral $ literals !! b) [clause] lits, clauseDB = clause : clauseDB s}
+    else modify \s -> s {watchedLiterals = WatchedLiterals $ IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (Seq.singleton clause) $ IntMap.insertWith (<>) (varOfLiteral $ literals !! b) (Seq.singleton clause) lits, clauseDB = clause : clauseDB s}
   where
     getInitialWatched :: [Literal] -> (Literal, Literal)
     getInitialWatched clause =
@@ -159,13 +161,15 @@ getSolutions !cnf' = do
     branch = pickLiteralM >>= try
 
     try :: Literal -> SolverM (Maybe Solutions)
-    try = tryAssign
+    -- try :: Literal -> SolverM (Maybe Solutions)
+    try c = tryAssign c True <|> tryAssign c False
+    -- try = tryAssign
 
-    tryAssign :: Literal -> SolverM (Maybe Solutions)
-    tryAssign c = do
-      traceM $ "Trying " <> show c
+    tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
+    tryAssign c val = do
+      traceM $ "Trying " <> show c <> " with " <> show val
       increaseDecisionLevel
-      addDecision c
+      addDecision c val
       propagate
 
     propagate :: SolverM (Maybe Solutions)
@@ -185,9 +189,9 @@ getSolutions !cnf' = do
           adjustScoresM clause
           learn clause
           increaseLubyCount
-          -- ifM shouldRestart restart do
-          backtrack dl
-          solver
+          ifM shouldRestart restart do
+            backtrack dl
+            solver
 
     shouldRestart :: SolverM Bool
     shouldRestart = do
@@ -237,7 +241,7 @@ allVariablesAssigned = do
   let isDone =  IntSet.null $ variables `IntSet.difference` allAssignments assignment
   traceM $ "Variables: " <> show (IntSet.size variables)
   traceM $ "Assignments: " <> show (IntSet.size $ allAssignments assignment)
-  traceM $ "Trail: " <> show (Stack.size trail)
+  traceM $ "Trail: " <> show (length trail)
   traceM $ "Done: " <> show isDone
   return isDone
   -- return $ Stack.size trail >= IntSet.size variables
