@@ -4,9 +4,8 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE ImportQualifiedPost #-}
 
-module SAT.Monad (type SolverM, getPropagationStack, type SolverState (..), type SolverLog, type Trail, type Reason, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, increaseDecisionLevel, getClauseDB) where
+module SAT.Monad (type SolverM, getPropagationStack, type SolverState (..), type SolverLog, type Trail, type Reason, type ClauseDB, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, increaseDecisionLevel, getClauseDB) where
 
 import Control.Monad (guard, type MonadPlus)
 import Control.Monad.RWS.Strict (modify, tell, type RWST)
@@ -15,12 +14,10 @@ import Control.Parallel.Strategies (type NFData)
 import Data.Bool (bool)
 import Data.IntMap.Strict (type IntMap)
 import Data.IntSet (type IntSet)
+import Data.Sequence (type Seq)
 import GHC.Generics (type Generic)
 import SAT.CNF (type Assignment, type CNF, type Clause, type DecisionLevel, type Literal)
 import SAT.VSIDS (type VSIDS)
-import Data.Sequence qualified as Seq
-import Data.Sequence (type Seq)
-import Stack (type Stack)
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]
@@ -32,11 +29,10 @@ type Reason = Clause
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
 
 -- | Watched literals (literals in clauses that are being watched).
-newtype WatchedLiterals = WatchedLiterals { literals :: IntMap (Seq Clause) }
+newtype WatchedLiterals = WatchedLiterals {literals :: IntMap IntSet}
   deriving stock (Show, Eq, Ord, Generic)
 
 deriving anyclass instance NFData WatchedLiterals
-
 
 -- | The clause database.
 type ClauseDB = Seq Clause

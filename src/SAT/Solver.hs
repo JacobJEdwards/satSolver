@@ -48,27 +48,25 @@ module SAT.Solver
 where
 
 import Control.Applicative ((<|>))
+import Control.Monad (guard)
 import Control.Monad.RWS.Strict (get, modify)
 import Control.Monad.RWS.Strict qualified as RWST
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
+import Data.List (foldl')
 import Data.Maybe (isJust, listToMaybe)
+import Data.Sequence qualified as Seq
+import Debug.Trace (traceM)
 import SAT.CDCL (analyseConflict, backtrack)
-import SAT.CNF (initAssignment, type Assignment, type CNF (CNF), type Clause (Clause, literals, watched), type Literal, literalValue, varOfLiteral)
+import SAT.CNF (initAssignment, literalValue, varOfLiteral, type Assignment, type CNF (CNF), type Clause (Clause, literals, watched), type Literal)
 import SAT.Expr (type Solutions)
-import SAT.Monad (type WatchedLiterals (WatchedLiterals), getAssignment, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), getClauseDB, Reason)
-import SAT.Optimisers (addDecision, adjustScoresM, assignM, collectLiterals, collectLiteralsToSet, decayM, pickLiteralM, unitPropagateM)
+import SAT.Monad (Reason, getAssignment, getClauseDB, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), type WatchedLiterals (WatchedLiterals))
+import SAT.Optimisers (addDecision, adjustScoresM,collectLiterals, collectLiteralsToSet, decayM, pickLiteralM, unitPropagateM)
 import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
-import SAT.VSIDS (initVSIDS, decay)
+import SAT.VSIDS (initVSIDS)
 import SAT.WL (initClauseWatched, initWatchedLiterals)
-import Control.Monad (guard)
-import Debug.Trace (traceM, trace)
-import Stack qualified 
-import Data.Sequence qualified as Seq
-import Data.Sequence (type Seq)
-import Data.List (foldl')
 
 -- | Initializes the solver state.
 initState :: CNF -> SolverState
@@ -77,17 +75,19 @@ initState cnf@(CNF clauses) =
     { assignment = initAssignment $ collectLiteralsToSet cnf,
       trail = mempty,
       implicationGraph = mempty,
-      watchedLiterals = initWatchedLiterals watchedCnf,
+      watchedLiterals = initWatchedLiterals db,
       decisionLevel = 0,
       vsids = initVSIDS cnf,
-      clauseDB = Seq.fromList watchedClauses,
+      clauseDB = db,
       variables = collectLiteralsToSet cnf,
       propagationStack = initialPropagationStack watchedClauses,
       lubyCount = 0,
       lubyThreshold = 1
     }
   where
-    !watchedCnf@(CNF !watchedClauses) = CNF $ map initClauseWatched clauses
+    !watchedClauses = map initClauseWatched clauses
+
+    !db = Seq.fromList watchedClauses
 
 initialPropagationStack :: [Clause] -> [(Literal, Bool, Maybe Reason)]
 initialPropagationStack =
@@ -100,10 +100,18 @@ learn literals = do
   let clause = Clause {literals, watched = (a, b)}
 
   WatchedLiterals lits <- getWatchedLiterals
+  clauseDB <- getClauseDB
 
   if a == b
-    then modify \s -> s { propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
-    else modify \s -> s {watchedLiterals = WatchedLiterals $ IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (Seq.singleton clause) $ IntMap.insertWith (<>) (varOfLiteral $ literals !! b) (Seq.singleton clause) lits, clauseDB = clause Seq.:<| clauseDB s}
+    then modify \s -> s {propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
+    else do 
+      let newClauseDB = clauseDB Seq.|> clause
+      let aLits = IntMap.findWithDefault mempty (varOfLiteral $ literals !! a) lits
+      let bLits = IntMap.findWithDefault mempty (varOfLiteral $ literals !! b) lits
+      let aLits' = IntSet.insert (Seq.length newClauseDB - 1) aLits
+      let bLits' = IntSet.insert (Seq.length newClauseDB - 1) bLits
+      let newWL = IntMap.insert (varOfLiteral $ literals !! a) aLits' $ IntMap.insert (varOfLiteral $ literals !! b) bLits' lits
+      modify \s -> s {clauseDB = newClauseDB, watchedLiterals = WatchedLiterals newWL}
   where
     getInitialWatched :: [Literal] -> (Literal, Literal)
     getInitialWatched clause =
@@ -238,10 +246,11 @@ allAssignments = IntMap.keysSet
 allVariablesAssigned :: SolverM Bool
 allVariablesAssigned = do
   SolverState {variables, trail, assignment} <- get
-  let isDone =  IntSet.null $ variables `IntSet.difference` allAssignments assignment
+  let isDone = IntSet.null $ variables `IntSet.difference` allAssignments assignment
   traceM $ "Variables: " <> show (IntSet.size variables)
   traceM $ "Assignments: " <> show (IntSet.size $ allAssignments assignment)
   traceM $ "Trail: " <> show (length trail)
   traceM $ "Done: " <> show isDone
   return isDone
-  -- return $ Stack.size trail >= IntSet.size variables
+
+-- return $ Stack.size trail >= IntSet.size variables

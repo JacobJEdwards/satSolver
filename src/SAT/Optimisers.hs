@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
@@ -6,7 +7,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE Strict #-}
-{-# LANGUAGE BangPatterns #-}
 
 -- |
 -- Module      : SAT.Optimisers
@@ -38,28 +38,24 @@ module SAT.Optimisers
   )
 where
 
+import Control.Monad (foldM, when)
 import Control.Monad.State.Strict (get, modify)
 import Data.IntMap.Strict (type IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Kind (type Type)
-import Data.List ( find, findIndex, elemIndex )
+import Data.List (find, findIndex)
+import Data.List qualified
+import Data.Maybe (isNothing)
+import Data.Sequence qualified as Seq
 import Data.Set (type Set)
 import Data.Set qualified as Set
-import SAT.CNF (Clause (Clause, literals, watched), literalValue, varOfLiteral, type Assignment, type CNF (CNF), type DecisionLevel, type Literal)
+import SAT.CNF (type Clause (Clause, literals, watched), literalValue, varOfLiteral, type Assignment, type CNF (CNF), type DecisionLevel, type Literal)
 import SAT.DIMACS.CNF (invert)
-import SAT.Monad (getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getVSIDS, type SolverM, type SolverState (..), getWatchedLiterals, WatchedLiterals (WatchedLiterals, literals), getPropagationStack, Reason)
+import SAT.Monad (type Reason, type WatchedLiterals (WatchedLiterals, literals), getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPropagationStack, getVSIDS, getWatchedLiterals, type SolverM, type SolverState (clauseDB, propagationStack, watchedLiterals, decisionLevel, assignment, trail, SolverState, implicationGraph, vsids))
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
-import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable, VSIDS (VSIDS))
-import Stack qualified
-import Control.Monad (foldM, when)
-import Debug.Trace (traceM)
-import Data.Maybe (isNothing, fromJust)
-import Data.List qualified
-import Data.Sequence qualified as Seq
-import Data.Sequence (type Seq)
-
+import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable)
 
 -- | Collects all literals in a CNF.
 --
@@ -90,7 +86,7 @@ literalPolarities (CNF clauses) = foldl updatePolarity mempty $ concatMap clause
     clausePolarities :: Clause -> [(Int, Polarity)]
     clausePolarities (Clause {SAT.CNF.literals}) = [(varOfLiteral lit, literalPolarity lit) | lit <- literals]
 
-    -- | Finds the polarity of a literal.
+    -- \| Finds the polarity of a literal.
     --
     -- >>> literalPolarity 1
     -- Positive
@@ -107,7 +103,7 @@ literalPolarities (CNF clauses) = foldl updatePolarity mempty $ concatMap clause
       | p > 0 = Positive
       | otherwise = Mixed
 
-    -- | Updates the polarities.
+    -- \| Updates the polarities.
     -- >>> updatePolarity (IntMap.fromList [(1, Positive)]) (2, Mixed)
     -- fromList [(1,Positive),(2,Mixed)]
     updatePolarity :: IntMap Polarity -> (Int, Polarity) -> IntMap Polarity
@@ -230,9 +226,6 @@ getClauseStatus clause = do
     Just (Clause {SAT.CNF.literals = [l]}) -> return $ Unit l
     Just _ -> return Unresolved
 
-removeAt :: Int -> [a] -> [a]
-removeAt i xs = let (ys, zs) = Data.List.splitAt i xs in ys ++ tail zs
-
 unitPropagateM :: SolverM (Maybe Clause)
 unitPropagateM = loop
   where
@@ -251,17 +244,21 @@ unitPropagateM = loop
           addPropagation (varOfLiteral l) r
           modify \s -> s {propagationStack = ls}
           wl <- getWatchedLiterals
-          let clauses = IntMap.findWithDefault Seq.empty (varOfLiteral l) $ SAT.Monad.literals wl
-          conflict <- foldM processClause Nothing clauses
+          let clauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
+          let !lst = IntSet.toList clauses
+          conflict <- foldM processClause Nothing lst
           case conflict of
             Just _ -> return conflict
             Nothing -> loop
 
-        processClause :: Maybe Clause -> Clause -> SolverM (Maybe Clause) -- (newWatch, maybe conflict clause)
-        processClause conflict clause@(Clause {watched=(a, b), SAT.CNF.literals}) = do
+        processClause :: Maybe Clause -> Int -> SolverM (Maybe Clause) -- (newWatch, maybe conflict clause)
+        processClause conflict index = do
           case conflict of
             Just _ -> return conflict
             Nothing -> do
+              clauses <- getClauseDB
+              let !clause@(Clause {SAT.CNF.literals, watched = (a, b)}) = clauses `Seq.index` index
+
               assignment <- getAssignment
               let first = literals !! a
               let second = literals !! b
@@ -273,10 +270,7 @@ unitPropagateM = loop
                 (Just True, _) -> return Nothing
                 (_, Just True) -> return Nothing
                 (Just False, Just False) -> do
-                  traceM $ show clause
-                  traceM $ show $ all (\l -> literalValue assignment l == Just False) literals
-
-                  return $ Just clause -- UNSAT
+                  return $ Just clause
                 (Nothing, Just False) -> do
                   let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) literals
 
@@ -287,19 +281,17 @@ unitPropagateM = loop
 
                       wl <- getWatchedLiterals
 
-                      let aClauses = IntMap.findWithDefault Seq.empty (varOfLiteral first) $ SAT.Monad.literals wl
-                      let aIndex = fromJust $ Seq.findIndexL (== clause) aClauses
-                      let aClauses' = Seq.update aIndex newClause aClauses
+                      let newClauseDb = Seq.update index newClause clauses
 
-                      let bClauses = IntMap.findWithDefault Seq.empty (varOfLiteral second) $ SAT.Monad.literals wl
-                      let bClauses' = Seq.filter (/= clause) bClauses
+                      let bClauses = IntMap.findWithDefault mempty (varOfLiteral second) $ SAT.Monad.literals wl
+                      let bClauses' = IntSet.delete index bClauses
 
-                      let lClauses = IntMap.findWithDefault Seq.empty (varOfLiteral l) $ SAT.Monad.literals wl
-                      let lClauses' = newClause Seq.:<| lClauses
+                      let lClauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
+                      let lClauses' = IntSet.insert index lClauses
 
-                      let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral second) bClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
+                      let newWl = IntMap.insert (varOfLiteral second) bClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
 
-                      modify \s -> s {watchedLiterals = WatchedLiterals newWl}
+                      modify \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
 
                       return Nothing
                     Nothing -> do
@@ -316,18 +308,16 @@ unitPropagateM = loop
                       let l = literals !! i
 
                       wl <- getWatchedLiterals
-                      let aClauses = IntMap.findWithDefault Seq.empty (varOfLiteral first) $ SAT.Monad.literals wl
-                      let aClauses' = Seq.filter (/= clause) aClauses
+                      let aClauses = IntMap.findWithDefault mempty (varOfLiteral first) $ SAT.Monad.literals wl
+                      let aClauses' = IntSet.delete index aClauses
 
-                      let bClauses = IntMap.findWithDefault Seq.empty (varOfLiteral second) $ SAT.Monad.literals wl
-                      let bIndex = fromJust $  Seq.findIndexL (== clause) bClauses
-                      let bClauses' = Seq.update bIndex newClause bClauses
+                      let newClauseDb = Seq.update index newClause clauses
 
-                      let lClauses = IntMap.findWithDefault Seq.empty (varOfLiteral l) $ SAT.Monad.literals wl
-                      let lClauses' = newClause Seq.:<| lClauses
+                      let lClauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
+                      let lClauses' = IntSet.insert index lClauses
 
-                      let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral second) bClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
-                      modify \s -> s {watchedLiterals = WatchedLiterals newWl}
+                      let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
+                      modify \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
 
                       return Nothing
                     Nothing -> do
@@ -339,7 +329,6 @@ unitPropagateM = loop
                       return Nothing
                 (Nothing, Nothing) -> do
                   return Nothing
-
 
 -- https://buffered.io/posts/a-better-nub/
 
@@ -374,8 +363,6 @@ assignM c v = do
 {-# INLINEABLE assignM #-}
 
 -- | Applies a partial assignment to a CNF.
---
-
 pickVariableM :: SolverM (Maybe Literal)
 pickVariableM = do
   vs <- getVSIDS
@@ -434,7 +421,7 @@ isUnsat (CNF clauses) = any clauseIsUnsat clauses
 clauseIsUnsat :: Clause -> Bool
 clauseIsUnsat = null . SAT.CNF.literals
 
-addDecision :: Literal -> Bool ->  SolverM ()
+addDecision :: Literal -> Bool -> SolverM ()
 addDecision literal val = do
   modify \s -> s {propagationStack = (abs literal, val, Nothing) : propagationStack s}
 
@@ -461,9 +448,10 @@ adjustScoresM clause = do
 
 pickLiteralM :: SolverM Literal
 pickLiteralM = pickLiteral <$> getVSIDS
-  -- assignment <- getAssignment
-  -- VSIDS vs <- getVSIDS
 
-  -- let vs' = IntMap.filterWithKey (\k _ -> literalValue assignment k == Nothing) vs
+-- assignment <- getAssignment
+-- VSIDS vs <- getVSIDS
 
-  -- return $ pickLiteral (VSIDS vs')
+-- let vs' = IntMap.filterWithKey (\k _ -> literalValue assignment k == Nothing) vs
+
+-- return $ pickLiteral (VSIDS vs')

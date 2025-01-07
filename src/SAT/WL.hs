@@ -1,8 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ExplicitNamespaces #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module SAT.WL
   ( initWatchedLiterals,
@@ -12,28 +12,31 @@ where
 
 import Data.Foldable (foldl')
 import Data.IntMap.Strict qualified as IntMap
-import SAT.CNF (type CNF (CNF), type Clause(Clause, watched, literals), type Literal, varOfLiteral)
-import SAT.Monad (type WatchedLiterals (WatchedLiterals))
 import Data.List (nub)
 import Data.Sequence (type Seq)
 import Data.Sequence qualified as Seq
+import SAT.CNF (varOfLiteral, type Clause (Clause, literals, watched), type Literal)
+import SAT.Monad (type WatchedLiterals (WatchedLiterals), type ClauseDB)
+import Data.IntSet (type IntSet)
+import Data.IntSet qualified as IntSet
 
-initWatchedLiterals :: CNF -> WatchedLiterals
-initWatchedLiterals (CNF !cs) = WatchedLiterals litMap
+initWatchedLiterals :: ClauseDB -> WatchedLiterals
+initWatchedLiterals clauseDB = WatchedLiterals litMap
   where
-    accumulate :: IntMap.IntMap (Seq Clause) -> Clause -> IntMap.IntMap (Seq Clause)
-    accumulate acc clause@(Clause {watched = (a, b), literals}) =
+    accumulate :: (Int, IntMap.IntMap IntSet) -> Clause -> (Int, IntMap.IntMap IntSet)
+    accumulate (cnt, !acc) (Clause {watched = (a, b), literals}) =
       if a == b
-        then IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (Seq.singleton clause) acc
+        then 
+          (cnt + 1, IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (IntSet.singleton cnt) acc)
         else
-          IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (Seq.singleton clause) $
-            IntMap.insertWith (<>) (varOfLiteral $ literals !! b) (Seq.singleton clause) acc
+          (cnt + 1, IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (IntSet.singleton cnt) $
+            IntMap.insertWith (<>) (varOfLiteral $ literals !! b) (IntSet.singleton cnt) acc)
 
-    litMap :: IntMap.IntMap (Seq Clause)
-    litMap = foldl' accumulate IntMap.empty cs
+    litMap :: IntMap.IntMap IntSet
+    litMap = snd $ foldl' accumulate (0, mempty) clauseDB
 
 initClauseWatched :: Clause -> Clause
-initClauseWatched (Clause {literals}) = Clause {literals=literals', watched = (a, b)}
+initClauseWatched (Clause {literals}) = Clause {literals = literals', watched = (a, b)}
   where
     literals' = nub literals
 
@@ -42,7 +45,7 @@ initClauseWatched (Clause {literals}) = Clause {literals=literals', watched = (a
     (a, b) = findInitialWatched literals'
 
     findInitialWatched :: [Literal] -> (Int, Int)
-    findInitialWatched lits 
-                        | length lits == 1 = (0, 0)
-                        | length lits > 1 = (0, 1)
-                        | otherwise = error "Empty clause"
+    findInitialWatched lits
+      | length lits == 1 = (0, 0)
+      | length lits > 1 = (0, 1)
+      | otherwise = error "Empty clause"

@@ -8,10 +8,9 @@ module SAT.CDCL (backtrack, analyseConflict) where
 import Control.Monad.State.Strict (get, modify)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
-import SAT.CNF (Literal, varOfLiteral, type Clause (Clause, literals), type DecisionLevel)
-import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, trail, propagationStack))
-import Stack qualified
 import Data.List (partition)
+import SAT.CNF (Literal, varOfLiteral, type Clause (Clause, literals), type DecisionLevel)
+import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, propagationStack, trail))
 
 -- | Backtracks to a given decision level.
 -- backtrack :: DecisionLevel -> SolverM ()
@@ -22,7 +21,7 @@ import Data.List (partition)
 
 --   let popStackUntilDL :: Stack.Stack (Literal, DecisionLevel, Bool) -> IntSet.IntSet -> DecisionLevel -> (Stack.Stack (Literal, DecisionLevel, Bool), IntSet.IntSet)
 --       popStackUntilDL stack acc dl' = case Stack.pop stack of
---         Just ((l, dl'', _), t') | dl'' <= dl' -> 
+--         Just ((l, dl'', _), t') | dl'' <= dl' ->
 --           (t', IntSet.insert (varOfLiteral l) acc)
 --         Just ((l, _, _), t') ->
 --           popStackUntilDL t' (IntSet.insert (varOfLiteral l) acc) dl'
@@ -33,6 +32,7 @@ import Data.List (partition)
 --       ig' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemove) ig
 
 --   modify \s -> s {trail = trail', assignment = assignments', implicationGraph = ig', decisionLevel = dl}
+
 -- | Backtracks to a given decision level.
 backtrack :: DecisionLevel -> SolverM ()
 backtrack dl = do
@@ -46,7 +46,6 @@ backtrack dl = do
       ig' = IntMap.filterWithKey (\k _ -> k `IntSet.notMember` toRemoveKeys) ig
 
   modify \s -> s {trail = trail', assignment = assignments', implicationGraph = ig', decisionLevel = dl, propagationStack = []}
-
 
 resolve :: [Literal] -> [Literal] -> Int -> [Literal]
 resolve a b x = IntSet.toList $ IntSet.fromList (a <> b) IntSet.\\ IntSet.fromList [x, -x]

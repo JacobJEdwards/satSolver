@@ -77,7 +77,7 @@ instance Problem Nonogram where
   {-# INLINEABLE parse #-}
 
   example :: Nonogram
-  example = Nonogram.fiveByFive
+  example = Nonogram.fiveByFive2
   {-# INLINEABLE example #-}
 
 -- | DIMACS problem.

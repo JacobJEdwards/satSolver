@@ -1,23 +1,23 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE Strict #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE Strict #-}
 
 -- |
 -- Module      : SAT.VSIDS
 -- Description : Exports the VSIDS module.
-module SAT.VSIDS (type VSIDS(VSIDS), initVSIDS, decay, adjustScore, updateScore, decayFactor, adjustScores, pickLiteral, pickVariable) where
+module SAT.VSIDS (type VSIDS (VSIDS), initVSIDS, decay, adjustScore, updateScore, decayFactor, adjustScores, pickLiteral, pickVariable) where
 
+import Control.Parallel.Strategies (NFData)
 import Data.IntMap.Strict (type IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (foldl')
 import SAT.CNF (varOfLiteral, type CNF (CNF), type Clause (Clause, literals), type Literal)
-import Control.Parallel.Strategies (NFData)
 
 -- | The VSIDS type.
 newtype (Num a) => VSIDS a = VSIDS (IntMap a) deriving newtype (Show, Eq, Ord, Semigroup, Monoid, NFData, Functor, Foldable)
@@ -40,7 +40,7 @@ decay = fmap (* decayFactor)
 --
 -- >>> initVSIDS (CNF [[1, 2], [2, 3], [3, 4]])
 -- fromList [(1,1.0),(2,2.0),(3,2.0),(4,1.0)]
-initVSIDS :: forall a.(Num a) => CNF -> VSIDS a
+initVSIDS :: forall a. (Num a) => CNF -> VSIDS a
 initVSIDS (CNF !clauses) = foldl' updateVSIDS mempty clauses
   where
     updateVSIDS :: (Num a) => VSIDS a -> Clause -> VSIDS a
@@ -60,7 +60,7 @@ pickVariable (VSIDS !vs) = do
 -- >>> adjustScore 1 (IntMap.fromList [(1, 1), (2, 2), (3, 3)])
 -- fromList [(1,2.0),(2,2.0),(3,3.0)]
 adjustScore :: (Num a) => Literal -> VSIDS a -> VSIDS a
-adjustScore !l (VSIDS !v)= VSIDS $ IntMap.insertWith (+) (varOfLiteral l) 1 v
+adjustScore !l (VSIDS !v) = VSIDS $ IntMap.insertWith (+) (varOfLiteral l) 1 v
 {-# INLINEABLE adjustScore #-}
 
 -- | Updates the score of a variable.
@@ -68,7 +68,7 @@ adjustScore !l (VSIDS !v)= VSIDS $ IntMap.insertWith (+) (varOfLiteral l) 1 v
 -- >>> updateScore 1 2 (IntMap.fromList [(1, 1), (2, 2), (3, 3)])
 -- fromList [(1,2.0),(2,2.0),(3,3.0)]
 updateScore :: (Num a) => Literal -> a -> VSIDS a -> VSIDS a
-updateScore !l !d (VSIDS !v)= VSIDS $ IntMap.insert (varOfLiteral l) d v
+updateScore !l !d (VSIDS !v) = VSIDS $ IntMap.insert (varOfLiteral l) d v
 {-# INLINEABLE updateScore #-}
 
 adjustScores :: (Num a) => VSIDS a -> [Literal] -> VSIDS a
@@ -76,5 +76,5 @@ adjustScores = foldl' (flip adjustScore)
 {-# INLINEABLE adjustScores #-}
 
 pickLiteral :: (Num a) => VSIDS a -> Literal
-pickLiteral (VSIDS !v)= fst . IntMap.findMax $ v
+pickLiteral (VSIDS !v) = fst . IntMap.findMax $ v
 {-# INLINEABLE pickLiteral #-}

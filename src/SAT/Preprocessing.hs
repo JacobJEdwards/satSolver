@@ -1,19 +1,18 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE Strict #-}
-{-# LANGUAGE ImportQualifiedPost #-}
 
 module SAT.Preprocessing (preprocess) where
 
 import Control.Monad.RWS.Strict (modify)
-import Data.List (sortOn)
+import Data.Sequence (type Seq)
+import Data.Sequence qualified as Seq
 import Data.Set qualified as Set
 import SAT.CNF (type Clause (literals))
 import SAT.Monad (clauseDB, getClauseDB, type SolverM)
 import SAT.Optimisers (unitPropagateM)
-import Data.Sequence qualified as Seq
-import Data.Sequence (type Seq)
 
 preprocess :: SolverM (Maybe Clause)
 preprocess = do
