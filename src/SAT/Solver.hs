@@ -80,7 +80,7 @@ initState cnf@(CNF clauses) =
       watchedLiterals = initWatchedLiterals watchedCnf,
       decisionLevel = 0,
       vsids = initVSIDS cnf,
-      clauseDB = watchedClauses,
+      clauseDB = Seq.fromList watchedClauses,
       variables = collectLiteralsToSet cnf,
       propagationStack = initialPropagationStack watchedClauses,
       lubyCount = 0,
@@ -103,7 +103,7 @@ learn literals = do
 
   if a == b
     then modify \s -> s { propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
-    else modify \s -> s {watchedLiterals = WatchedLiterals $ IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (Seq.singleton clause) $ IntMap.insertWith (<>) (varOfLiteral $ literals !! b) (Seq.singleton clause) lits, clauseDB = clause : clauseDB s}
+    else modify \s -> s {watchedLiterals = WatchedLiterals $ IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (Seq.singleton clause) $ IntMap.insertWith (<>) (varOfLiteral $ literals !! b) (Seq.singleton clause) lits, clauseDB = clause Seq.:<| clauseDB s}
   where
     getInitialWatched :: [Literal] -> (Literal, Literal)
     getInitialWatched clause =

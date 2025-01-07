@@ -2,15 +2,18 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE Strict #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 module SAT.Preprocessing (preprocess) where
 
 import Control.Monad.RWS.Strict (modify)
 import Data.List (sortOn)
-import qualified Data.Set as Set
+import Data.Set qualified as Set
 import SAT.CNF (type Clause (literals))
 import SAT.Monad (clauseDB, getClauseDB, type SolverM)
 import SAT.Optimisers (unitPropagateM)
+import Data.Sequence qualified as Seq
+import Data.Sequence (type Seq)
 
 preprocess :: SolverM (Maybe Clause)
 preprocess = do
@@ -33,14 +36,14 @@ preprocess = do
 subsumption :: SolverM ()
 subsumption = do
   clauses <- getClauseDB
-  let sortedClauses = sortOn (length . literals) clauses
+  let sortedClauses = Seq.sortOn (length . literals) clauses
       subsumed = filterNonSubsumed sortedClauses
   modify \s -> s {clauseDB = subsumed}
   where
-    filterNonSubsumed :: [Clause] -> [Clause]
-    filterNonSubsumed [] = []
-    filterNonSubsumed (c : cs) =
-      c : filterNonSubsumed (filter (not . isSubsumed c) cs)
+    filterNonSubsumed :: Seq Clause -> Seq Clause
+    filterNonSubsumed Seq.Empty = Seq.empty
+    filterNonSubsumed (c Seq.:<| cs) =
+      c Seq.:<| filterNonSubsumed (Seq.filter (not . isSubsumed c) cs)
 
     isSubsumed :: Clause -> Clause -> Bool
     isSubsumed c1 c2 =

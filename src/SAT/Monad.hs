@@ -39,7 +39,7 @@ deriving anyclass instance NFData WatchedLiterals
 
 
 -- | The clause database.
-type ClauseDB = [Clause]
+type ClauseDB = Seq Clause
 
 -- | The solver state.
 -- Contains information for solving and any optimisations.
