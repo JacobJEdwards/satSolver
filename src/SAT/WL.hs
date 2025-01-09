@@ -19,6 +19,7 @@ import SAT.CNF (varOfLiteral, type Clause (Clause, literals, watched), type Lite
 import SAT.Monad (type WatchedLiterals (WatchedLiterals), type ClauseDB)
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
+import Utils (unstableIntNub)
 
 initWatchedLiterals :: ClauseDB -> WatchedLiterals
 initWatchedLiterals clauseDB = WatchedLiterals litMap
@@ -38,7 +39,7 @@ initWatchedLiterals clauseDB = WatchedLiterals litMap
 initClauseWatched :: Clause -> Clause
 initClauseWatched (Clause {literals}) = Clause {literals = literals', watched = (a, b)}
   where
-    literals' = nub literals
+    literals' = unstableIntNub literals
 
     a :: Int
     b :: Int

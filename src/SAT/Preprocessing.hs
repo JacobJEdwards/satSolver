@@ -9,7 +9,7 @@ module SAT.Preprocessing (preprocess) where
 import Control.Monad.RWS.Strict (modify)
 import Data.Sequence (type Seq)
 import Data.Sequence qualified as Seq
-import Data.Set qualified as Set
+import Data.IntSet qualified as IntSet
 import SAT.CNF (type Clause (literals))
 import SAT.Monad (clauseDB, getClauseDB, type SolverM)
 import SAT.Optimisers (unitPropagateM)
@@ -46,6 +46,6 @@ subsumption = do
 
     isSubsumed :: Clause -> Clause -> Bool
     isSubsumed c1 c2 =
-      all (`Set.member` c2Set) $ literals c1
+      all (`IntSet.member` c2Set) $ literals c1
       where
-        c2Set = Set.fromList $ literals c2
+        c2Set = IntSet.fromList $ literals c2

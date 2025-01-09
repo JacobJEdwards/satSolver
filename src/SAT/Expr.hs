@@ -29,7 +29,7 @@ module SAT.Expr
   )
 where
 
-import Control.Parallel.Strategies (NFData)
+import Control.Parallel.Strategies (type NFData)
 import Data.Data (type Data)
 import Data.IntSet (type IntSet)
 import Data.Kind (type Type)

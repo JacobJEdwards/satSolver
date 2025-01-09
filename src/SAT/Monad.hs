@@ -29,7 +29,7 @@ type Reason = Clause
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
 
 -- | Watched literals (literals in clauses that are being watched).
-newtype WatchedLiterals = WatchedLiterals {literals :: IntMap IntSet}
+newtype WatchedLiterals = WatchedLiterals {literals :: IntMap IntSet} -- map of lits to index of wathced clause
   deriving stock (Show, Eq, Ord, Generic)
 
 deriving anyclass instance NFData WatchedLiterals

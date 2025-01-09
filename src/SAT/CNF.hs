@@ -6,6 +6,9 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 -- |
 -- Module      : SAT.CNF
@@ -17,10 +20,15 @@ import Data.IntMap.Strict ((!?), type IntMap)
 import Data.IntSet (type IntSet)
 import GHC.Generics (type Generic)
 import SAT.Expr (type Expr (And, Implies, NAnd, NOr, Not, Or, Val, Var, XNor, XOr))
+import Data.Hashable (type Hashable (hashWithSalt))
+import Data.Vector (type Vector)
+import Data.Vector qualified as Vector
+
 
 type DecisionLevel = Int
 
 type Assignment = IntMap Bool
+-- type Assignment = Vector Bool
 
 initAssignment :: IntSet -> Assignment
 initAssignment = mempty
@@ -48,6 +56,10 @@ data Clause = Clause
 -- type Clause = [Literal]
 
 deriving anyclass instance NFData Clause
+
+instance Hashable Clause where 
+  hashWithSalt :: Int -> Clause -> Int
+  hashWithSalt salt (Clause{literals}) = hashWithSalt salt literals
 
 -- | The literal type.
 type Literal = Int

@@ -7,17 +7,19 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE Strict #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- |
 -- Module      : SAT.VSIDS
 -- Description : Exports the VSIDS module.
 module SAT.VSIDS (type VSIDS (VSIDS), initVSIDS, decay, adjustScore, updateScore, decayFactor, adjustScores, pickLiteral, pickVariable) where
 
-import Control.Parallel.Strategies (NFData)
+import Control.Parallel.Strategies (type NFData)
 import Data.IntMap.Strict (type IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (foldl')
 import SAT.CNF (varOfLiteral, type CNF (CNF), type Clause (Clause, literals), type Literal)
+import GHC.Generics (type Generic)
 
 -- | The VSIDS type.
 newtype (Num a) => VSIDS a = VSIDS (IntMap a) deriving newtype (Show, Eq, Ord, Semigroup, Monoid, NFData, Functor, Foldable)

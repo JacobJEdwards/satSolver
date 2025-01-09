@@ -67,6 +67,7 @@ import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
 import SAT.VSIDS (initVSIDS)
 import SAT.WL (initClauseWatched, initWatchedLiterals)
+import Utils (unstableHashNub)
 
 -- | Initializes the solver state.
 initState :: CNF -> SolverState
@@ -85,7 +86,7 @@ initState cnf@(CNF clauses) =
       lubyThreshold = 1
     }
   where
-    !watchedClauses = map initClauseWatched clauses
+    !watchedClauses = unstableHashNub $ map initClauseWatched clauses
 
     !db = Seq.fromList watchedClauses
 
@@ -154,6 +155,7 @@ getSolutions !cnf' = do
       guard $ not $ null clauseDb
       guard $ not $ any (null . literals) clauseDb
 
+      traceM "Running"
       preprocess >>= \case
         Just _ -> do
           return Nothing -- failure from the start
@@ -175,7 +177,6 @@ getSolutions !cnf' = do
 
     tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
     tryAssign c val = do
-      traceM $ "Trying " <> show c <> " with " <> show val
       increaseDecisionLevel
       addDecision c val
       propagate
@@ -246,11 +247,6 @@ allAssignments = IntMap.keysSet
 allVariablesAssigned :: SolverM Bool
 allVariablesAssigned = do
   SolverState {variables, trail, assignment} <- get
-  let isDone = IntSet.null $ variables `IntSet.difference` allAssignments assignment
-  traceM $ "Variables: " <> show (IntSet.size variables)
-  traceM $ "Assignments: " <> show (IntSet.size $ allAssignments assignment)
-  traceM $ "Trail: " <> show (length trail)
-  traceM $ "Done: " <> show isDone
-  return isDone
+  return $ IntSet.null $ variables `IntSet.difference` allAssignments assignment
 
 -- return $ Stack.size trail >= IntSet.size variables

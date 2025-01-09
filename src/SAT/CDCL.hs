@@ -9,8 +9,9 @@ import Control.Monad.State.Strict (get, modify)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.List (partition)
-import SAT.CNF (Literal, varOfLiteral, type Clause (Clause, literals), type DecisionLevel)
+import SAT.CNF (type Literal, varOfLiteral, type Clause (Clause, literals), type DecisionLevel)
 import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, propagationStack, trail))
+import Utils (unstableIntNub)
 
 -- | Backtracks to a given decision level.
 -- backtrack :: DecisionLevel -> SolverM ()
@@ -87,7 +88,7 @@ analyseConflict (Clause {literals = conflict}) = do
       (conflict', _) <- loop literals
 
       let decisionLevels =
-            -- uniqueOnly $
+            unstableIntNub $ 
             map
               ( \l -> maybe (-1) (\(_, _, dl) -> dl) $ IntMap.lookup (varOfLiteral l) implicationGraph
               )
