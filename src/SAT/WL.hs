@@ -12,6 +12,7 @@ where
 
 import Data.Foldable (foldl')
 import Data.IntMap.Strict qualified as IntMap
+import Data.IntMap.Strict (type IntMap)
 import Data.List (nub)
 import Data.Sequence (type Seq)
 import Data.Sequence qualified as Seq
@@ -20,15 +21,20 @@ import SAT.Monad (type WatchedLiterals (WatchedLiterals), type ClauseDB)
 import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Utils (unstableIntNub)
+import Data.HashMap.Strict (type HashMap)
+import Data.HashSet (type HashSet)
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 
 initWatchedLiterals :: ClauseDB -> WatchedLiterals
 initWatchedLiterals clauseDB = WatchedLiterals litMap
   where
-    accumulate :: (Int, IntMap.IntMap IntSet) -> Clause -> (Int, IntMap.IntMap IntSet)
+    accumulate :: (Int, IntMap IntSet) -> Clause -> (Int, IntMap IntSet)
     accumulate (cnt, !acc) (Clause {watched = (a, b), literals}) =
       if a == b
         then 
           (cnt + 1, IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (IntSet.singleton cnt) acc)
+          -- (cnt + 1, acc)
         else
           (cnt + 1, IntMap.insertWith (<>) (varOfLiteral $ literals !! a) (IntSet.singleton cnt) $
             IntMap.insertWith (<>) (varOfLiteral $ literals !! b) (IntSet.singleton cnt) acc)
@@ -39,7 +45,7 @@ initWatchedLiterals clauseDB = WatchedLiterals litMap
 initClauseWatched :: Clause -> Clause
 initClauseWatched (Clause {literals}) = Clause {literals = literals', watched = (a, b)}
   where
-    literals' = unstableIntNub literals
+    literals' = literals --unstableIntNub literals
 
     a :: Int
     b :: Int

@@ -9,6 +9,7 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE BangPatterns #-}
 
 -- |
 -- Module      : Nonogram.Solver
@@ -34,8 +35,10 @@ where
 import Control.Parallel.Strategies (type NFData)
 import Data.Kind (type Type)
 import GHC.Generics (type Generic)
-import SAT (ands, applyLaws, checkValue, ors, toVar, type Expr, type Solutions)
+import SAT (ands, applyLaws, checkValue, ors, toVar, type Expr, type Solutions, fromDNF)
 import SAT.DIMACS qualified as DIMACS
+import Utils (intNub)
+import Debug.Trace (trace)
 
 imap :: (Int -> a -> b) -> [a] -> [b]
 imap = flip zipWith [0 ..]
@@ -114,9 +117,9 @@ type Mask = [Int]
 -- | Represents a nonogram.
 type Nonogram :: Type
 data Nonogram = Nonogram
-  { rows :: [Constraint],
-    cols :: [Constraint],
-    solution :: [[Cell]]
+  { rows :: ![Constraint],
+    cols :: ![Constraint],
+    solution :: ![[Cell]]
   }
   deriving stock (Eq, Generic)
 
@@ -133,9 +136,9 @@ instance Show Nonogram where
 -- | Represents a variable in a nonogram.
 type Variable :: Type
 data Variable = Variable
-  { row :: Int,
-    col :: Int,
-    filled :: Cell
+  { row :: !Int,
+    col :: !Int,
+    filled :: !Cell
   }
   deriving stock (Eq, Show, Generic)
 
@@ -178,19 +181,19 @@ decodeSolution puzzle@(Nonogram rows' cols' _) solution' = Nonogram rows' cols' 
 -- >>> toDIMACS exampleNonogram
 -- DIMACS {numVars = 20, numClauses = 0, clauses = ..., comments = ["Nonogram"]}
 toDIMACS :: Nonogram -> DIMACS.DIMACS
-toDIMACS puzzle =
+toDIMACS !puzzle =
   DIMACS.DIMACS
     { DIMACS.numVars = fromIntegral $ rowSize * colSize * 2,
       DIMACS.numClauses = fromIntegral $ length clauses,
-      DIMACS.clauses = clauses,
+      DIMACS.clauses = trace (show clauses) $ clauses,
       DIMACS.comments = ["Nonogram"]
     }
   where
     clauses :: [DIMACS.Clause]
     clauses = concat [rowClauses, colClauses, cellClauses, cellUniqueClauses] -- ++ solutionClauses
+
     cellClauses :: [DIMACS.Clause]
-    cellClauses =
-      [[encodeVar' (Variable r c Filled), encodeVar' (Variable r c Unfilled)] | r <- [1 .. rowSize], c <- [1 .. colSize]]
+    cellClauses = [[encodeVar' (Variable r c Filled), encodeVar' (Variable r c Unfilled)] | r <- [1 .. rowSize], c <- [1 .. colSize]]
 
     cellUniqueClauses :: [DIMACS.Clause]
     cellUniqueClauses = [[-encodeVar' (Variable r c Filled), -encodeVar' (Variable r c Unfilled)] | r <- [1 .. rowSize], c <- [1 .. colSize]]
@@ -231,11 +234,9 @@ encodeRowConstraints encodeVar' size rows' = concat $ imap encodeRow rows'
     encodeRow = generatePossibleSolutions size . encodeCell
 
     encodeCell :: Int -> Mask -> Int -> DIMACS.Literal
-    encodeCell rowIndex mask colIndex =
-      let cell = mask !! colIndex
-          row' = rowIndex
-          col' = colIndex
-       in encodeVar' $ Variable (row' + 1) (col' + 1) $ if cell >= 1 then Filled else Unfilled
+    encodeCell !rowIndex !mask !colIndex =
+      let !cell = mask !! colIndex
+      in encodeVar' $ Variable (rowIndex + 1) (colIndex + 1) $ if cell >= 1 then Filled else Unfilled
 
 -- issue here was i was finding the index with equality, whereas i had to pass it in as i needed referential in case two
 -- cells had the same value
@@ -251,11 +252,9 @@ encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
     encodeCol = generatePossibleSolutions size . encodeCell
 
     encodeCell :: Int -> Mask -> Int -> DIMACS.Literal
-    encodeCell colIndex mask rowIndex =
-      let cell = mask !! rowIndex -- potentially gives incorrect results
-          row' = rowIndex
-          col' = colIndex
-       in encodeVar' $ Variable (row' + 1) (col' + 1) $ if cell >= 1 then Filled else Unfilled
+    encodeCell !colIndex !mask !rowIndex =
+      let !cell = mask !! rowIndex -- potentially gives incorrect results
+      in encodeVar' $ Variable (rowIndex + 1) (colIndex + 1) $ if cell >= 1 then Filled else Unfilled
 
 -- columns had the same number of filled cells
 ---- https://www.kbyte.io/projects/201908_nonogram/
@@ -265,31 +264,22 @@ encodeColConstraints encodeVar' size cols' = concat $ imap encodeCol cols'
 -- >>> generatePossibleSolutions (encodeCell 0) 5 [1, 1]
 -- [[2, 4], [2, 5], [3, 5], [6, 8], [6, 9], [7, 9]]
 generatePossibleSolutions :: Size -> (Mask -> Int -> DIMACS.Literal) -> Constraint -> [DIMACS.Clause]
-generatePossibleSolutions size encodeCell combinations =
-  --- returns a list of AND clauses that need to be ORed together
-  let generate :: Constraint -> Int -> Int -> Mask -> [[DIMACS.Literal]]
-      generate [] _ _ mask = [fmap (encodeCell mask) [0 .. length mask - 1]]
-      generate _ _ limit mask | limit >= length mask = []
-      generate (c : cs) mark limit mask =
-        concat
-          [ generate cs (mark + 1) (startPosition + c + 1) (fillMask mask mark startPosition c)
-            | startPosition <- [limit .. (length mask - 1)],
-              let newMask = fillMask mask mark startPosition c,
-              length newMask == length mask
-          ]
+generatePossibleSolutions !size !encodeCell !combinations = do
+  fromDNF $ map intNub $ generate combinations 1 0 $ replicate size 0 
+  where 
+    generate :: Constraint -> Int -> Int -> Mask -> [[DIMACS.Literal]]
+    generate [] _ _ !mask = [fmap (encodeCell mask) [0 .. length mask - 1]]
+    generate _ _ !limit !mask | limit >= length mask = []
+    generate (c : !cs) !mark !limit !mask =
+      concat
+        [ generate cs (mark + 1) (startPosition + c + 1) (fillMask mask mark startPosition c)
+          | startPosition <- [limit .. (length mask - 1)],
+            let newMask = fillMask mask mark startPosition c,
+            length newMask == length mask
+        ]
 
-      fillMask :: Mask -> Int -> Int -> Int -> Mask
-      fillMask mask mark startPosition c = take startPosition mask <> replicate c mark <> drop (startPosition + c) mask
-   in toCNF $ generate combinations 1 0 $ replicate size 0
-  where
-    convertToOrExpr :: [[DIMACS.Literal]] -> Expr DIMACS.Literal
-    convertToOrExpr = ors . fmap convertToAndExpr
-
-    convertToAndExpr :: [DIMACS.Literal] -> Expr DIMACS.Literal
-    convertToAndExpr = ands . fmap toVar
-
-    toCNF :: [[DIMACS.Literal]] -> [DIMACS.Clause]
-    toCNF = DIMACS.clauses . DIMACS.fromExpr . applyLaws . convertToOrExpr
+    fillMask :: Mask -> Int -> Int -> Int -> Mask
+    fillMask !mask !mark !startPosition !c = take startPosition mask <> replicate c mark <> drop (startPosition + c) mask
 
 -- | Example nonogram.
 fiveByFive :: Nonogram

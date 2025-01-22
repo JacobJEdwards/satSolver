@@ -49,7 +49,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
-import Control.Monad.RWS.Strict (get, modify)
+import Control.Monad.RWS.Strict (get, modify')
 import Control.Monad.RWS.Strict qualified as RWST
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (type IntSet)
@@ -104,7 +104,7 @@ learn literals = do
   clauseDB <- getClauseDB
 
   if a == b
-    then modify \s -> s {propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
+    then modify' \s -> s {propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
     else do 
       let newClauseDB = clauseDB Seq.|> clause
       let aLits = IntMap.findWithDefault mempty (varOfLiteral $ literals !! a) lits
@@ -112,7 +112,7 @@ learn literals = do
       let aLits' = IntSet.insert (Seq.length newClauseDB - 1) aLits
       let bLits' = IntSet.insert (Seq.length newClauseDB - 1) bLits
       let newWL = IntMap.insert (varOfLiteral $ literals !! a) aLits' $ IntMap.insert (varOfLiteral $ literals !! b) bLits' lits
-      modify \s -> s {clauseDB = newClauseDB, watchedLiterals = WatchedLiterals newWL}
+      modify' \s -> s {clauseDB = newClauseDB, watchedLiterals = WatchedLiterals newWL}
   where
     getInitialWatched :: [Literal] -> (Literal, Literal)
     getInitialWatched clause =
@@ -155,13 +155,9 @@ getSolutions !cnf' = do
       guard $ not $ null clauseDb
       guard $ not $ any (null . literals) clauseDb
 
-      traceM "Running"
       preprocess >>= \case
-        Just _ -> do
-          return Nothing -- failure from the start
-        Nothing -> do
-          traceM "Preprocessing done"
-          solver
+        Just _ -> return Nothing
+        Nothing -> solver
 
     solver :: SolverM (Maybe Solutions)
     solver = do
@@ -171,9 +167,11 @@ getSolutions !cnf' = do
     branch = pickLiteralM >>= try
 
     try :: Literal -> SolverM (Maybe Solutions)
-    -- try :: Literal -> SolverM (Maybe Solutions)
-    try c = tryAssign c True <|> tryAssign c False
-    -- try = tryAssign
+    try c = do
+      true <- tryAssign c False
+      false <- tryAssign c True
+
+      return $ true <|> false
 
     tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
     tryAssign c val = do
@@ -190,27 +188,31 @@ getSolutions !cnf' = do
     handleConflict :: Clause -> SolverM (Maybe Solutions)
     handleConflict !c = do
       (clause, dl) <- analyseConflict c
-      traceM $ "Conflict at " <> show dl <> " with " <> show clause
       if dl < 0
-        then return mempty
+        then do 
+          return Nothing
         else do
+          -- something is wrong with backtracking !
           decayM
           adjustScoresM clause
           learn clause
           increaseLubyCount
-          ifM shouldRestart restart do
-            backtrack dl
-            solver
+          -- ifM shouldRestart restart do
+          -- backtrack dl
+          return Nothing
+          -- solver
 
     shouldRestart :: SolverM Bool
     shouldRestart = do
+      traceM "Checking restart"
       SolverState {lubyCount} <- get
       let nextThreshold = computeNextLubyThreshold $ lubyCount + 1
       return $ lubyCount >= nextThreshold
 
     restart :: SolverM (Maybe Solutions)
     restart = do
-      modify \s -> s {assignment = mempty, decisionLevel = 0, trail = mempty, implicationGraph = mempty, propagationStack = mempty}
+      traceM "Restarting"
+      modify' \s -> s {assignment = mempty, decisionLevel = 0, trail = mempty, implicationGraph = mempty, propagationStack = mempty}
       solver
 {-# INLINEABLE getSolutions #-}
 
@@ -246,7 +248,7 @@ allAssignments = IntMap.keysSet
 
 allVariablesAssigned :: SolverM Bool
 allVariablesAssigned = do
-  SolverState {variables, trail, assignment} <- get
+  SolverState {variables, assignment} <- get
   return $ IntSet.null $ variables `IntSet.difference` allAssignments assignment
 
 -- return $ Stack.size trail >= IntSet.size variables

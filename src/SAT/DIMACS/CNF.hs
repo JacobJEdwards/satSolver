@@ -20,12 +20,13 @@ module SAT.DIMACS.CNF (toExpr, fromExpr, type Clause, type DIMACS (..), exampleD
 
 import Control.Parallel.Strategies (NFData)
 import Data.Kind (type Type)
-import Data.Set qualified as Set
+import Data.IntSet qualified as IntSet
 import Data.Text (type Text)
 import GHC.Generics (Generic)
 import SAT.CNF (varOfLiteral, type CNF (CNF))
 import SAT.CNF qualified as CNF
 import SAT.Expr (type Expr (And, Implies, Not, Or, Var))
+import Utils (unstableIntNub)
 
 -- | The literal type.
 type Literal :: Type
@@ -52,7 +53,7 @@ toExpr :: [Clause] -> Expr Literal
 toExpr = foldr1 And . fmap toOr
   where
     toOr :: Clause -> Expr Literal
-    toOr = foldr1 Or . fmap toLiteral
+    toOr = foldr1 Or . fmap toLiteral . unstableIntNub
 
     toLiteral :: Literal -> Expr Literal
     toLiteral n
@@ -72,30 +73,29 @@ fromExpr expr =
       comments = ["This is a CNF formula generated from an expression."]
     }
   where
-    -- \| The list of clauses.
+    -- | The list of clauses.
     clauseList :: [Clause]
     clauseList = fromAnd expr
 
-    -- \| Converts an expression to a list of clauses.
+    -- | Converts an expression to a list of clauses.
     fromAnd :: Expr Literal -> [Clause]
     fromAnd (And e1 e2) = fromAnd e1 <> fromAnd e2
-    fromAnd e = pure $ fromOr e
+    fromAnd e = pure $ unstableIntNub $ fromOr e
 
-    -- \| Converts an expression to a clause.
+    -- | Converts an expression to a clause.
     fromOr :: Expr Literal -> Clause
     fromOr (Or e1 e2) = fromOr e1 <> fromOr e2
-    fromOr (Implies e1 e2) = fromOr $ Or (Not e1) e2
     fromOr e = pure $ fromLiteral e
 
-    -- \| Converts an expression to a literal.
+    -- | Converts an expression to a literal.
     fromLiteral :: Expr Literal -> Literal
     fromLiteral (Not (Var n)) = negate n
     fromLiteral (Var n) = n
     fromLiteral _ = error "Invalid literal"
 
-    -- \| The number of variables.
+    -- | The number of variables.
     numVars' :: Integer
-    numVars' = fromIntegral . Set.size . Set.fromList . fmap abs $ concat clauseList
+    numVars' = fromIntegral . IntSet.size . IntSet.fromList . fmap abs $ concat clauseList
 
 invert :: Literal -> Literal
 invert = negate
@@ -111,10 +111,10 @@ toCNF = CNF . toCNF' . clauses
     toCNF' = fmap toClause
 
     toClause :: Clause -> CNF.Clause
-    toClause c = CNF.Clause {CNF.literals = fmap toLiteral c, CNF.watched = (0, 0)}
+    toClause c = CNF.Clause {CNF.literals = unstableIntNub c, CNF.watched = (0, 0)}
 
-    toLiteral :: Literal -> CNF.Literal
-    toLiteral = id
+    -- toLiteral :: Literal -> CNF.Literal
+    -- toLiteral = id
 
 -- | Converts a CNF formula to DIMACS.
 --
@@ -133,13 +133,13 @@ fromCNF (CNF clauses') =
     clauseList = fmap fromClause clauses'
 
     fromClause :: CNF.Clause -> Clause
-    fromClause (CNF.Clause {CNF.literals}) = fmap fromLiteral literals
+    fromClause (CNF.Clause {CNF.literals}) = unstableIntNub literals
 
-    fromLiteral :: CNF.Literal -> Literal
-    fromLiteral = id
+    -- fromLiteral :: CNF.Literal -> Literal
+    -- fromLiteral = id
 
     numVars' :: Integer
-    numVars' = fromIntegral . Set.size . Set.fromList . fmap abs $ concat clauseList
+    numVars' = fromIntegral . IntSet.size . IntSet.fromList . fmap abs $ concat clauseList
 
 -- | An example DIMACS formula.
 exampleDIMACS :: DIMACS

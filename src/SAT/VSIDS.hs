@@ -77,6 +77,10 @@ adjustScores :: (Num a) => VSIDS a -> [Literal] -> VSIDS a
 adjustScores = foldl' (flip adjustScore)
 {-# INLINEABLE adjustScores #-}
 
-pickLiteral :: (Num a) => VSIDS a -> Literal
-pickLiteral (VSIDS !v) = fst . IntMap.findMax $ v
+-- find maximum vlaue of a map, return the key
+pickLiteral :: (Num a, Ord a) => VSIDS a -> Literal
+pickLiteral (VSIDS !v) = do 
+  let lst = IntMap.toList v
+  let (k, _) = foldl' (\(k, v) (k', v') -> if v' > v then (k', v') else (k, v)) (0, 0) lst
+  k
 {-# INLINEABLE pickLiteral #-}

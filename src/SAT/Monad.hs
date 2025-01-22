@@ -8,7 +8,7 @@
 module SAT.Monad (type SolverM, getPropagationStack, type SolverState (..), type SolverLog, type Trail, type Reason, type ClauseDB, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, increaseDecisionLevel, getClauseDB) where
 
 import Control.Monad (guard, type MonadPlus)
-import Control.Monad.RWS.Strict (modify, tell, type RWST)
+import Control.Monad.RWS.Strict (modify', tell, type RWST)
 import Control.Monad.State.Strict (gets)
 import Control.Parallel.Strategies (type NFData)
 import Data.Bool (bool)
@@ -130,5 +130,5 @@ notM = fmap not
 {-# INLINEABLE notM #-}
 
 increaseDecisionLevel :: SolverM ()
-increaseDecisionLevel = modify \s -> s {decisionLevel = decisionLevel s + 1}
+increaseDecisionLevel = modify' \s -> s {decisionLevel = decisionLevel s + 1}
 {-# INLINEABLE increaseDecisionLevel #-}

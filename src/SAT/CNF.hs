@@ -8,12 +8,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE ImportQualifiedPost #-}
 
 -- |
 -- Module      : SAT.CNF
 -- Description : Exports the CNF module.
-module SAT.CNF (applyLaws, toCNF, type CNF (CNF), type Clause (Clause, literals, watched), type Literal, addClause, type Assignment, type DecisionLevel, isNegative, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
+module SAT.CNF (applyLaws, toCNF, type CNF (CNF), fromDNF, type Clause (Clause, literals, watched), type Literal, addClause, type Assignment, type DecisionLevel, isNegative, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
 
 import Control.Parallel.Strategies (type NFData)
 import Data.IntMap.Strict ((!?), type IntMap)
@@ -21,8 +20,6 @@ import Data.IntSet (type IntSet)
 import GHC.Generics (type Generic)
 import SAT.Expr (type Expr (And, Implies, NAnd, NOr, Not, Or, Val, Var, XNor, XOr))
 import Data.Hashable (type Hashable (hashWithSalt))
-import Data.Vector (type Vector)
-import Data.Vector qualified as Vector
 
 
 type DecisionLevel = Int
@@ -101,15 +98,16 @@ negateLiteral = negate
 -- Var 1
 deMorgansLaws :: Expr a -> Expr a
 deMorgansLaws (Not (Not e)) = deMorgansLaws e
-deMorgansLaws (Not (And e1 e2)) = Or (deMorgansLaws $ Not e1) (deMorgansLaws $ Not e2)
-deMorgansLaws (Not (Or e1 e2)) = And (deMorgansLaws $ Not e1) (deMorgansLaws $ Not e2)
+deMorgansLaws (Not (And e1 e2)) = Or (deMorgansLaws $ Not $ deMorgansLaws e1) (deMorgansLaws $ Not $ deMorgansLaws e2)
+deMorgansLaws (Not (Or e1 e2)) = And (deMorgansLaws $ Not $ deMorgansLaws e1) (deMorgansLaws $ Not $ deMorgansLaws e2)
 deMorgansLaws (Not (Val b)) = Val $ not b
 deMorgansLaws (And e1 e2) = And (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Or e1 e2) = Or (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Not e) = Not $ deMorgansLaws e
-deMorgansLaws (Implies e1 e2) = Or (deMorgansLaws $ Not e1) (deMorgansLaws e2)
-deMorgansLaws (XOr e1 e2) = Or (And (deMorgansLaws e1) (Not e2)) (And (Not e1) (deMorgansLaws e2))
-deMorgansLaws (XNor e1 e2) = Or (And e1 e2) (And (Not e1) (Not e2))
+
+deMorgansLaws (Implies e1 e2) = Or (deMorgansLaws $ Not $ deMorgansLaws e1) (deMorgansLaws e2)
+deMorgansLaws (XOr e1 e2) = Or (And (deMorgansLaws e1) (Not e2)) (And (Not $ deMorgansLaws e1) (deMorgansLaws e2))
+deMorgansLaws (XNor e1 e2) = Or (And (deMorgansLaws e1) $ deMorgansLaws e2) (And (Not $ deMorgansLaws e1) (Not $ deMorgansLaws e2))
 deMorgansLaws (NAnd e1 e2) = Not $ And (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (NOr e1 e2) = Not $ Or (deMorgansLaws e1) (deMorgansLaws e2)
 deMorgansLaws (Var a) = Var a
@@ -246,3 +244,10 @@ isNegative = (< 0)
 --   let clauses = [[l', -l1], [l', -l2], [-l', l1, l2]]
 --   return (CNF (clauses <> clauses1 <> clauses2), l')
 -- tseitin (Implies e1 e2) = tseitin $ Or (Not e1) e2
+
+fromDNF :: [[Literal]] -> [[Literal]]
+fromDNF = foldr distribute [[]]
+  where
+    distribute :: [Literal] -> [[Literal]] -> [[Literal]]
+    distribute clause acc = concatMap (\x -> map (x :) acc) clause
+

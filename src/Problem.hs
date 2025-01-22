@@ -25,6 +25,7 @@ import SAT.DIMACS.Parser qualified as DIMACS
 import SAT.Encode (type Encodable (encode, type Code))
 import Sudoku qualified
 import Sudoku.Solver (type Sudoku)
+import Debug.Trace (trace)
 
 -- | Represents a problem that can be solved by the SAT solver.
 type Problem :: Type -> Constraint
@@ -58,8 +59,8 @@ instance Problem Sudoku where
   {-# INLINEABLE parse #-}
 
   example :: Sudoku
-  example = Sudoku.sudokuSixteen
-  -- example = Sudoku.sudokuEmpty
+  -- example = Sudoku.sudokuSixteen
+  example = Sudoku.sudokuTwentyfive
   {-# INLINEABLE example #-}
 
 -- | Nonogram problem.

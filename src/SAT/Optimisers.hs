@@ -39,7 +39,7 @@ module SAT.Optimisers
 where
 
 import Control.Monad (foldM, when)
-import Control.Monad.State.Strict (get, modify)
+import Control.Monad.State.Strict (get, modify')
 import Data.IntMap.Strict (type IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet (type IntSet)
@@ -53,7 +53,7 @@ import SAT.CNF (type Clause (Clause, literals, watched), literalValue, varOfLite
 import SAT.DIMACS.CNF (invert)
 import SAT.Monad (type Reason, type ClauseDB, type WatchedLiterals (WatchedLiterals, literals), getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPropagationStack, getVSIDS, getWatchedLiterals, type SolverM, type SolverState (clauseDB, propagationStack, watchedLiterals, decisionLevel, assignment, trail, SolverState, implicationGraph, vsids))
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
-import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable)
+import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable, VSIDS (VSIDS))
 import Debug.Trace (traceM)
 
 -- | Collects all literals in a CNF.
@@ -137,7 +137,7 @@ eliminateLiterals cnf solutions = (solutions', cnf')
 --   clauses <- getClauseDB
 --   let partial = partialAssignment assignment $ CNF clauses
 --   let m = fst $ eliminateLiterals partial assignment
---   modify \s -> s {assignment = m}
+--   modify' \s -> s {assignment = m}
 -- {-# INLINEABLE eliminateLiteralsM #-}
 
 -- | Substitutes a literal in a CNF.
@@ -236,7 +236,7 @@ unitPropagateM = go
           ((l, val, r) : ls) -> do
             assignM l val
             addPropagation (varOfLiteral l) r
-            modify \s -> s {propagationStack = ls}
+            modify' \s -> s {propagationStack = ls}
             assignment <- getAssignment
             wl <- getWatchedLiterals
             let !indices = IntSet.toList $ IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
@@ -259,7 +259,7 @@ unitPropagateM = go
       processClause :: Assignment -> Int -> SolverM (Maybe Clause) -- (newWatch, maybe conflict clause)
       processClause assignment index = do
             clauses <- getClauseDB
-            let !clause@(Clause {SAT.CNF.literals, watched = (a, b)}) = clauses `Seq.index` index
+            let clause@(Clause {SAT.CNF.literals, watched = (a, b)}) = clauses `Seq.index` index
 
             let first = literals !! a
             let second = literals !! b
@@ -270,63 +270,91 @@ unitPropagateM = go
             case (firstValue, secondValue) of
               (Just True, _) -> return Nothing
               (_, Just True) -> return Nothing
-              (Just False, Just False) -> do
-                return $ Just clause
+              (Just False, Just False) -> return $ Just clause
               (Nothing, Just False) -> do
-                let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) literals
-
-                case newWatch of
+                case findNewWatch first second assignment literals of
                   Just i -> do
-                    let newClause = clause {watched = (a, i)}
-                    let l = literals !! i
-
-                    wl <- getWatchedLiterals
-
-                    let newClauseDb = Seq.update index newClause clauses
-
-                    let bClauses = IntMap.findWithDefault mempty (varOfLiteral second) $ SAT.Monad.literals wl
-                    let bClauses' = IntSet.delete index bClauses
-
-                    let lClauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
-                    let lClauses' = IntSet.insert index lClauses
-
-                    let newWl = IntMap.insert (varOfLiteral second) bClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
-
-                    modify \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
-
-                    return Nothing
+                    handleNewWatch i index clause b a second
                   Nothing -> do
-                    let l = literals !! a
-                    propagationStack <- getPropagationStack
-                    modify \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack}
+                    addProp a literals
                     return Nothing
               (Just False, Nothing) -> do
-                let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) literals
-                case newWatch of
+                case findNewWatch first second assignment literals of
                   Just i -> do
-                    let newClause = clause {watched = (i, b)}
-                    let l = literals !! i
-
-                    wl <- getWatchedLiterals
-                    let aClauses = IntMap.findWithDefault mempty (varOfLiteral first) $ SAT.Monad.literals wl
-                    let aClauses' = IntSet.delete index aClauses
-
-                    let newClauseDb = Seq.update index newClause clauses
-
-                    let lClauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
-                    let lClauses' = IntSet.insert index lClauses
-
-                    let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
-                    modify \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
-
-                    return Nothing
+                    handleNewWatch i index clause a b first
                   Nothing -> do
-                    let l = literals !! b
-                    propagationStack <- getPropagationStack
-                    modify \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack}
+                    addProp b literals
                     return Nothing
               (Nothing, Nothing) -> do
                 return Nothing
+      
+      handleNewWatch :: Int -> Int -> Clause -> Int -> Int -> Literal -> SolverM (Maybe Clause)
+      handleNewWatch i index clause a b first = do 
+        let newClause = clause {watched = (i, b)}
+        let l = SAT.CNF.literals clause !! i
+
+        wl <- getWatchedLiterals
+        clauses <- getClauseDB
+
+        let newClauseDb = Seq.update index newClause clauses
+
+        let aClauses = IntMap.findWithDefault mempty (varOfLiteral first) $ SAT.Monad.literals wl
+        let aClauses' = IntSet.delete index aClauses
+
+        let lClauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
+        let lClauses' = IntSet.insert index lClauses
+
+        let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
+
+        modify' \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
+
+        return Nothing
+
+      addProp :: Int -> [Literal] -> SolverM ()
+      addProp index literals = do 
+        let l = literals !! index
+        propagationStack <- getPropagationStack
+        modify' \s -> s {propagationStack = (varOfLiteral l, l > 0, Nothing) : propagationStack}
+
+      
+      findNewWatch :: Literal -> Literal -> Assignment -> [Literal] -> Maybe Int
+      findNewWatch first second assignment = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False)
+
+      shiftWatch :: Int -> Clause -> Int -> Int -> Literal -> Literal -> SolverM (Maybe Clause)
+      shiftWatch index clause a b first second = do
+        assignment <- getAssignment
+        let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) (SAT.CNF.literals clause)
+        case newWatch of
+          Just i -> updateWatch index clause a b i
+          Nothing -> do
+            let l = SAT.CNF.literals clause !! a
+            propagationStack <- getPropagationStack
+            modify' \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack}
+            return Nothing
+      
+      updateWatch :: Int -> Clause -> Int -> Int -> Int -> SolverM (Maybe Clause)
+      updateWatch index clause oldIndex newIndex newWatch = do
+        clauses <- getClauseDB
+        let newClause = clause {watched = (newIndex, newWatch)}
+        let l = SAT.CNF.literals clause !! newWatch
+
+        wl <- getWatchedLiterals
+
+        let newClauseDb = Seq.update index newClause clauses
+
+        let oldClauses = IntMap.findWithDefault mempty (varOfLiteral $ SAT.CNF.literals clause !! oldIndex) $ SAT.Monad.literals wl
+        let oldClauses' = IntSet.delete index oldClauses
+
+        let lClauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
+        let lClauses' = IntSet.insert index lClauses
+
+        let newWl = IntMap.insert (varOfLiteral $ SAT.CNF.literals clause !! oldIndex) oldClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
+
+        modify' \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
+
+        return Nothing
+        
+
 
 -- https://buffered.io/posts/a-better-nub/
 
@@ -343,7 +371,7 @@ assignM c v = do
   SolverState {assignment, trail, decisionLevel} <- get
   let t = (c, decisionLevel, v) : trail
   let m = assign assignment c v
-  modify \s -> s {assignment = m, trail = t}
+  modify' \s -> s {assignment = m, trail = t}
 {-# INLINEABLE assignM #-}
 
 -- | Applies a partial assignment to a CNF.
@@ -353,13 +381,13 @@ pickVariableM = do
 
   case pickVariable vs of
     Just (l, vs') -> do
-      modify \s -> s {vsids = vs'}
+      modify' \s -> s {vsids = vs'}
       return $ pure l
     Nothing ->
       return Nothing
 
 decayM :: SolverM ()
-decayM = modify \s -> s {vsids = decay $ vsids s}
+decayM = modify' \s -> s {vsids = decay $ vsids s}
 {-# INLINEABLE decayM #-}
 
 -- | Removes tautologies from a CNF.
@@ -407,7 +435,7 @@ clauseIsUnsat = null . SAT.CNF.literals
 
 addDecision :: Literal -> Bool -> SolverM ()
 addDecision literal val = do
-  modify \s -> s {propagationStack = (abs literal, val, Nothing) : propagationStack s}
+  modify' \s -> s {propagationStack = (abs literal, val, Nothing) : propagationStack s}
 
 addPropagation :: Literal -> Maybe Clause -> SolverM ()
 addPropagation literal clause = do
@@ -415,7 +443,7 @@ addPropagation literal clause = do
   graph <- getImplicationGraph
   let newNode = (literal, clause, level)
   let graph' = IntMap.insert (varOfLiteral literal) newNode graph
-  modify \s -> s {implicationGraph = graph'}
+  modify' \s -> s {implicationGraph = graph'}
 
 isSatisfied :: SolverM Bool
 isSatisfied = do
@@ -428,14 +456,13 @@ isSatisfied = do
 adjustScoresM :: [Literal] -> SolverM ()
 adjustScoresM clause = do
   vsids <- getVSIDS
-  modify \s -> s {vsids = adjustScores vsids clause}
+  modify' \s -> s {vsids = adjustScores vsids clause}
 
 pickLiteralM :: SolverM Literal
-pickLiteralM = pickLiteral <$> getVSIDS
+pickLiteralM = do --  pickLiteral <$> getVSIDS
+    assignment <- getAssignment
+    VSIDS vs <- getVSIDS
 
--- assignment <- getAssignment
--- VSIDS vs <- getVSIDS
+    let vs' = IntMap.filterWithKey (\k _ -> isNothing (literalValue assignment k)) vs
 
--- let vs' = IntMap.filterWithKey (\k _ -> literalValue assignment k == Nothing) vs
-
--- return $ pickLiteral (VSIDS vs')
+    return $ pickLiteral (VSIDS vs')
