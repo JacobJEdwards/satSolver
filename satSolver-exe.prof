@@ -1,513 +1,516 @@
-	Sat Jan 25 14:13 2025 Time and Allocation Profiling Report  (Final)
+	Sat Jan 25 17:08 2025 Time and Allocation Profiling Report  (Final)
 
 	   satSolver-exe +RTS -N -p -RTS -s
 
-	total time  =        0.84 secs   (2030 ticks @ 1000 us, 11 processors)
-	total alloc = 4,443,365,744 bytes  (excludes profiling overheads)
+	total time  =        0.86 secs   (2074 ticks @ 1000 us, 11 processors)
+	total alloc = 4,264,799,792 bytes  (excludes profiling overheads)
 
 COST CENTRE                         MODULE                SRC                                          %time %alloc
 
-unitPropagateM.processClause.(...)  SAT.Optimisers        src/SAT/Optimisers.hs:262:17-96               14.6    0.0
-literalValue                        SAT.CNF               src/SAT/CNF.hs:(82,1)-(84,48)                 11.6    9.5
-initWatchedLiterals.accumulate      SAT.WL                src/SAT/WL.hs:(26,5)-(32,92)                  11.5   17.8
-unitPropagateM.processClause        SAT.Optimisers        src/SAT/Optimisers.hs:(260,7)-(289,30)        10.1    3.3
-insert'.go                          Data.HashMap.Internal Data/HashMap/Internal.hs:(808,5)-(837,76)      7.9    2.8
-unitPropagateM.processClause.second SAT.Optimisers        src/SAT/Optimisers.hs:265:17-38                6.4    0.0
-initVSIDS.updateVSIDS.\             SAT.VSIDS             src/SAT/VSIDS.hs:49:74-107                     4.3   15.7
-collectLiterals.getVars             SAT.Optimisers        src/SAT/Optimisers.hs:67:5-50                  3.9    2.7
-initVSIDS.updateVSIDS               SAT.VSIDS             src/SAT/VSIDS.hs:49:5-119                      3.0    0.0
-unitPropagateM.go.indices           SAT.Optimisers        src/SAT/Optimisers.hs:242:17-113               2.4    1.6
-collectLiteralsToSet                SAT.Optimisers        src/SAT/Optimisers.hs:75:1-56                  2.0    8.8
-decay                               SAT.VSIDS             src/SAT/VSIDS.hs:38:1-28                       2.0    4.4
-initWatchedLiterals.litMap          SAT.WL                src/SAT/WL.hs:35:5-96                          1.8    4.5
-pickLiteralM.vs'                    SAT.Optimisers        src/SAT/Optimisers.hs:466:9-85                 1.6    1.1
-unstableIntNub                      Utils                 src/Utils.hs:39:1-48                           1.1    2.4
-insert'.go.ary'                     Data.HashMap.Internal Data/HashMap/Internal.hs:818:17-56             1.1    1.1
-unitPropagateM.processClauses.go'   SAT.Optimisers        src/SAT/Optimisers.hs:(252,11)-(257,31)        1.1    1.9
-initClauseWatched                   SAT.WL                src/SAT/WL.hs:(38,1)-(50,19)                   0.7    1.5
-unstableHashNub                     Utils                 src/Utils.hs:36:1-51                           0.6    1.0
-collectLiterals                     SAT.Optimisers        src/SAT/Optimisers.hs:(64,1)-(67,50)           0.6    1.7
-clone                               Data.HashMap.Internal Data/HashMap/Internal.hs:(2431,1)-(2432,34)    0.4    7.4
-toDIMACS.blockClauses               Sudoku.Solver         src/Sudoku/Solver.hs:(221,5)-(231,7)           0.4    1.3
-toCNF.toCNF'                        SAT.DIMACS.CNF        src/SAT/DIMACS/CNF.hs:111:5-26                 0.3    1.1
-initState.watchedClauses            SAT.Solver            src/SAT/Solver.hs:89:5-69                      0.1    1.1
+unitPropagateM.processClause.(...)  SAT.Optimisers        src/SAT/Optimisers.hs:259:17-96               15.0    0.0
+unitPropagateM.processClause        SAT.Optimisers        src/SAT/Optimisers.hs:(257,7)-(286,30)        12.2    3.5
+initWatchedLiterals.accumulate      SAT.WL                src/SAT/WL.hs:(25,5)-(31,92)                  11.0   18.6
+varValue                            SAT.Assignment        src/SAT/Assignment.hs:49:1-32                  8.1    1.4
+insert'.go                          Data.HashMap.Internal Data/HashMap/Internal.hs:(808,5)-(837,76)      7.0    2.9
+unitPropagateM.processClause.second SAT.Optimisers        src/SAT/Optimisers.hs:262:17-38                6.4    0.0
+collectLiterals.getVars             SAT.Optimisers        src/SAT/Optimisers.hs:64:5-50                  4.2    2.8
+initVSIDS.updateVSIDS               SAT.VSIDS             src/SAT/VSIDS.hs:47:5-119                      3.7    0.0
+initVSIDS.updateVSIDS.\             SAT.VSIDS             src/SAT/VSIDS.hs:47:74-107                     3.2   16.3
+unitPropagateM.go.indices           SAT.Optimisers        src/SAT/Optimisers.hs:239:17-113               2.7    1.7
+initWatchedLiterals.litMap          SAT.WL                src/SAT/WL.hs:34:5-92                          2.3    4.7
+literalValue                        SAT.Assignment        src/SAT/Assignment.hs:(60,1)-(62,48)           2.1    4.3
+decay                               SAT.VSIDS             src/SAT/VSIDS.hs:36:1-28                       1.9    4.6
+collectLiteralsToSet                SAT.Optimisers        src/SAT/Optimisers.hs:72:1-56                  1.5    9.1
+insert'.go.ary'                     Data.HashMap.Internal Data/HashMap/Internal.hs:818:17-56             1.3    1.2
+unitPropagateM.processClauses.go'   SAT.Optimisers        src/SAT/Optimisers.hs:(249,11)-(254,31)        1.1    1.9
+pickLiteralM.vs'                    SAT.Optimisers        src/SAT/Optimisers.hs:420:9-85                 1.1    1.2
+unstableIntNub                      Utils                 src/Utils.hs:39:1-48                           0.9    2.5
+unstableHashNub                     Utils                 src/Utils.hs:36:1-51                           0.7    1.0
+clone                               Data.HashMap.Internal Data/HashMap/Internal.hs:(2431,1)-(2432,34)    0.6    7.7
+collectLiterals                     SAT.Optimisers        src/SAT/Optimisers.hs:(61,1)-(64,50)           0.6    1.8
+initClauseWatched                   SAT.WL                src/SAT/WL.hs:(37,1)-(49,19)                   0.6    1.6
+toCNF.toCNF'                        SAT.DIMACS.CNF        src/SAT/DIMACS/CNF.hs:111:5-26                 0.4    1.2
+toDIMACS.blockClauses               Sudoku.Solver         src/Sudoku/Solver.hs:(221,5)-(231,7)           0.3    1.3
+initState.watchedClauses            SAT.Solver            src/SAT/Solver.hs:87:5-69                      0.3    1.2
 
 
                                                                                                                                                         individual      inherited
 COST CENTRE                                             MODULE                      SRC                                             no.      entries  %time %alloc   %time %alloc
 
-MAIN                                                    MAIN                        <built-in>                                      1323           0    0.0    0.0   100.0  100.0
- CAF                                                    GHC.Conc.Signal             <entire-module>                                 1447           0    0.0    0.0     0.0    0.0
- CAF                                                    GHC.IO.Encoding             <entire-module>                                 1427           0    0.0    0.0     0.0    0.0
- CAF                                                    GHC.IO.Encoding.Iconv       <entire-module>                                 1425           0    0.0    0.0     0.0    0.0
- CAF                                                    GHC.IO.Handle.FD            <entire-module>                                 1416           0    0.0    0.0     0.0    0.0
- CAF                                                    GHC.Event.Poll              <entire-module>                                 1344           0    0.0    0.0     0.0    0.0
- CAF                                                    GHC.Event.Thread            <entire-module>                                 1343           0    0.0    0.0     0.0    0.0
- CAF:$fFunctorVSIDS2                                    SAT.VSIDS                   <no location info>                              2128           0    0.0    0.0     0.0    0.0
-  fmap                                                  SAT.VSIDS                   src/SAT/VSIDS.hs:25:107-113                     3019           1    0.0    0.0     0.0    0.0
- CAF:$fHashable1IntMap_$chashWithSalt                   Data.Hashable.Class         src/Data/Hashable/Class.hs:357:5-16             1848           0    0.0    0.0     0.0    0.0
-  hashWithSalt                                          Data.Hashable.Class         src/Data/Hashable/Class.hs:357:5-26             2735           1    0.0    0.0     0.0    0.0
- CAF:$fHashableClause_$chash                            SAT.CNF                     src/SAT/CNF.hs:57:10-24                         2439           0    0.0    0.0     0.0    0.0
-  hash                                                  SAT.CNF                     src/SAT/CNF.hs:57:10-24                         2712           1    0.0    0.0     0.0    0.0
-   hash                                                 Data.Hashable.Class         src/Data/Hashable/Class.hs:255:5-22             2713           1    0.0    0.0     0.0    0.0
-    defaultHash                                         Data.Hashable.Class         src/Data/Hashable/Class.hs:331:1-38             2714           1    0.0    0.0     0.0    0.0
- CAF:$fMonoidVSIDS3                                     SAT.VSIDS                   <no location info>                              2131           0    0.0    0.0     0.0    0.0
-  mempty                                                SAT.VSIDS                   src/SAT/VSIDS.hs:25:91-96                       2805           1    0.0    0.0     0.0    0.0
- CAF:$fProblemSudoku_$cdecode                           Problem                     src/Problem.hs:54:3-8                           2457           0    0.0    0.0     0.0    0.0
-  decode                                                Problem                     src/Problem.hs:54:3-32                          3053           1    0.0    0.0     0.0    0.0
- CAF:$fProblemSudoku_$cexample                          Problem                     src/Problem.hs:63:3-9                           2456           0    0.0    0.0     0.0    0.0
-  example                                               Problem                     src/Problem.hs:63:3-35                          2662           1    0.0    0.0     0.0    0.0
- CAF:$fProblemSudoku_$ctoDIMACS                         Problem                     src/Problem.hs:50:3-10                          2458           0    0.0    0.0     0.0    0.0
-  toDIMACS                                              Problem                     src/Problem.hs:50:3-28                          2672           1    0.0    0.0     0.0    0.0
- CAF:$sdecay                                            SAT.Optimisers              <no location info>                              2259           0    0.0    0.0     0.0    0.0
-  decay                                                 SAT.VSIDS                   src/SAT/VSIDS.hs:38:1-28                        3018           1    0.0    0.0     0.0    0.0
- CAF:$sdecay_v1                                         SAT.Optimisers              <no location info>                              2258           0    0.0    0.0     0.0    0.0
-  decay                                                 SAT.VSIDS                   src/SAT/VSIDS.hs:38:1-28                        3028           0    0.0    0.0     0.0    0.0
-   decayFactor                                          SAT.VSIDS                   src/SAT/VSIDS.hs:29:1-18                        3029           1    0.0    0.0     0.0    0.0
- CAF:allAssignments                                     SAT.Solver                  src/SAT/Solver.hs:236:1-14                      2144           0    0.0    0.0     0.0    0.0
-  allAssignments                                        SAT.Solver                  src/SAT/Solver.hs:236:1-31                      2904           1    0.0    0.0     0.0    0.0
- CAF:bitsPerSubkey                                      Data.HashMap.Internal       Data/HashMap/Internal.hs:2444:1-13              2008           0    0.0    0.0     0.0    0.0
-  bitsPerSubkey                                         Data.HashMap.Internal       Data/HashMap/Internal.hs:2444:1-17              2744           1    0.0    0.0     0.0    0.0
- CAF:branch_r9Le                                        SAT.Solver                  <no location info>                              2148           0    0.0    0.0     0.0    0.0
-  getSolutions                                          SAT.Solver                  src/SAT/Solver.hs:(147,1)-(216,12)              2694           0    0.0    0.0     0.0    0.0
-   getSolutions.branch                                  SAT.Solver                  src/SAT/Solver.hs:167:5-33                      2695           1    0.0    0.0     0.0    0.0
- CAF:checkValue                                         SAT.Solver                  src/SAT/Solver.hs:135:1-10                      2151           0    0.0    0.0     0.0    0.0
-  checkValue                                            SAT.Solver                  src/SAT/Solver.hs:135:1-31                      3061           1    0.0    0.0     0.0    0.0
- CAF:collectLiteralsToSet                               SAT.Optimisers              src/SAT/Optimisers.hs:75:1-20                   2245           0    0.0    0.0     0.0    0.0
-  collectLiteralsToSet                                  SAT.Optimisers              src/SAT/Optimisers.hs:75:1-56                   2808           1    0.0    0.0     0.0    0.0
- CAF:decayM1                                            SAT.Optimisers              <no location info>                              2260           0    0.0    0.0     0.0    0.0
-  decayM                                                SAT.Optimisers              src/SAT/Optimisers.hs:390:1-50                  3015           1    0.0    0.0     0.0    0.0
- CAF:empty                                              Data.HashMap.Internal       Data/HashMap/Internal.hs:594:1-5                1995           0    0.0    0.0     0.0    0.0
-  empty                                                 Data.HashMap.Internal       Data/HashMap/Internal.hs:594:1-13               2709           1    0.0    0.0     0.0    0.0
- CAF:getAssignment1                                     SAT.Monad                   <no location info>                              2289           0    0.0    0.0     0.0    0.0
-  getAssignment                                         SAT.Monad                   src/SAT/Monad.hs:72:1-31                        2843           1    0.0    0.0     0.0    0.0
- CAF:getClauseDB1                                       SAT.Monad                   <no location info>                              2277           0    0.0    0.0     0.0    0.0
-  getClauseDB                                           SAT.Monad                   src/SAT/Monad.hs:101:1-27                       2701           1    0.0    0.0     0.0    0.0
- CAF:getDecisionLevel1                                  SAT.Monad                   <no location info>                              2281           0    0.0    0.0     0.0    0.0
-  getDecisionLevel                                      SAT.Monad                   src/SAT/Monad.hs:92:1-37                        2833           1    0.0    0.0     0.0    0.0
- CAF:getImplicationGraph1                               SAT.Monad                   <no location info>                              2285           0    0.0    0.0     0.0    0.0
-  getImplicationGraph                                   SAT.Monad                   src/SAT/Monad.hs:82:1-43                        2836           1    0.0    0.0     0.0    0.0
- CAF:getPropagationStack1                               SAT.Monad                   <no location info>                              2291           0    0.0    0.0     0.0    0.0
-  getPropagationStack                                   SAT.Monad                   src/SAT/Monad.hs:67:1-43                        2824           1    0.0    0.0     0.0    0.0
- CAF:getSolutions32                                     SAT.Solver                  <no location info>                              2147           0    0.0    0.0     0.0    0.0
-  solutions                                             SAT.Solver                  src/SAT/Solver.hs:144:1-53                      3051           1    0.0    0.0     0.0    0.0
- CAF:getSolutions33                                     SAT.Solver                  <no location info>                              2145           0    0.0    0.0     0.0    0.0
-  allVariablesAssigned                                  SAT.Solver                  src/SAT/Solver.hs:(250,1)-(252,80)              2902           1    0.0    0.0     0.0    0.0
- CAF:getVSIDS1                                          SAT.Monad                   <no location info>                              2279           0    0.0    0.0     0.0    0.0
-  getVSIDS                                              SAT.Monad                   src/SAT/Monad.hs:97:1-21                        2910           1    0.0    0.0     0.0    0.0
- CAF:getWatchedLiterals1                                SAT.Monad                   <no location info>                              2283           0    0.0    0.0     0.0    0.0
-  getWatchedLiterals                                    SAT.Monad                   src/SAT/Monad.hs:87:1-41                        2846           1    0.0    0.0     0.0    0.0
- CAF:increaseDecisionLevel1                             SAT.Monad                   <no location info>                              2275           0    0.0    0.0     0.0    0.0
-  increaseDecisionLevel                                 SAT.Monad                   src/SAT/Monad.hs:133:1-77                       2923           1    0.0    0.0     0.0    0.0
- CAF:increaseLubyCount1                                 SAT.Restarts                <no location info>                              2161           0    0.0    0.0     0.0    0.0
-  increaseLubyCount                                     SAT.Restarts                src/SAT/Restarts.hs:25:1-64                     3047           1    0.0    0.0     0.0    0.0
- CAF:initAssignment                                     SAT.CNF                     src/SAT/CNF.hs:31:1-14                          2440           0    0.0    0.0     0.0    0.0
-  initAssignment                                        SAT.CNF                     src/SAT/CNF.hs:31:1-23                          2705           1    0.0    0.0     0.0    0.0
- CAF:initialPropagationStack                            SAT.Solver                  src/SAT/Solver.hs:94:1-23                       2143           0    0.0    0.0     0.0    0.0
-  initialPropagationStack                               SAT.Solver                  src/SAT/Solver.hs:(94,1)-(95,144)               2813           1    0.0    0.0     0.0    0.0
- CAF:isNegative                                         SAT.CNF                     src/SAT/CNF.hs:205:1-10                         2433           0    0.0    0.0     0.0    0.0
-  isNegative                                            SAT.CNF                     src/SAT/CNF.hs:205:1-18                         2867           1    0.0    0.0     0.0    0.0
- CAF:lvl16_r9Lo                                         SAT.Solver                  <no location info>                              2155           0    0.0    0.0     0.0    0.0
-  insert'                                               Data.HashMap.Internal       Data/HashMap/Internal.hs:(806,1)-(837,76)       2761           0    0.0    0.0     0.0    0.0
-   insert'.go                                           Data.HashMap.Internal       Data/HashMap/Internal.hs:(808,5)-(837,76)       2762           0    0.0    0.0     0.0    0.0
-    clone                                               Data.HashMap.Internal       Data/HashMap/Internal.hs:(2431,1)-(2432,34)     2763           0    0.0    0.0     0.0    0.0
- CAF:main1                                              Main                        <no location info>                              2644           0    0.0    0.0     0.0    0.0
-  main                                                  Main                        app/Main.hs:134:1-10                            2646           1    0.0    0.0     0.0    0.0
-  run                                                   Main                        app/Main.hs:(121,1)-(130,45)                    2647           1    0.0    0.0     0.0    0.0
- CAF:maxChildren                                        Data.HashMap.Internal       Data/HashMap/Internal.hs:2448:1-11              2009           0    0.0    0.0     0.0    0.0
-  maxChildren                                           Data.HashMap.Internal       Data/HashMap/Internal.hs:2448:1-44              2755           1    0.0    0.0     0.0    0.0
- CAF:options                                            Options                     src/Options.hs:68:1-7                           2529           0    0.0    0.0     0.0    0.0
-  options                                               Options                     src/Options.hs:(68,1)-(99,3)                    2652           1    0.0    0.0     0.0    0.0
- CAF:parseArgs2                                         Options                     <no location info>                              2489           0    0.0    0.0     0.0    0.0
-  defaultOptions                                        Options                     src/Options.hs:(61,1)-(64,5)                    2657           1    0.0    0.0     0.0    0.0
- CAF:pickLiteralM1                                      SAT.Optimisers              <no location info>                              2256           0    0.0    0.0     0.0    0.0
-  pickLiteralM                                          SAT.Optimisers              src/SAT/Optimisers.hs:(462,1)-(468,36)          2906           1    0.0    0.0     0.0    0.0
- CAF:preprocess1                                        SAT.Preprocessing           <no location info>                              2163           0    0.0    0.0     0.0    0.0
-  preprocess                                            SAT.Preprocessing           src/SAT/Preprocessing.hs:(18,1)-(25,20)         2817           1    0.0    0.0     0.0    0.0
- CAF:propagate_r9Lg                                     SAT.Solver                  <no location info>                              2150           0    0.0    0.0     0.0    0.0
-  getSolutions                                          SAT.Solver                  src/SAT/Solver.hs:(147,1)-(216,12)              2692           0    0.0    0.0     0.0    0.0
-   getSolutions.propagate                               SAT.Solver                  src/SAT/Solver.hs:(183,5)-(186,25)              2693           1    0.0    0.0     0.0    0.0
- CAF:solutionsFromAssignment                            SAT.Solver                  src/SAT/Solver.hs:140:1-23                      2146           0    0.0    0.0     0.0    0.0
-  solutionsFromAssignment                               SAT.Solver                  src/SAT/Solver.hs:140:1-59                      3055           1    0.0    0.0     0.0    0.0
- CAF:solver_r9Lf                                        SAT.Solver                  <no location info>                              2149           0    0.0    0.0     0.0    0.0
-  getSolutions                                          SAT.Solver                  src/SAT/Solver.hs:(147,1)-(216,12)              2696           0    0.0    0.0     0.0    0.0
-   getSolutions.solver                                  SAT.Solver                  src/SAT/Solver.hs:(163,5)-(164,60)              2697           1    0.0    0.0     0.0    0.0
-    ifM                                                 SAT.Monad                   src/SAT/Monad.hs:121:1-26                       2698           1    0.0    0.0     0.0    0.0
- CAF:subkeyMask                                         Data.HashMap.Internal       Data/HashMap/Internal.hs:2452:1-10              2011           0    0.0    0.0     0.0    0.0
-  subkeyMask                                            Data.HashMap.Internal       Data/HashMap/Internal.hs:2452:1-47              2743           1    0.0    0.0     0.0    0.0
- CAF:sudokuTwentyfive                                   Sudoku.Solver               src/Sudoku/Solver.hs:316:1-16                   2065           0    0.0    0.0     0.0    0.0
-  sudokuTwentyfive                                      Sudoku.Solver               src/Sudoku/Solver.hs:(316,1)-(346,5)            2663           1    0.0    0.0     0.0    0.0
- CAF:toCNF                                              SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:108:1-5                   2419           0    0.0    0.0     0.0    0.0
-  toCNF                                                 SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:(108,1)-(114,83)          2667           1    0.0    0.0     0.0    0.0
-   toCNF.toCNF'                                         SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:111:5-26                  2668           1    0.0    0.0     0.0    0.0
+MAIN                                                    MAIN                        <built-in>                                      1333           0    0.0    0.0   100.0  100.0
+ CAF                                                    GHC.Conc.Signal             <entire-module>                                 1457           0    0.0    0.0     0.0    0.0
+ CAF                                                    GHC.IO.Encoding             <entire-module>                                 1437           0    0.0    0.0     0.0    0.0
+ CAF                                                    GHC.IO.Encoding.Iconv       <entire-module>                                 1435           0    0.0    0.0     0.0    0.0
+ CAF                                                    GHC.IO.Handle.FD            <entire-module>                                 1426           0    0.0    0.0     0.0    0.0
+ CAF                                                    GHC.Event.Poll              <entire-module>                                 1354           0    0.0    0.0     0.0    0.0
+ CAF                                                    GHC.Event.Thread            <entire-module>                                 1353           0    0.0    0.0     0.0    0.0
+ CAF:$fFunctorVSIDS2                                    SAT.VSIDS                   <no location info>                              2138           0    0.0    0.0     0.0    0.0
+  fmap                                                  SAT.VSIDS                   src/SAT/VSIDS.hs:23:107-113                     3045           1    0.0    0.0     0.0    0.0
+ CAF:$fHashable1IntMap_$chashWithSalt                   Data.Hashable.Class         src/Data/Hashable/Class.hs:357:5-16             1858           0    0.0    0.0     0.0    0.0
+  hashWithSalt                                          Data.Hashable.Class         src/Data/Hashable/Class.hs:357:5-26             2755           1    0.0    0.0     0.0    0.0
+ CAF:$fHashableClause_$chash                            SAT.CNF                     src/SAT/CNF.hs:50:10-24                         2446           0    0.0    0.0     0.0    0.0
+  hash                                                  SAT.CNF                     src/SAT/CNF.hs:50:10-24                         2732           1    0.0    0.0     0.0    0.0
+   hash                                                 Data.Hashable.Class         src/Data/Hashable/Class.hs:255:5-22             2733           1    0.0    0.0     0.0    0.0
+    defaultHash                                         Data.Hashable.Class         src/Data/Hashable/Class.hs:331:1-38             2734           1    0.0    0.0     0.0    0.0
+ CAF:$fMonoidVSIDS3                                     SAT.VSIDS                   <no location info>                              2141           0    0.0    0.0     0.0    0.0
+  mempty                                                SAT.VSIDS                   src/SAT/VSIDS.hs:23:91-96                       2825           1    0.0    0.0     0.0    0.0
+ CAF:$fProblemSudoku_$cdecode                           Problem                     src/Problem.hs:53:3-8                           2478           0    0.0    0.0     0.0    0.0
+  decode                                                Problem                     src/Problem.hs:53:3-32                          3079           1    0.0    0.0     0.0    0.0
+ CAF:$fProblemSudoku_$cexample                          Problem                     src/Problem.hs:62:3-9                           2477           0    0.0    0.0     0.0    0.0
+  example                                               Problem                     src/Problem.hs:62:3-35                          2682           1    0.0    0.0     0.0    0.0
+ CAF:$fProblemSudoku_$ctoDIMACS                         Problem                     src/Problem.hs:49:3-10                          2479           0    0.0    0.0     0.0    0.0
+  toDIMACS                                              Problem                     src/Problem.hs:49:3-28                          2692           1    0.0    0.0     0.0    0.0
+ CAF:$sdecay                                            SAT.Optimisers              <no location info>                              2266           0    0.0    0.0     0.0    0.0
+  decay                                                 SAT.VSIDS                   src/SAT/VSIDS.hs:36:1-28                        3044           1    0.0    0.0     0.0    0.0
+ CAF:$sdecay_v1                                         SAT.Optimisers              <no location info>                              2265           0    0.0    0.0     0.0    0.0
+  decay                                                 SAT.VSIDS                   src/SAT/VSIDS.hs:36:1-28                        3054           0    0.0    0.0     0.0    0.0
+   decayFactor                                          SAT.VSIDS                   src/SAT/VSIDS.hs:27:1-18                        3055           1    0.0    0.0     0.0    0.0
+ CAF:bitsPerSubkey                                      Data.HashMap.Internal       Data/HashMap/Internal.hs:2444:1-13              2018           0    0.0    0.0     0.0    0.0
+  bitsPerSubkey                                         Data.HashMap.Internal       Data/HashMap/Internal.hs:2444:1-17              2764           1    0.0    0.0     0.0    0.0
+ CAF:branch_rNne                                        SAT.Solver                  <no location info>                              2155           0    0.0    0.0     0.0    0.0
+  getSolutions                                          SAT.Solver                  src/SAT/Solver.hs:(134,1)-(203,12)              2714           0    0.0    0.0     0.0    0.0
+   getSolutions.branch                                  SAT.Solver                  src/SAT/Solver.hs:154:5-33                      2715           1    0.0    0.0     0.0    0.0
+ CAF:collectLiteralsToSet                               SAT.Optimisers              src/SAT/Optimisers.hs:72:1-20                   2256           0    0.0    0.0     0.0    0.0
+  collectLiteralsToSet                                  SAT.Optimisers              src/SAT/Optimisers.hs:72:1-56                   2828           1    0.0    0.0     0.0    0.0
+ CAF:decayM1                                            SAT.Optimisers              <no location info>                              2267           0    0.0    0.0     0.0    0.0
+  decayM                                                SAT.Optimisers              src/SAT/Optimisers.hs:344:1-50                  3041           1    0.0    0.0     0.0    0.0
+ CAF:empty                                              Data.HashMap.Internal       Data/HashMap/Internal.hs:594:1-5                2005           0    0.0    0.0     0.0    0.0
+  empty                                                 Data.HashMap.Internal       Data/HashMap/Internal.hs:594:1-13               2729           1    0.0    0.0     0.0    0.0
+ CAF:getAssignment1                                     SAT.Monad                   <no location info>                              2296           0    0.0    0.0     0.0    0.0
+  getAssignment                                         SAT.Monad                   src/SAT/Monad.hs:73:1-31                        2863           1    0.0    0.0     0.0    0.0
+ CAF:getClauseDB1                                       SAT.Monad                   <no location info>                              2284           0    0.0    0.0     0.0    0.0
+  getClauseDB                                           SAT.Monad                   src/SAT/Monad.hs:102:1-27                       2721           1    0.0    0.0     0.0    0.0
+ CAF:getDecisionLevel1                                  SAT.Monad                   <no location info>                              2288           0    0.0    0.0     0.0    0.0
+  getDecisionLevel                                      SAT.Monad                   src/SAT/Monad.hs:93:1-37                        2853           1    0.0    0.0     0.0    0.0
+ CAF:getImplicationGraph1                               SAT.Monad                   <no location info>                              2292           0    0.0    0.0     0.0    0.0
+  getImplicationGraph                                   SAT.Monad                   src/SAT/Monad.hs:83:1-43                        2856           1    0.0    0.0     0.0    0.0
+ CAF:getPropagationStack1                               SAT.Monad                   <no location info>                              2298           0    0.0    0.0     0.0    0.0
+  getPropagationStack                                   SAT.Monad                   src/SAT/Monad.hs:68:1-43                        2844           1    0.0    0.0     0.0    0.0
+ CAF:getSolutions32                                     SAT.Solver                  <no location info>                              2152           0    0.0    0.0     0.0    0.0
+  solutions                                             SAT.Solver                  src/SAT/Solver.hs:131:1-53                      3077           1    0.0    0.0     0.0    0.0
+ CAF:getSolutions33                                     SAT.Solver                  <no location info>                              2151           0    0.0    0.0     0.0    0.0
+  allVariablesAssigned                                  SAT.Solver                  src/SAT/Solver.hs:(234,1)-(236,80)              2924           1    0.0    0.0     0.0    0.0
+ CAF:getVSIDS1                                          SAT.Monad                   <no location info>                              2286           0    0.0    0.0     0.0    0.0
+  getVSIDS                                              SAT.Monad                   src/SAT/Monad.hs:98:1-21                        2932           1    0.0    0.0     0.0    0.0
+ CAF:getWatchedLiterals1                                SAT.Monad                   <no location info>                              2290           0    0.0    0.0     0.0    0.0
+  getWatchedLiterals                                    SAT.Monad                   src/SAT/Monad.hs:88:1-41                        2866           1    0.0    0.0     0.0    0.0
+ CAF:increaseDecisionLevel1                             SAT.Monad                   <no location info>                              2282           0    0.0    0.0     0.0    0.0
+  increaseDecisionLevel                                 SAT.Monad                   src/SAT/Monad.hs:134:1-77                       2946           1    0.0    0.0     0.0    0.0
+ CAF:increaseLubyCount1                                 SAT.Restarts                <no location info>                              2168           0    0.0    0.0     0.0    0.0
+  increaseLubyCount                                     SAT.Restarts                src/SAT/Restarts.hs:25:1-64                     3073           1    0.0    0.0     0.0    0.0
+ CAF:initAssignment2                                    SAT.Assignment              <no location info>                              2472           0    0.0    0.0     0.0    0.0
+  initAssignment                                        SAT.Assignment              src/SAT/Assignment.hs:25:1-36                   2725           1    0.0    0.0     0.0    0.0
+ CAF:initialPropagationStack                            SAT.Solver                  src/SAT/Solver.hs:92:1-23                       2158           0    0.0    0.0     0.0    0.0
+  initialPropagationStack                               SAT.Solver                  src/SAT/Solver.hs:(92,1)-(93,144)               2833           1    0.0    0.0     0.0    0.0
+ CAF:isNegative                                         SAT.CNF                     src/SAT/CNF.hs:187:1-10                         2440           0    0.0    0.0     0.0    0.0
+  isNegative                                            SAT.CNF                     src/SAT/CNF.hs:187:1-18                         2888           1    0.0    0.0     0.0    0.0
+ CAF:lvl15_rNnp                                         SAT.Solver                  <no location info>                              2162           0    0.0    0.0     0.0    0.0
+  insert'                                               Data.HashMap.Internal       Data/HashMap/Internal.hs:(806,1)-(837,76)       2781           0    0.0    0.0     0.0    0.0
+   insert'.go                                           Data.HashMap.Internal       Data/HashMap/Internal.hs:(808,5)-(837,76)       2782           0    0.0    0.0     0.0    0.0
+    clone                                               Data.HashMap.Internal       Data/HashMap/Internal.hs:(2431,1)-(2432,34)     2783           0    0.0    0.0     0.0    0.0
+ CAF:main1                                              Main                        <no location info>                              2664           0    0.0    0.0     0.0    0.0
+  main                                                  Main                        app/Main.hs:134:1-10                            2666           1    0.0    0.0     0.0    0.0
+  run                                                   Main                        app/Main.hs:(121,1)-(130,45)                    2667           1    0.0    0.0     0.0    0.0
+ CAF:maxChildren                                        Data.HashMap.Internal       Data/HashMap/Internal.hs:2448:1-11              2019           0    0.0    0.0     0.0    0.0
+  maxChildren                                           Data.HashMap.Internal       Data/HashMap/Internal.hs:2448:1-44              2775           1    0.0    0.0     0.0    0.0
+ CAF:options                                            Options                     src/Options.hs:68:1-7                           2550           0    0.0    0.0     0.0    0.0
+  options                                               Options                     src/Options.hs:(68,1)-(99,3)                    2672           1    0.0    0.0     0.0    0.0
+ CAF:parseArgs2                                         Options                     <no location info>                              2510           0    0.0    0.0     0.0    0.0
+  defaultOptions                                        Options                     src/Options.hs:(61,1)-(64,5)                    2677           1    0.0    0.0     0.0    0.0
+ CAF:pickLiteralM1                                      SAT.Optimisers              <no location info>                              2263           0    0.0    0.0     0.0    0.0
+  pickLiteralM                                          SAT.Optimisers              src/SAT/Optimisers.hs:(416,1)-(422,36)          2928           1    0.0    0.0     0.0    0.0
+ CAF:preprocess1                                        SAT.Preprocessing           <no location info>                              2170           0    0.0    0.0     0.0    0.0
+  preprocess                                            SAT.Preprocessing           src/SAT/Preprocessing.hs:(18,1)-(25,20)         2837           1    0.0    0.0     0.0    0.0
+ CAF:propagate_rNng                                     SAT.Solver                  <no location info>                              2157           0    0.0    0.0     0.0    0.0
+  getSolutions                                          SAT.Solver                  src/SAT/Solver.hs:(134,1)-(203,12)              2712           0    0.0    0.0     0.0    0.0
+   getSolutions.propagate                               SAT.Solver                  src/SAT/Solver.hs:(170,5)-(173,25)              2713           1    0.0    0.0     0.0    0.0
+ CAF:solver_rNnf                                        SAT.Solver                  <no location info>                              2156           0    0.0    0.0     0.0    0.0
+  getSolutions                                          SAT.Solver                  src/SAT/Solver.hs:(134,1)-(203,12)              2716           0    0.0    0.0     0.0    0.0
+   getSolutions.solver                                  SAT.Solver                  src/SAT/Solver.hs:(150,5)-(151,60)              2717           1    0.0    0.0     0.0    0.0
+    ifM                                                 SAT.Monad                   src/SAT/Monad.hs:122:1-26                       2718           1    0.0    0.0     0.0    0.0
+ CAF:subkeyMask                                         Data.HashMap.Internal       Data/HashMap/Internal.hs:2452:1-10              2021           0    0.0    0.0     0.0    0.0
+  subkeyMask                                            Data.HashMap.Internal       Data/HashMap/Internal.hs:2452:1-47              2763           1    0.0    0.0     0.0    0.0
+ CAF:sudokuTwentyfive                                   Sudoku.Solver               src/Sudoku/Solver.hs:316:1-16                   2075           0    0.0    0.0     0.0    0.0
+  sudokuTwentyfive                                      Sudoku.Solver               src/Sudoku/Solver.hs:(316,1)-(346,5)            2683           1    0.0    0.0     0.0    0.0
+ CAF:toCNF                                              SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:108:1-5                   2426           0    0.0    0.0     0.0    0.0
+  toCNF                                                 SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:(108,1)-(114,83)          2687           1    0.0    0.0     0.0    0.0
+   toCNF.toCNF'                                         SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:111:5-26                  2688           1    0.0    0.0     0.0    0.0
  CAF:unitPropagateM1                                    SAT.Optimisers              <no location info>                              2252           0    0.0    0.0     0.0    0.0
-  unitPropagateM                                        SAT.Optimisers              src/SAT/Optimisers.hs:(229,1)-(355,22)          2819           1    0.0    0.0     0.0    0.0
+  unitPropagateM                                        SAT.Optimisers              src/SAT/Optimisers.hs:(226,1)-(318,131)         2839           1    0.0    0.0     0.0    0.0
  CAF:unitPropagateM2                                    SAT.Optimisers              <no location info>                              2251           0    0.0    0.0     0.0    0.0
-  unitPropagateM                                        SAT.Optimisers              src/SAT/Optimisers.hs:(229,1)-(355,22)          2820           0    0.0    0.0     0.0    0.0
-   unitPropagateM.go                                    SAT.Optimisers              src/SAT/Optimisers.hs:(232,7)-(246,27)          2821           1    0.0    0.0     0.0    0.0
- CAF:unstableIntNub                                     Utils                       src/Utils.hs:39:1-14                            2042           0    0.0    0.0     0.0    0.0
-  unstableIntNub                                        Utils                       src/Utils.hs:39:1-48                            2723           1    0.0    0.0     0.0    0.0
- CAF:varValue                                           SAT.CNF                     src/SAT/CNF.hs:77:1-8                           2441           0    0.0    0.0     0.0    0.0
-  varValue                                              SAT.CNF                     src/SAT/CNF.hs:77:1-15                          2864           1    0.0    0.0     0.0    0.0
- run                                                    Main                        app/Main.hs:(121,1)-(130,45)                    2648           0    0.0    0.0   100.0  100.0
-  parseArgs                                             Options                     src/Options.hs:(110,1)-(115,56)                 2649           1    0.0    0.0     0.0    0.0
-   optMode                                              Options                     src/Options.hs:55:5-11                          2653           1    0.0    0.0     0.0    0.0
-   parseArgs.(...)                                      Options                     src/Options.hs:111:7-51                         2650           1    0.0    0.0     0.0    0.0
-    options                                             Options                     src/Options.hs:(68,1)-(99,3)                    2656           0    0.0    0.0     0.0    0.0
-     options.\                                          Options                     src/Options.hs:92:29-73                         2658           1    0.0    0.0     0.0    0.0
-   parseArgs.errs                                       Options                     src/Options.hs:111:7-51                         2651           1    0.0    0.0     0.0    0.0
-   parseArgs.opts                                       Options                     src/Options.hs:111:7-51                         2654           1    0.0    0.0     0.0    0.0
-  runSudoku                                             Main                        app/Main.hs:(87,1)-(98,53)                      2659           1    0.0    0.0   100.0  100.0
-   show                                                 Sudoku.Solver               src/Sudoku/Solver.hs:58:3-70                    2660           2    0.0    0.0     0.0    0.0
-   runSudoku.solution                                   Main                        app/Main.hs:97:7-30                             2664           1    0.0    0.0   100.0  100.0
-    solve                                               Problem                     src/Problem.hs:164:1-60                         2665           1    0.0    0.0   100.0  100.0
-     getSolutions                                       SAT.Solver                  src/SAT/Solver.hs:(147,1)-(216,12)              2690           1    0.0    0.0    96.4   91.7
-      getSolutions.restart                              SAT.Solver                  src/SAT/Solver.hs:(213,5)-(216,12)              2699           1    0.0    0.0     0.0    0.0
-      getSolutions.run                                  SAT.Solver                  src/SAT/Solver.hs:(152,5)-(160,25)              2700           1    0.1    0.0    33.3    9.8
-       literals                                         SAT.CNF                     src/SAT/CNF.hs:48:5-12                          2816      500926    0.0    0.0     0.0    0.0
-       getSolutions.run.\                               SAT.Solver                  src/SAT/Solver.hs:160:20-25                     2899           1    0.0    0.0     0.0    0.0
-       getClauseDB                                      SAT.Monad                   src/SAT/Monad.hs:101:1-27                       2702           0    0.0    0.0     0.0    0.0
-        clauseDB                                        SAT.Monad                   src/SAT/Monad.hs:48:5-12                        2703           1    0.0    0.0     0.0    0.0
-       preprocess                                       SAT.Preprocessing           src/SAT/Preprocessing.hs:(18,1)-(25,20)         2818           0    0.0    0.0    33.2    9.8
-        preprocess.\                                    SAT.Preprocessing           src/SAT/Preprocessing.hs:(22,16)-(25,20)        2898           1    0.0    0.0     0.0    0.0
-        unitPropagateM                                  SAT.Optimisers              src/SAT/Optimisers.hs:(229,1)-(355,22)          2822           0    0.0    0.0    33.2    9.8
-         unitPropagateM.go                              SAT.Optimisers              src/SAT/Optimisers.hs:(232,7)-(246,27)          2823           0    0.1    0.1    33.2    9.8
-          addPropagation                                SAT.Optimisers              src/SAT/Optimisers.hs:(441,1)-(446,45)          2832       12754    0.1    0.1     0.4    0.3
-           addPropagation.\                             SAT.Optimisers              src/SAT/Optimisers.hs:446:17-45                 2841       12754    0.0    0.0     0.0    0.0
-           addPropagation.graph'                        SAT.Optimisers              src/SAT/Optimisers.hs:445:7-65                  2838       12754    0.3    0.1     0.3    0.1
-           addPropagation.newNode                       SAT.Optimisers              src/SAT/Optimisers.hs:444:7-40                  2837       12754    0.0    0.0     0.0    0.0
-           getDecisionLevel                             SAT.Monad                   src/SAT/Monad.hs:92:1-37                        2834           0    0.0    0.0     0.0    0.0
-            decisionLevel                               SAT.Monad                   src/SAT/Monad.hs:47:5-17                        2835       12754    0.0    0.0     0.0    0.0
-           getImplicationGraph                          SAT.Monad                   src/SAT/Monad.hs:82:1-43                        2839           0    0.0    0.0     0.0    0.0
-            implicationGraph                            SAT.Monad                   src/SAT/Monad.hs:45:5-20                        2840       12754    0.0    0.0     0.0    0.0
-          assignM                                       SAT.Optimisers              src/SAT/Optimisers.hs:(370,1)-(374,45)          2827       12754    0.0    0.1     0.0    0.2
-           assignM.\                                    SAT.Optimisers              src/SAT/Optimisers.hs:374:17-45                 2831       12754    0.0    0.0     0.0    0.0
-           assignM.m                                    SAT.Optimisers              src/SAT/Optimisers.hs:373:7-31                  2829       12754    0.0    0.0     0.0    0.1
-            assign                                      SAT.Optimisers              src/SAT/Optimisers.hs:366:1-64                  2830       12754    0.0    0.1     0.0    0.1
-           assignM.t                                    SAT.Optimisers              src/SAT/Optimisers.hs:372:7-39                  2828       12754    0.0    0.0     0.0    0.0
-          unitPropagateM.go.\                           SAT.Optimisers              src/SAT/Optimisers.hs:239:27-51                 2842       12754    0.0    0.0     0.0    0.0
-          unitPropagateM.go.indices                     SAT.Optimisers              src/SAT/Optimisers.hs:242:17-113                2847       12754    1.8    1.3     1.8    1.3
-           literals                                     SAT.Monad                   src/SAT/Monad.hs:32:44-51                       2850       12754    0.0    0.0     0.0    0.0
-          unitPropagateM.processClauses                 SAT.Optimisers              src/SAT/Optimisers.hs:(249,7)-(257,31)          2848       12754    0.0    0.0    30.8    7.9
-           unitPropagateM.processClauses.go'            SAT.Optimisers              src/SAT/Optimisers.hs:(252,11)-(257,31)         2849      831336    1.0    1.5    30.8    7.9
-            unitPropagateM.processClause                SAT.Optimisers              src/SAT/Optimisers.hs:(260,7)-(289,30)          2853      818582    7.7    2.7    29.9    6.4
-             unitPropagateM.processClause.(...)         SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2854      818582   11.1    0.0    11.1    0.0
-             unitPropagateM.processClause.a             SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2858      818582    0.0    0.0     0.0    0.0
-             unitPropagateM.processClause.b             SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2861      818582    0.0    0.0     0.0    0.0
-             unitPropagateM.processClause.first         SAT.Optimisers              src/SAT/Optimisers.hs:264:17-37                 2857      818582    0.3    0.0     0.3    0.0
-             unitPropagateM.processClause.firstValue    SAT.Optimisers              src/SAT/Optimisers.hs:267:17-58                 2865      818582    0.0    0.0     2.5    1.7
-              literalValue                              SAT.CNF                     src/SAT/CNF.hs:(82,1)-(84,48)                   2866      818582    2.5    1.7     2.5    1.7
-             unitPropagateM.processClause.literals      SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2859      818582    0.0    0.0     0.0    0.0
-             unitPropagateM.processClause.second        SAT.Optimisers              src/SAT/Optimisers.hs:265:17-38                 2860      818582    5.1    0.0     5.1    0.0
-             unitPropagateM.processClause.secondValue   SAT.Optimisers              src/SAT/Optimisers.hs:268:17-60                 2862      818582    0.0    0.0     2.3    1.7
-              literalValue                              SAT.CNF                     src/SAT/CNF.hs:(82,1)-(84,48)                   2863      818582    2.3    1.7     2.3    1.7
-             unitPropagateM.findNewWatch                SAT.Optimisers              src/SAT/Optimisers.hs:321:7-131                 2869       14348    0.0    0.0     0.1    0.0
-              unitPropagateM.findNewWatch.\             SAT.Optimisers              src/SAT/Optimisers.hs:321:63-130                2870       39326    0.0    0.0     0.1    0.0
-               literalValue                             SAT.CNF                     src/SAT/CNF.hs:(82,1)-(84,48)                   2877       10630    0.0    0.0     0.0    0.0
-             unitPropagateM.addProp                     SAT.Optimisers              src/SAT/Optimisers.hs:(314,7)-(317,96)          2871       12453    0.0    0.1     0.0    0.1
-              unitPropagateM.addProp.\                  SAT.Optimisers              src/SAT/Optimisers.hs:317:23-96                 2875       12453    0.0    0.0     0.0    0.0
-              unitPropagateM.addProp.l                  SAT.Optimisers              src/SAT/Optimisers.hs:315:13-33                 2872       12453    0.0    0.0     0.0    0.0
-              getPropagationStack                       SAT.Monad                   src/SAT/Monad.hs:67:1-43                        2873           0    0.0    0.0     0.0    0.0
-               propagationStack                         SAT.Monad                   src/SAT/Monad.hs:51:5-20                        2874       12453    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch              SAT.Optimisers              src/SAT/Optimisers.hs:(292,7)-(311,22)          2879        1895    0.0    0.0     0.1    0.1
-              unitPropagateM.handleNewWatch.\           SAT.Optimisers              src/SAT/Optimisers.hs:309:23-89                 2896        1895    0.0    0.0     0.0    0.0
-              unitPropagateM.handleNewWatch.aClauses    SAT.Optimisers              src/SAT/Optimisers.hs:301:13-97                 2888        1895    0.0    0.0     0.0    0.0
-               literals                                 SAT.Monad                   src/SAT/Monad.hs:32:44-51                       2893        1895    0.0    0.0     0.0    0.0
-              unitPropagateM.handleNewWatch.aClauses'   SAT.Optimisers              src/SAT/Optimisers.hs:302:13-52                 2894        1895    0.0    0.0     0.0    0.0
-              unitPropagateM.handleNewWatch.l           SAT.Optimisers              src/SAT/Optimisers.hs:294:13-44                 2881        1895    0.0    0.0     0.0    0.0
-               literals                                 SAT.CNF                     src/SAT/CNF.hs:48:5-12                          2882        1895    0.0    0.0     0.0    0.0
-              unitPropagateM.handleNewWatch.lClauses    SAT.Optimisers              src/SAT/Optimisers.hs:304:13-93                 2889        1895    0.0    0.0     0.0    0.0
-               literals                                 SAT.Monad                   src/SAT/Monad.hs:32:44-51                       2891        1895    0.0    0.0     0.0    0.0
-              unitPropagateM.handleNewWatch.lClauses'   SAT.Optimisers              src/SAT/Optimisers.hs:305:13-52                 2892        1895    0.0    0.0     0.0    0.0
-              unitPropagateM.handleNewWatch.newClause   SAT.Optimisers              src/SAT/Optimisers.hs:293:13-49                 2880        1895    0.0    0.0     0.0    0.0
-              unitPropagateM.handleNewWatch.newClauseDb SAT.Optimisers              src/SAT/Optimisers.hs:299:13-60                 2885        1895    0.1    0.1     0.1    0.1
-              unitPropagateM.handleNewWatch.newWl       SAT.Optimisers              src/SAT/Optimisers.hs:307:13-131                2890        1895    0.0    0.0     0.0    0.0
-               literals                                 SAT.Monad                   src/SAT/Monad.hs:32:44-51                       2895        1895    0.0    0.0     0.0    0.0
-              getClauseDB                               SAT.Monad                   src/SAT/Monad.hs:101:1-27                       2886           0    0.0    0.0     0.0    0.0
-               clauseDB                                 SAT.Monad                   src/SAT/Monad.hs:48:5-12                        2887        1895    0.0    0.0     0.0    0.0
-              getWatchedLiterals                        SAT.Monad                   src/SAT/Monad.hs:87:1-41                        2883           0    0.0    0.0     0.0    0.0
-               watchedLiterals                          SAT.Monad                   src/SAT/Monad.hs:46:5-19                        2884        1895    0.0    0.0     0.0    0.0
-             unitPropagateM.processClause.clause        SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2878        1895    0.0    0.0     0.0    0.0
-             getClauseDB                                SAT.Monad                   src/SAT/Monad.hs:101:1-27                       2855           0    0.1    0.0     0.4    0.0
-              clauseDB                                  SAT.Monad                   src/SAT/Monad.hs:48:5-12                        2856      818582    0.3    0.0     0.3    0.0
-          getAssignment                                 SAT.Monad                   src/SAT/Monad.hs:72:1-31                        2844           0    0.0    0.0     0.0    0.0
-           assignment                                   SAT.Monad                   src/SAT/Monad.hs:43:5-14                        2845       12754    0.0    0.0     0.0    0.0
-          getPropagationStack                           SAT.Monad                   src/SAT/Monad.hs:67:1-43                        2825           0    0.0    0.0     0.0    0.0
-           propagationStack                             SAT.Monad                   src/SAT/Monad.hs:51:5-20                        2826       12755    0.0    0.0     0.0    0.0
-          getWatchedLiterals                            SAT.Monad                   src/SAT/Monad.hs:87:1-41                        2851           0    0.0    0.0     0.0    0.0
-           watchedLiterals                              SAT.Monad                   src/SAT/Monad.hs:46:5-19                        2852       12754    0.0    0.0     0.0    0.0
-      getSolutions.shouldRestart                        SAT.Solver                  src/SAT/Solver.hs:(206,5)-(210,41)              2691           1    0.0    0.0     0.0    0.0
-      initState                                         SAT.Solver                  src/SAT/Solver.hs:(74,1)-(91,37)                2704           1    0.0    0.0    43.3   68.1
-       initState.db                                     SAT.Solver                  src/SAT/Solver.hs:91:5-37                       2800           1    0.1    0.3     0.1    0.3
-       initState.watchedClauses                         SAT.Solver                  src/SAT/Solver.hs:89:5-69                       2706           1    0.1    1.1    15.7   16.6
-        initClauseWatched                               SAT.WL                      src/SAT/WL.hs:(38,1)-(50,19)                    2719      563426    0.7    1.5     1.7    1.5
-         initClauseWatched.(...)                        SAT.WL                      src/SAT/WL.hs:43:5-40                           2789      563426    0.1    0.0     0.4    0.0
-          initClauseWatched.findInitialWatched          SAT.WL                      src/SAT/WL.hs:(46,5)-(50,19)                    2790      563426    0.1    0.0     0.3    0.0
-           initClauseWatched.findInitialWatched.len     SAT.WL                      src/SAT/WL.hs:47:11-27                          2791      563426    0.2    0.0     0.2    0.0
-         initClauseWatched.a                            SAT.WL                      src/SAT/WL.hs:43:5-40                           2788      563426    0.2    0.0     0.2    0.0
-         initClauseWatched.b                            SAT.WL                      src/SAT/WL.hs:43:5-40                           2792      563426    0.2    0.0     0.2    0.0
-        unstableHashNub                                 Utils                       src/Utils.hs:36:1-51                            2707           1    0.6    1.0    13.9   13.9
-         unArray                                        Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2799      763391    0.0    0.0     0.0    0.0
-         insert                                         Data.HashMap.Internal       Data/HashMap/Internal.hs:802:1-37               2710      563426    0.0    0.0    13.2   12.9
-          hash                                          Data.HashMap.Internal       Data/HashMap/Internal.hs:183:1-28               2711      563426    0.1    0.0     2.0    1.6
-           hash                                         SAT.CNF                     src/SAT/CNF.hs:57:10-24                         2715           0    0.0    0.0     1.9    1.6
-            hash                                        Data.Hashable.Class         src/Data/Hashable/Class.hs:255:5-22             2716           0    0.1    0.0     1.9    1.6
-             defaultHash                                Data.Hashable.Class         src/Data/Hashable/Class.hs:331:1-38             2717           0    0.1    0.0     1.7    1.6
-              hashWithSalt                              SAT.CNF                     src/SAT/CNF.hs:59:3-67                          2718      563426    0.2    0.0     1.6    1.6
-               hashWithSalt                             Data.Hashable.Class         src/Data/Hashable/Class.hs:662:5-32             2731      563426    0.1    0.2     1.4    1.6
-                hashWithSalt1                           Data.Hashable.Class         src/Data/Hashable/Class.hs:302:1-45             2732      563426    0.0    0.0     1.3    1.4
-                 liftHashWithSalt                       Data.Hashable.Class         src/Data/Hashable/Class.hs:(665,5)-(668,46)     2733      563426    0.3    0.0     1.2    1.4
-                  liftHashWithSalt.step                 Data.Hashable.Class         src/Data/Hashable/Class.hs:668:9-46             2734     1140926    0.3    0.4     0.5    0.8
-                   hashWithSalt                         Data.Hashable.Class         src/Data/Hashable/Class.hs:357:5-26             2736           0    0.1    0.0     0.2    0.4
-                    hashInt                             Data.Hashable.LowLevel      src/Data/Hashable/LowLevel.hs:(64,1)-(80,31)    2737     1140926    0.1    0.4     0.1    0.4
-                  liftHashWithSalt.finalise             Data.Hashable.Class         src/Data/Hashable/Class.hs:667:9-44             2738      563426    0.2    0.4     0.4    0.6
-                   hashWithSalt                         Data.Hashable.Class         src/Data/Hashable/Class.hs:357:5-26             2739           0    0.0    0.0     0.1    0.2
-                    hashInt                             Data.Hashable.LowLevel      src/Data/Hashable/LowLevel.hs:(64,1)-(80,31)    2740      563426    0.1    0.2     0.1    0.2
-          insert'                                       Data.HashMap.Internal       Data/HashMap/Internal.hs:(806,1)-(837,76)       2741      563426    0.0    0.0    11.2   11.3
-           insert'.go                                   Data.HashMap.Internal       Data/HashMap/Internal.hs:(808,5)-(837,76)       2742     2424992    7.9    2.8    11.2   11.3
-            unMArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:158:7-14         2745     3427033    0.0    0.0     0.0    0.0
-            insert'.go.i                                Data.HashMap.Internal       Data/HashMap/Internal.hs:834:13-25              2757     1381449    0.0    0.0     0.0    0.0
-            insert'.go.st                               Data.HashMap.Internal       Data/HashMap/Internal.hs:829:13-32              2756     1381449    0.3    0.0     0.3    0.0
-             unArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2758     1381449    0.0    0.0     0.0    0.0
-            insert'.go.st'                              Data.HashMap.Internal       Data/HashMap/Internal.hs:830:13-44              2759     1381449    0.1    0.0     0.1    0.0
-            clone                                       Data.HashMap.Internal       Data/HashMap/Internal.hs:(2431,1)-(2432,34)     2760     1200694    0.4    7.4     0.4    7.4
-             unArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2764     1200694    0.0    0.0     0.0    0.0
-            insert'.go.i                                Data.HashMap.Internal       Data/HashMap/Internal.hs:827:13-31              2747      853324    0.0    0.0     0.0    0.0
-            insert'.go.m                                Data.HashMap.Internal       Data/HashMap/Internal.hs:826:13-24              2746      853324    0.0    0.0     0.0    0.0
-            unArray                                     Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2774      766694    0.0    0.0     0.0    0.0
-            insert'.go.st                               Data.HashMap.Internal       Data/HashMap/Internal.hs:821:17-36              2771      480117    0.4    0.0     0.4    0.0
-             unArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2772      480117    0.0    0.0     0.0    0.0
-            insert'.go.st'                              Data.HashMap.Internal       Data/HashMap/Internal.hs:822:17-48              2773      480117    0.2    0.0     0.2    0.0
-            insert'.go.ary'                             Data.HashMap.Internal       Data/HashMap/Internal.hs:818:17-56              2748      373207    1.1    1.1     1.3    1.1
-             copy                                       Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:(297,1)-(302,30) 2750      746414    0.0    0.0     0.2    0.0
-              copy.\                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:(301,9)-(302,30) 2751      746414    0.1    0.0     0.1    0.0
-               unArray                                  Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2752      746414    0.0    0.0     0.0    0.0
-               unMArray                                 Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:158:7-14         2753      746414    0.0    0.0     0.0    0.0
-             unArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2749      373207    0.0    0.0     0.0    0.0
-             unMArray                                   Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:158:7-14         2754      373207    0.0    0.0     0.0    0.0
-            ==                                          SAT.CNF                     src/SAT/CNF.hs:51:19-20                         2787       62500    0.5    0.0     0.5    0.0
-         asMap                                          Data.HashSet.Internal       Data/HashSet/Internal.hs:113:7-11               2708           1    0.0    0.0     0.0    0.0
-       initVSIDS                                        SAT.VSIDS                   src/SAT/VSIDS.hs:(46,1)-(49,119)                2804           1    0.1    0.0     7.4   15.7
-        initVSIDS.updateVSIDS                           SAT.VSIDS                   src/SAT/VSIDS.hs:49:5-119                       2806      563426    3.0    0.0     7.3   15.7
-         initVSIDS.updateVSIDS.\                        SAT.VSIDS                   src/SAT/VSIDS.hs:49:74-107                      2807     1140926    4.3   15.7     4.3   15.7
-       initWatchedLiterals                              SAT.WL                      src/SAT/WL.hs:(23,1)-(35,96)                    2801           1    0.0    0.0    13.3   22.4
-        initWatchedLiterals.litMap                      SAT.WL                      src/SAT/WL.hs:35:5-96                           2802           1    1.8    4.5    13.3   22.4
-         initWatchedLiterals.accumulate                 SAT.WL                      src/SAT/WL.hs:(26,5)-(32,92)                    2803      500926   11.5   17.8    11.5   17.8
-       collectLiteralsToSet                             SAT.Optimisers              src/SAT/Optimisers.hs:75:1-56                   2809           0    2.0    8.8     6.6   13.2
-        collectLiterals                                 SAT.Optimisers              src/SAT/Optimisers.hs:(64,1)-(67,50)            2810           1    0.6    1.7     4.5    4.4
-         collectLiterals.getVars                        SAT.Optimisers              src/SAT/Optimisers.hs:67:5-50                   2811           1    3.9    2.7     3.9    2.7
-          literals                                      SAT.CNF                     src/SAT/CNF.hs:48:5-12                          2812      563426    0.0    0.0     0.0    0.0
-       initialPropagationStack                          SAT.Solver                  src/SAT/Solver.hs:(94,1)-(95,144)               2814           0    0.2    0.0     0.2    0.0
-        initialPropagationStack.\                       SAT.Solver                  src/SAT/Solver.hs:95:59-136                     2815      500926    0.0    0.0     0.0    0.0
-      getSolutions.branch                               SAT.Solver                  src/SAT/Solver.hs:167:5-33                      2905           0    0.0    0.0     7.3    6.7
-       getSolutions.try                                 SAT.Solver                  src/SAT/Solver.hs:(170,5)-(174,29)              2916         159    0.0    0.0     0.0    0.0
-        getSolutions.tryAssign                          SAT.Solver                  src/SAT/Solver.hs:(177,5)-(180,15)              2917         318    0.0    0.0     0.0    0.0
-         addDecision                                    SAT.Optimisers              src/SAT/Optimisers.hs:(437,1)-(438,87)          2927         318    0.0    0.0     0.0    0.0
-          addDecision.\                                 SAT.Optimisers              src/SAT/Optimisers.hs:438:17-87                 2928         318    0.0    0.0     0.0    0.0
-           propagationStack                             SAT.Monad                   src/SAT/Monad.hs:51:5-20                        2948         318    0.0    0.0     0.0    0.0
-         increaseDecisionLevel                          SAT.Monad                   src/SAT/Monad.hs:133:1-77                       2924           0    0.0    0.0     0.0    0.0
-          increaseDecisionLevel.\                       SAT.Monad                   src/SAT/Monad.hs:133:39-77                      2925         318    0.0    0.0     0.0    0.0
-           decisionLevel                                SAT.Monad                   src/SAT/Monad.hs:47:5-17                        2926         318    0.0    0.0     0.0    0.0
-       pickLiteralM                                     SAT.Optimisers              src/SAT/Optimisers.hs:(462,1)-(468,36)          2907           0    0.0    0.0     7.3    6.7
-        pickLiteral                                     SAT.VSIDS                   src/SAT/VSIDS.hs:(82,1)-(85,3)                  2918         159    0.0    0.0     0.2    0.6
-         pickLiteral.(...)                              SAT.VSIDS                   src/SAT/VSIDS.hs:84:7-90                        2920         159    0.1    0.0     0.1    0.0
-          pickLiteral.(...).\                           SAT.VSIDS                   src/SAT/VSIDS.hs:84:44-78                       2921      264773    0.0    0.0     0.0    0.0
-         pickLiteral.k                                  SAT.VSIDS                   src/SAT/VSIDS.hs:84:7-90                        2922         159    0.0    0.0     0.0    0.0
-         pickLiteral.lst                                SAT.VSIDS                   src/SAT/VSIDS.hs:83:7-27                        2919         159    0.0    0.6     0.0    0.6
-        pickLiteralM.vs'                                SAT.Optimisers              src/SAT/Optimisers.hs:466:9-85                  2911         159    1.6    1.1     7.1    6.1
-         pickLiteralM.vs'.\                             SAT.Optimisers              src/SAT/Optimisers.hs:466:45-81                 2914     2484375    0.4    0.0     5.5    5.0
-          literalValue                                  SAT.CNF                     src/SAT/CNF.hs:(82,1)-(84,48)                   2915     2484375    5.1    5.0     5.1    5.0
-        getAssignment                                   SAT.Monad                   src/SAT/Monad.hs:72:1-31                        2908           0    0.0    0.0     0.0    0.0
-         assignment                                     SAT.Monad                   src/SAT/Monad.hs:43:5-14                        2909         159    0.0    0.0     0.0    0.0
-        getVSIDS                                        SAT.Monad                   src/SAT/Monad.hs:97:1-21                        2912           0    0.0    0.0     0.0    0.0
-         vsids                                          SAT.Monad                   src/SAT/Monad.hs:49:5-9                         2913         159    0.0    0.0     0.0    0.0
-      getSolutions.propagate                            SAT.Solver                  src/SAT/Solver.hs:(183,5)-(186,25)              2929           0    0.0    0.0    11.7    7.0
-       getSolutions.propagate.\                         SAT.Solver                  src/SAT/Solver.hs:186:20-25                     2995         193    0.0    0.0     0.0    0.0
-       getSolutions.propagate.\                         SAT.Solver                  src/SAT/Solver.hs:185:19-34                     3001         125    0.0    0.0     2.0    4.4
-        getSolutions.handleConflict                     SAT.Solver                  src/SAT/Solver.hs:(189,5)-(202,24)              3002         125    0.0    0.0     2.0    4.4
-         analyseConflict                                SAT.CDCL                    src/SAT/CDCL.hs:(59,1)-(103,78)                 3003         125    0.0    0.0     0.0    0.0
-          analyseConflict.decisionLevels                SAT.CDCL                    src/SAT/CDCL.hs:(94,11)-(99,23)                 3011         125    0.0    0.0     0.0    0.0
-           analyseConflict.decisionLevels.\             SAT.CDCL                    src/SAT/CDCL.hs:97:23-102                       3013         250    0.0    0.0     0.0    0.0
-            analyseConflict.decisionLevels.\.\          SAT.CDCL                    src/SAT/CDCL.hs:97:50-51                        3014         250    0.0    0.0     0.0    0.0
-           unstableIntNub                               Utils                       src/Utils.hs:39:1-48                            3012           0    0.0    0.0     0.0    0.0
-          analyseConflict.literals                      SAT.CDCL                    src/SAT/CDCL.hs:(65,11)-(70,24)                 3004         125    0.0    0.0     0.0    0.0
-           analyseConflict.literals.\                   SAT.CDCL                    src/SAT/CDCL.hs:68:25-122                       3005         250    0.0    0.0     0.0    0.0
-            analyseConflict.literals.\.\                SAT.CDCL                    src/SAT/CDCL.hs:68:53-71                        3006         250    0.0    0.0     0.0    0.0
-          analyseConflict.loop                          SAT.CDCL                    src/SAT/CDCL.hs:(73,11)-(90,30)                 3007         125    0.0    0.0     0.0    0.0
-           analyseConflict.loop.implied                 SAT.CDCL                    src/SAT/CDCL.hs:(75,17)-(79,22)                 3008         125    0.0    0.0     0.0    0.0
-            analyseConflict.loop.implied.\              SAT.CDCL                    src/SAT/CDCL.hs:77:29-126                       3009         139    0.0    0.0     0.0    0.0
-             analyseConflict.loop.implied.\.\           SAT.CDCL                    src/SAT/CDCL.hs:77:57-75                        3010         139    0.0    0.0     0.0    0.0
-         adjustScoresM                                  SAT.Optimisers              src/SAT/Optimisers.hs:(457,1)-(459,53)          3022         111    0.0    0.0     0.0    0.0
-          adjustScoresM.\                               SAT.Optimisers              src/SAT/Optimisers.hs:459:17-53                 3023         111    0.0    0.0     0.0    0.0
-           adjustScores                                 SAT.VSIDS                   src/SAT/VSIDS.hs:77:1-40                        3024         111    0.0    0.0     0.0    0.0
-            adjustScore                                 SAT.VSIDS                   src/SAT/VSIDS.hs:65:1-78                        3027         222    0.0    0.0     0.0    0.0
-          getVSIDS                                      SAT.Monad                   src/SAT/Monad.hs:97:1-21                        3025           0    0.0    0.0     0.0    0.0
-           vsids                                        SAT.Monad                   src/SAT/Monad.hs:49:5-9                         3026         111    0.0    0.0     0.0    0.0
-         learn                                          SAT.Solver                  src/SAT/Solver.hs:(99,1)-(122,33)               3030         111    0.0    0.0     0.0    0.0
-          learn.(...)                                   SAT.Solver                  src/SAT/Solver.hs:100:7-41                      3031         111    0.0    0.0     0.0    0.0
-           learn.getInitialWatched                      SAT.Solver                  src/SAT/Solver.hs:(118,5)-(122,33)              3032         111    0.0    0.0     0.0    0.0
-          learn.\                                       SAT.Solver                  src/SAT/Solver.hs:115:21-87                     3046         111    0.0    0.0     0.0    0.0
-          learn.a                                       SAT.Solver                  src/SAT/Solver.hs:100:7-41                      3038         111    0.0    0.0     0.0    0.0
-          learn.aLits                                   SAT.Solver                  src/SAT/Solver.hs:110:11-83                     3040         111    0.0    0.0     0.0    0.0
-          learn.aLits'                                  SAT.Solver                  src/SAT/Solver.hs:112:11-67                     3043         111    0.0    0.0     0.0    0.0
-          learn.b                                       SAT.Solver                  src/SAT/Solver.hs:100:7-41                      3039         111    0.0    0.0     0.0    0.0
-          learn.bLits                                   SAT.Solver                  src/SAT/Solver.hs:111:11-83                     3041         111    0.0    0.0     0.0    0.0
-          learn.bLits'                                  SAT.Solver                  src/SAT/Solver.hs:113:11-67                     3044         111    0.0    0.0     0.0    0.0
-          learn.clause                                  SAT.Solver                  src/SAT/Solver.hs:101:7-50                      3033         111    0.0    0.0     0.0    0.0
-          learn.newClauseDB                             SAT.Solver                  src/SAT/Solver.hs:109:11-46                     3042         111    0.0    0.0     0.0    0.0
-          learn.newWL                                   SAT.Solver                  src/SAT/Solver.hs:114:11-128                    3045         111    0.0    0.0     0.0    0.0
-          getClauseDB                                   SAT.Monad                   src/SAT/Monad.hs:101:1-27                       3036           0    0.0    0.0     0.0    0.0
-           clauseDB                                     SAT.Monad                   src/SAT/Monad.hs:48:5-12                        3037         111    0.0    0.0     0.0    0.0
-          getWatchedLiterals                            SAT.Monad                   src/SAT/Monad.hs:87:1-41                        3034           0    0.0    0.0     0.0    0.0
-           watchedLiterals                              SAT.Monad                   src/SAT/Monad.hs:46:5-19                        3035         111    0.0    0.0     0.0    0.0
-         decayM                                         SAT.Optimisers              src/SAT/Optimisers.hs:390:1-50                  3016           0    0.0    0.0     2.0    4.4
-          decayM.\                                      SAT.Optimisers              src/SAT/Optimisers.hs:390:24-50                 3017         111    0.0    0.0     2.0    4.4
-           vsids                                        SAT.Monad                   src/SAT/Monad.hs:49:5-9                         3021         111    0.0    0.0     0.0    0.0
-           decay                                        SAT.VSIDS                   src/SAT/VSIDS.hs:38:1-28                        3020           0    2.0    4.4     2.0    4.4
-         increaseLubyCount                              SAT.Restarts                src/SAT/Restarts.hs:25:1-64                     3048           0    0.0    0.0     0.0    0.0
-          increaseLubyCount.\                           SAT.Restarts                src/SAT/Restarts.hs:25:34-64                    3049         111    0.0    0.0     0.0    0.0
-           lubyCount                                    SAT.Monad                   src/SAT/Monad.hs:52:5-13                        3050         111    0.0    0.0     0.0    0.0
-       unitPropagateM                                   SAT.Optimisers              src/SAT/Optimisers.hs:(229,1)-(355,22)          2930           0    0.0    0.0     9.7    2.6
-        unitPropagateM.go                               SAT.Optimisers              src/SAT/Optimisers.hs:(232,7)-(246,27)          2931           0    0.0    0.0     9.7    2.6
-         addPropagation                                 SAT.Optimisers              src/SAT/Optimisers.hs:(441,1)-(446,45)          2939        3217    0.0    0.0     0.0    0.1
-          addPropagation.\                              SAT.Optimisers              src/SAT/Optimisers.hs:446:17-45                 2946        3217    0.0    0.0     0.0    0.0
-          addPropagation.graph'                         SAT.Optimisers              src/SAT/Optimisers.hs:445:7-65                  2943        3217    0.0    0.0     0.0    0.0
-          addPropagation.newNode                        SAT.Optimisers              src/SAT/Optimisers.hs:444:7-40                  2942        3217    0.0    0.0     0.0    0.0
-          getDecisionLevel                              SAT.Monad                   src/SAT/Monad.hs:92:1-37                        2940           0    0.0    0.0     0.0    0.0
-           decisionLevel                                SAT.Monad                   src/SAT/Monad.hs:47:5-17                        2941        3217    0.0    0.0     0.0    0.0
-          getImplicationGraph                           SAT.Monad                   src/SAT/Monad.hs:82:1-43                        2944           0    0.0    0.0     0.0    0.0
-           implicationGraph                             SAT.Monad                   src/SAT/Monad.hs:45:5-20                        2945        3217    0.0    0.0     0.0    0.0
-         assignM                                        SAT.Optimisers              src/SAT/Optimisers.hs:(370,1)-(374,45)          2934        3217    0.0    0.0     0.0    0.1
-          assignM.\                                     SAT.Optimisers              src/SAT/Optimisers.hs:374:17-45                 2938        3217    0.0    0.0     0.0    0.0
-          assignM.m                                     SAT.Optimisers              src/SAT/Optimisers.hs:373:7-31                  2936        3217    0.0    0.0     0.0    0.0
-           assign                                       SAT.Optimisers              src/SAT/Optimisers.hs:366:1-64                  2937        3217    0.0    0.0     0.0    0.0
-          assignM.t                                     SAT.Optimisers              src/SAT/Optimisers.hs:372:7-39                  2935        3217    0.0    0.0     0.0    0.0
-         unitPropagateM.go.\                            SAT.Optimisers              src/SAT/Optimisers.hs:239:27-51                 2947        3217    0.0    0.0     0.0    0.0
-         unitPropagateM.go.indices                      SAT.Optimisers              src/SAT/Optimisers.hs:242:17-113                2951        3217    0.5    0.3     0.5    0.3
-          literals                                      SAT.Monad                   src/SAT/Monad.hs:32:44-51                       2954        3217    0.0    0.0     0.0    0.0
-         unitPropagateM.processClauses                  SAT.Optimisers              src/SAT/Optimisers.hs:(249,7)-(257,31)          2952        3217    0.0    0.0     9.1    2.1
-          unitPropagateM.processClauses.go'             SAT.Optimisers              src/SAT/Optimisers.hs:(252,11)-(257,31)         2953      205694    0.1    0.4     9.1    2.1
-           unitPropagateM.processClause                 SAT.Optimisers              src/SAT/Optimisers.hs:(260,7)-(289,30)          2957      202602    2.4    0.7     9.0    1.7
-            unitPropagateM.processClause.(...)          SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2958      202602    3.5    0.0     3.5    0.0
-            unitPropagateM.processClause.a              SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2962      202602    0.0    0.0     0.0    0.0
-            unitPropagateM.processClause.b              SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2965      202602    0.0    0.0     0.0    0.0
-            unitPropagateM.processClause.first          SAT.Optimisers              src/SAT/Optimisers.hs:264:17-37                 2961      202602    0.1    0.0     0.1    0.0
-            unitPropagateM.processClause.firstValue     SAT.Optimisers              src/SAT/Optimisers.hs:267:17-58                 2968      202602    0.0    0.0     1.0    0.5
-             literalValue                               SAT.CNF                     src/SAT/CNF.hs:(82,1)-(84,48)                   2969      202602    1.0    0.5     1.0    0.5
-            unitPropagateM.processClause.literals       SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2963      202602    0.0    0.0     0.0    0.0
-            unitPropagateM.processClause.second         SAT.Optimisers              src/SAT/Optimisers.hs:265:17-38                 2964      202602    1.2    0.0     1.2    0.0
-            unitPropagateM.processClause.secondValue    SAT.Optimisers              src/SAT/Optimisers.hs:268:17-60                 2966      202602    0.0    0.0     0.6    0.5
-             literalValue                               SAT.CNF                     src/SAT/CNF.hs:(82,1)-(84,48)                   2967      202602    0.6    0.5     0.6    0.5
-            unitPropagateM.findNewWatch                 SAT.Optimisers              src/SAT/Optimisers.hs:321:7-131                 2972        3659    0.0    0.0     0.0    0.0
-             unitPropagateM.findNewWatch.\              SAT.Optimisers              src/SAT/Optimisers.hs:321:63-130                2973       25528    0.0    0.0     0.0    0.0
-              literalValue                              SAT.CNF                     src/SAT/CNF.hs:(82,1)-(84,48)                   2974       18210    0.0    0.0     0.0    0.0
-            unitPropagateM.addProp                      SAT.Optimisers              src/SAT/Optimisers.hs:(314,7)-(317,96)          2996        2899    0.0    0.0     0.0    0.0
-             unitPropagateM.addProp.\                   SAT.Optimisers              src/SAT/Optimisers.hs:317:23-96                 3000        2899    0.0    0.0     0.0    0.0
-             unitPropagateM.addProp.l                   SAT.Optimisers              src/SAT/Optimisers.hs:315:13-33                 2997        2899    0.0    0.0     0.0    0.0
-             getPropagationStack                        SAT.Monad                   src/SAT/Monad.hs:67:1-43                        2998           0    0.0    0.0     0.0    0.0
-              propagationStack                          SAT.Monad                   src/SAT/Monad.hs:51:5-20                        2999        2899    0.0    0.0     0.0    0.0
-            unitPropagateM.processClause.clause         SAT.Optimisers              src/SAT/Optimisers.hs:262:17-96                 2976         885    0.0    0.0     0.0    0.0
-            unitPropagateM.handleNewWatch               SAT.Optimisers              src/SAT/Optimisers.hs:(292,7)-(311,22)          2977         760    0.0    0.0     0.0    0.1
-             unitPropagateM.handleNewWatch.\            SAT.Optimisers              src/SAT/Optimisers.hs:309:23-89                 2994         760    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch.aClauses     SAT.Optimisers              src/SAT/Optimisers.hs:301:13-97                 2986         760    0.0    0.0     0.0    0.0
-              literals                                  SAT.Monad                   src/SAT/Monad.hs:32:44-51                       2991         760    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch.aClauses'    SAT.Optimisers              src/SAT/Optimisers.hs:302:13-52                 2992         760    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch.l            SAT.Optimisers              src/SAT/Optimisers.hs:294:13-44                 2979         760    0.0    0.0     0.0    0.0
-              literals                                  SAT.CNF                     src/SAT/CNF.hs:48:5-12                          2980         760    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch.lClauses     SAT.Optimisers              src/SAT/Optimisers.hs:304:13-93                 2987         760    0.0    0.0     0.0    0.0
-              literals                                  SAT.Monad                   src/SAT/Monad.hs:32:44-51                       2989         760    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch.lClauses'    SAT.Optimisers              src/SAT/Optimisers.hs:305:13-52                 2990         760    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch.newClause    SAT.Optimisers              src/SAT/Optimisers.hs:293:13-49                 2978         760    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch.newClauseDb  SAT.Optimisers              src/SAT/Optimisers.hs:299:13-60                 2983         760    0.0    0.0     0.0    0.0
-             unitPropagateM.handleNewWatch.newWl        SAT.Optimisers              src/SAT/Optimisers.hs:307:13-131                2988         760    0.0    0.0     0.0    0.0
-              literals                                  SAT.Monad                   src/SAT/Monad.hs:32:44-51                       2993         760    0.0    0.0     0.0    0.0
-             getClauseDB                                SAT.Monad                   src/SAT/Monad.hs:101:1-27                       2984           0    0.0    0.0     0.0    0.0
-              clauseDB                                  SAT.Monad                   src/SAT/Monad.hs:48:5-12                        2985         760    0.0    0.0     0.0    0.0
-             getWatchedLiterals                         SAT.Monad                   src/SAT/Monad.hs:87:1-41                        2981           0    0.0    0.0     0.0    0.0
-              watchedLiterals                           SAT.Monad                   src/SAT/Monad.hs:46:5-19                        2982         760    0.0    0.0     0.0    0.0
-            getClauseDB                                 SAT.Monad                   src/SAT/Monad.hs:101:1-27                       2959           0    0.0    0.0     0.1    0.0
-             clauseDB                                   SAT.Monad                   src/SAT/Monad.hs:48:5-12                        2960      202602    0.0    0.0     0.0    0.0
-         getAssignment                                  SAT.Monad                   src/SAT/Monad.hs:72:1-31                        2949           0    0.0    0.0     0.0    0.0
-          assignment                                    SAT.Monad                   src/SAT/Monad.hs:43:5-14                        2950        3217    0.0    0.0     0.0    0.0
-         getPropagationStack                            SAT.Monad                   src/SAT/Monad.hs:67:1-43                        2932           0    0.0    0.0     0.0    0.0
-          propagationStack                              SAT.Monad                   src/SAT/Monad.hs:51:5-20                        2933        3410    0.0    0.0     0.0    0.0
-         getWatchedLiterals                             SAT.Monad                   src/SAT/Monad.hs:87:1-41                        2955           0    0.0    0.0     0.0    0.0
-          watchedLiterals                               SAT.Monad                   src/SAT/Monad.hs:46:5-19                        2956        3217    0.0    0.0     0.0    0.0
-      getSolutions.solver                               SAT.Solver                  src/SAT/Solver.hs:(163,5)-(164,60)              2900           0    0.0    0.0     0.7    0.1
-       ifM                                              SAT.Monad                   src/SAT/Monad.hs:121:1-26                       2901           0    0.0    0.0     0.7    0.1
-        allVariablesAssigned                            SAT.Solver                  src/SAT/Solver.hs:(250,1)-(252,80)              2903           0    0.7    0.1     0.7    0.1
-        solutions                                       SAT.Solver                  src/SAT/Solver.hs:144:1-53                      3052           0    0.0    0.0     0.0    0.0
-         getAssignment                                  SAT.Monad                   src/SAT/Monad.hs:72:1-31                        3057           0    0.0    0.0     0.0    0.0
-          assignment                                    SAT.Monad                   src/SAT/Monad.hs:43:5-14                        3058           1    0.0    0.0     0.0    0.0
-         solutionsFromAssignment                        SAT.Solver                  src/SAT/Solver.hs:140:1-59                      3056           0    0.0    0.0     0.0    0.0
-     toCNF                                              Problem                     src/Problem.hs:245:1-31                         2666           1    0.0    0.0     3.5    8.2
-      toCNF                                             SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:(108,1)-(114,83)          2669           0    0.0    0.0     1.8    3.8
-       clauses                                          SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:44:5-11                   2671           1    0.0    0.0     0.0    0.0
-       toCNF.toCNF'                                     SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:111:5-26                  2670           0    0.3    1.1     1.8    3.8
-        toCNF.toClause                                  SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:114:5-83                  2722      563426    0.4    0.3     1.5    2.7
-         unstableIntNub                                 Utils                       src/Utils.hs:39:1-48                            2724           0    1.1    2.4     1.1    2.4
-      toDIMACS                                          Problem                     src/Problem.hs:50:3-28                          2673           0    0.0    0.0     1.7    4.4
-       toDIMACS                                         Sudoku.Solver               src/Sudoku/Solver.hs:(179,1)-(245,33)           2674           1    0.0    0.0     1.7    4.4
-        toDIMACS.blockClauses                           Sudoku.Solver               src/Sudoku/Solver.hs:(221,5)-(231,7)            2682           1    0.4    1.3     0.5    1.5
-         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2781           0    0.0    0.1     0.1    0.2
-          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2782      202500    0.0    0.1     0.1    0.1
-           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2783      202500    0.0    0.0     0.0    0.0
-            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2785      202500    0.0    0.0     0.0    0.0
-            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2784      202500    0.0    0.0     0.0    0.0
-           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2786      202500    0.0    0.0     0.0    0.0
-        toDIMACS.blockSize'                             Sudoku.Solver               src/Sudoku/Solver.hs:193:5-40                   2676           1    0.0    0.0     0.0    0.0
-         blockSize                                      Sudoku.Solver               src/Sudoku/Solver.hs:(128,1)-(132,36)           2678           1    0.0    0.0     0.0    0.0
-         size                                           Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2677           1    0.0    0.0     0.0    0.0
-        toDIMACS.boardSize                              Sudoku.Solver               src/Sudoku/Solver.hs:189:5-38                   2679           1    0.0    0.0     0.0    0.0
-         fromEnum                                       Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2681           1    0.0    0.0     0.0    0.0
-         size                                           Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2680           1    0.0    0.0     0.0    0.0
-        toDIMACS.cellClauses                            Sudoku.Solver               src/Sudoku/Solver.hs:209:5-120                  2683           1    0.0    0.0     0.0    0.0
-         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2725           0    0.0    0.0     0.0    0.0
-          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2726       15625    0.0    0.0     0.0    0.0
-           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2727       15625    0.0    0.0     0.0    0.0
-            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2729       15625    0.0    0.0     0.0    0.0
-            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2728       15625    0.0    0.0     0.0    0.0
-           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2730       15625    0.0    0.0     0.0    0.0
-        toDIMACS.clauses                                Sudoku.Solver               src/Sudoku/Solver.hs:(197,5)-(205,9)            2689           1    0.1    0.7     0.1    0.7
-        toDIMACS.colClauses                             Sudoku.Solver               src/Sudoku/Solver.hs:217:5-185                  2685           1    0.1    0.8     0.3    1.1
-         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2775           0    0.0    0.1     0.2    0.2
-          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2776      202500    0.1    0.1     0.1    0.1
-           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2777      202500    0.0    0.0     0.0    0.0
-            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2779      202500    0.0    0.0     0.0    0.0
-            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2778      202500    0.0    0.0     0.0    0.0
-           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2780      202500    0.0    0.0     0.0    0.0
-        toDIMACS.encodeVar'                             Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2675           1    0.0    0.0     0.0    0.0
-        toDIMACS.prefilledClauses                       Sudoku.Solver               src/Sudoku/Solver.hs:(235,5)-(241,7)            2686           1    0.0    0.0     0.0    0.0
-         toDIMACS.prefilledClauses.n                    Sudoku.Solver               src/Sudoku/Solver.hs:239:15-52                  2687         625    0.0    0.0     0.0    0.0
-          board                                         Sudoku.Solver               src/Sudoku/Solver.hs:48:5-9                     2688          25    0.0    0.0     0.0    0.0
-         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2793           0    0.0    0.0     0.0    0.0
-          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2794         301    0.0    0.0     0.0    0.0
-           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2795         301    0.0    0.0     0.0    0.0
-            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2797         301    0.0    0.0     0.0    0.0
-            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2796         301    0.0    0.0     0.0    0.0
-           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2798         301    0.0    0.0     0.0    0.0
-        toDIMACS.rowClauses                             Sudoku.Solver               src/Sudoku/Solver.hs:213:5-185                  2684           1    0.2    0.8     0.5    1.1
-         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2765           0    0.2    0.1     0.3    0.2
-          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2766      202500    0.1    0.1     0.1    0.1
-           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2767      202500    0.0    0.0     0.0    0.0
-            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2769      202500    0.0    0.0     0.0    0.0
-            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2768      202500    0.0    0.0     0.0    0.0
-           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2770      202500    0.0    0.0     0.0    0.0
-     decode                                             Problem                     src/Problem.hs:54:3-32                          3054           0    0.0    0.0     0.0    0.0
-      decodeSolution                                    Sudoku.Solver               src/Sudoku/Solver.hs:(152,1)-(172,39)           3059           1    0.0    0.0     0.0    0.0
-       decodeSolution.cellValue                         Sudoku.Solver               src/Sudoku/Solver.hs:(158,5)-(163,141)          3068         625    0.0    0.0     0.0    0.0
-        decodeSolution.checkVar                         Sudoku.Solver               src/Sudoku/Solver.hs:172:5-39                   3069           0    0.0    0.0     0.0    0.0
-         decodeSolution.encodeVar'                      Sudoku.Solver               src/Sudoku/Solver.hs:166:5-33                   3072           0    0.0    0.0     0.0    0.0
-          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           3073       15625    0.0    0.0     0.0    0.0
-           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   3074       15625    0.0    0.0     0.0    0.0
-            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             3076       15625    0.0    0.0     0.0    0.0
-            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     3075       15625    0.0    0.0     0.0    0.0
-           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   3077       15625    0.0    0.0     0.0    0.0
-       decodeSolution.boardSize                         Sudoku.Solver               src/Sudoku/Solver.hs:155:5-38                   3064           1    0.0    0.0     0.0    0.0
-        fromEnum                                        Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             3066           1    0.0    0.0     0.0    0.0
-        size                                            Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     3065           1    0.0    0.0     0.0    0.0
-       decodeSolution.checkValue'                       Sudoku.Solver               src/Sudoku/Solver.hs:169:5-37                   3060           1    0.0    0.0     0.0    0.0
-       decodeSolution.checkVar                          Sudoku.Solver               src/Sudoku/Solver.hs:172:5-39                   3063           1    0.0    0.0     0.0    0.0
-       decodeSolution.encodeVar'                        Sudoku.Solver               src/Sudoku/Solver.hs:166:5-33                   3062           1    0.0    0.0     0.0    0.0
-       size                                             Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     3067           1    0.0    0.0     0.0    0.0
-   runSudoku.sudoku'                                    Main                        app/Main.hs:94:7-63                             2661           1    0.0    0.0     0.0    0.0
+  unitPropagateM                                        SAT.Optimisers              src/SAT/Optimisers.hs:(226,1)-(318,131)         2840           0    0.0    0.0     0.0    0.0
+   unitPropagateM.go                                    SAT.Optimisers              src/SAT/Optimisers.hs:(229,7)-(243,27)          2841           1    0.0    0.0     0.0    0.0
+ CAF:unstableIntNub                                     Utils                       src/Utils.hs:39:1-14                            2052           0    0.0    0.0     0.0    0.0
+  unstableIntNub                                        Utils                       src/Utils.hs:39:1-48                            2743           1    0.0    0.0     0.0    0.0
+ run                                                    Main                        app/Main.hs:(121,1)-(130,45)                    2668           0    0.0    0.0   100.0  100.0
+  parseArgs                                             Options                     src/Options.hs:(110,1)-(115,56)                 2669           1    0.0    0.0     0.0    0.0
+   optMode                                              Options                     src/Options.hs:55:5-11                          2673           1    0.0    0.0     0.0    0.0
+   parseArgs.(...)                                      Options                     src/Options.hs:111:7-51                         2670           1    0.0    0.0     0.0    0.0
+    options                                             Options                     src/Options.hs:(68,1)-(99,3)                    2676           0    0.0    0.0     0.0    0.0
+     options.\                                          Options                     src/Options.hs:92:29-73                         2678           1    0.0    0.0     0.0    0.0
+   parseArgs.errs                                       Options                     src/Options.hs:111:7-51                         2671           1    0.0    0.0     0.0    0.0
+   parseArgs.opts                                       Options                     src/Options.hs:111:7-51                         2674           1    0.0    0.0     0.0    0.0
+  runSudoku                                             Main                        app/Main.hs:(87,1)-(98,53)                      2679           1    0.0    0.0   100.0  100.0
+   show                                                 Sudoku.Solver               src/Sudoku/Solver.hs:58:3-70                    2680           2    0.0    0.0     0.0    0.0
+   runSudoku.solution                                   Main                        app/Main.hs:97:7-30                             2684           1    0.0    0.0   100.0  100.0
+    solve                                               Problem                     src/Problem.hs:163:1-60                         2685           1    0.0    0.0   100.0  100.0
+     getSolutions                                       SAT.Solver                  src/SAT/Solver.hs:(134,1)-(203,12)              2710           1    0.0    0.0    97.2   91.4
+      getSolutions.restart                              SAT.Solver                  src/SAT/Solver.hs:(200,5)-(203,12)              2719           1    0.0    0.0     0.0    0.0
+      getSolutions.run                                  SAT.Solver                  src/SAT/Solver.hs:(139,5)-(147,25)              2720           1    0.1    0.0    34.7    8.4
+       literals                                         SAT.CNF                     src/SAT/CNF.hs:41:5-12                          2836      500926    0.0    0.0     0.0    0.0
+       getSolutions.run.\                               SAT.Solver                  src/SAT/Solver.hs:147:20-25                     2921           1    0.0    0.0     0.0    0.0
+       getClauseDB                                      SAT.Monad                   src/SAT/Monad.hs:102:1-27                       2722           0    0.0    0.0     0.0    0.0
+        clauseDB                                        SAT.Monad                   src/SAT/Monad.hs:49:5-12                        2723           1    0.0    0.0     0.0    0.0
+       preprocess                                       SAT.Preprocessing           src/SAT/Preprocessing.hs:(18,1)-(25,20)         2838           0    0.0    0.0    34.5    8.4
+        preprocess.\                                    SAT.Preprocessing           src/SAT/Preprocessing.hs:(22,16)-(25,20)        2920           1    0.0    0.0     0.0    0.0
+        unitPropagateM                                  SAT.Optimisers              src/SAT/Optimisers.hs:(226,1)-(318,131)         2842           0    0.0    0.0    34.5    8.4
+         unitPropagateM.go                              SAT.Optimisers              src/SAT/Optimisers.hs:(229,7)-(243,27)          2843           0    0.1    0.1    34.5    8.4
+          addPropagation                                SAT.Optimisers              src/SAT/Optimisers.hs:(395,1)-(400,45)          2852       12754    0.0    0.1     0.1    0.3
+           addPropagation.\                             SAT.Optimisers              src/SAT/Optimisers.hs:400:17-45                 2861       12754    0.0    0.0     0.0    0.0
+           addPropagation.graph'                        SAT.Optimisers              src/SAT/Optimisers.hs:399:7-65                  2858       12754    0.0    0.2     0.0    0.2
+           addPropagation.newNode                       SAT.Optimisers              src/SAT/Optimisers.hs:398:7-40                  2857       12754    0.0    0.0     0.0    0.0
+           getDecisionLevel                             SAT.Monad                   src/SAT/Monad.hs:93:1-37                        2854           0    0.0    0.0     0.0    0.0
+            decisionLevel                               SAT.Monad                   src/SAT/Monad.hs:48:5-17                        2855       12754    0.0    0.0     0.0    0.0
+           getImplicationGraph                          SAT.Monad                   src/SAT/Monad.hs:83:1-43                        2859           0    0.0    0.0     0.0    0.0
+            implicationGraph                            SAT.Monad                   src/SAT/Monad.hs:46:5-20                        2860       12754    0.0    0.0     0.0    0.0
+          assignM                                       SAT.Optimisers              src/SAT/Optimisers.hs:(324,1)-(328,45)          2847       12754    0.0    0.1     0.1    0.2
+           assignM.\                                    SAT.Optimisers              src/SAT/Optimisers.hs:328:17-45                 2851       12754    0.0    0.0     0.0    0.0
+           assignM.m                                    SAT.Optimisers              src/SAT/Optimisers.hs:327:7-31                  2849       12754    0.0    0.0     0.1    0.2
+            assign                                      SAT.Assignment              src/SAT/Assignment.hs:55:1-90                   2850       12754    0.1    0.2     0.1    0.2
+           assignM.t                                    SAT.Optimisers              src/SAT/Optimisers.hs:326:7-39                  2848       12754    0.0    0.0     0.0    0.0
+          unitPropagateM.go.\                           SAT.Optimisers              src/SAT/Optimisers.hs:236:27-51                 2862       12754    0.0    0.0     0.0    0.0
+          unitPropagateM.go.indices                     SAT.Optimisers              src/SAT/Optimisers.hs:239:17-113                2867       12754    1.8    1.4     1.8    1.4
+           literals                                     SAT.Monad                   src/SAT/Monad.hs:33:44-51                       2870       12754    0.0    0.0     0.0    0.0
+          unitPropagateM.processClauses                 SAT.Optimisers              src/SAT/Optimisers.hs:(246,7)-(254,31)          2868       12754    0.0    0.0    32.4    6.4
+           unitPropagateM.processClauses.go'            SAT.Optimisers              src/SAT/Optimisers.hs:(249,11)-(254,31)         2869      831336    0.9    1.5    32.4    6.4
+            unitPropagateM.processClause                SAT.Optimisers              src/SAT/Optimisers.hs:(257,7)-(286,30)          2873      818582    9.7    2.8    31.4    4.8
+             unitPropagateM.processClause.(...)         SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2874      818582   11.6    0.0    11.6    0.0
+             unitPropagateM.processClause.a             SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2878      818582    0.0    0.0     0.0    0.0
+             unitPropagateM.processClause.b             SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2881      818582    0.0    0.0     0.0    0.0
+             unitPropagateM.processClause.first         SAT.Optimisers              src/SAT/Optimisers.hs:261:17-37                 2877      818582    0.1    0.0     0.1    0.0
+             unitPropagateM.processClause.firstValue    SAT.Optimisers              src/SAT/Optimisers.hs:264:17-58                 2885      818582    0.0    0.0     2.0    0.9
+              literalValue                              SAT.Assignment              src/SAT/Assignment.hs:(60,1)-(62,48)            2886      818582    0.5    0.7     2.0    0.9
+               varValue                                 SAT.Assignment              src/SAT/Assignment.hs:49:1-32                   2887      818582    1.4    0.2     1.4    0.2
+             unitPropagateM.processClause.literals      SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2879      818582    0.0    0.0     0.0    0.0
+             unitPropagateM.processClause.second        SAT.Optimisers              src/SAT/Optimisers.hs:262:17-38                 2880      818582    5.0    0.0     5.0    0.0
+             unitPropagateM.processClause.secondValue   SAT.Optimisers              src/SAT/Optimisers.hs:265:17-60                 2882      818582    0.0    0.0     2.3    0.9
+              literalValue                              SAT.Assignment              src/SAT/Assignment.hs:(60,1)-(62,48)            2883      818582    0.4    0.7     2.3    0.9
+               varValue                                 SAT.Assignment              src/SAT/Assignment.hs:49:1-32                   2884      818582    1.8    0.2     1.8    0.2
+             unitPropagateM.findNewWatch                SAT.Optimisers              src/SAT/Optimisers.hs:318:7-131                 2890       14348    0.0    0.0     0.1    0.0
+              unitPropagateM.findNewWatch.\             SAT.Optimisers              src/SAT/Optimisers.hs:318:63-130                2891       39326    0.0    0.0     0.0    0.0
+               literalValue                             SAT.Assignment              src/SAT/Assignment.hs:(60,1)-(62,48)            2898       10630    0.0    0.0     0.0    0.0
+                varValue                                SAT.Assignment              src/SAT/Assignment.hs:49:1-32                   2899       10630    0.0    0.0     0.0    0.0
+             unitPropagateM.addProp                     SAT.Optimisers              src/SAT/Optimisers.hs:(311,7)-(314,96)          2892       12453    0.0    0.1     0.0    0.1
+              unitPropagateM.addProp.\                  SAT.Optimisers              src/SAT/Optimisers.hs:314:23-96                 2896       12453    0.0    0.0     0.0    0.0
+              unitPropagateM.addProp.l                  SAT.Optimisers              src/SAT/Optimisers.hs:312:13-33                 2893       12453    0.0    0.0     0.0    0.0
+              getPropagationStack                       SAT.Monad                   src/SAT/Monad.hs:68:1-43                        2894           0    0.0    0.0     0.0    0.0
+               propagationStack                         SAT.Monad                   src/SAT/Monad.hs:52:5-20                        2895       12453    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch              SAT.Optimisers              src/SAT/Optimisers.hs:(289,7)-(308,22)          2901        1895    0.0    0.0     0.1    0.2
+              unitPropagateM.handleNewWatch.\           SAT.Optimisers              src/SAT/Optimisers.hs:306:23-89                 2918        1895    0.0    0.0     0.0    0.0
+              unitPropagateM.handleNewWatch.aClauses    SAT.Optimisers              src/SAT/Optimisers.hs:298:13-97                 2910        1895    0.0    0.0     0.0    0.0
+               literals                                 SAT.Monad                   src/SAT/Monad.hs:33:44-51                       2915        1895    0.0    0.0     0.0    0.0
+              unitPropagateM.handleNewWatch.aClauses'   SAT.Optimisers              src/SAT/Optimisers.hs:299:13-52                 2916        1895    0.0    0.0     0.0    0.0
+              unitPropagateM.handleNewWatch.l           SAT.Optimisers              src/SAT/Optimisers.hs:291:13-44                 2903        1895    0.0    0.0     0.0    0.0
+               literals                                 SAT.CNF                     src/SAT/CNF.hs:41:5-12                          2904        1895    0.0    0.0     0.0    0.0
+              unitPropagateM.handleNewWatch.lClauses    SAT.Optimisers              src/SAT/Optimisers.hs:301:13-93                 2911        1895    0.0    0.0     0.0    0.0
+               literals                                 SAT.Monad                   src/SAT/Monad.hs:33:44-51                       2913        1895    0.0    0.0     0.0    0.0
+              unitPropagateM.handleNewWatch.lClauses'   SAT.Optimisers              src/SAT/Optimisers.hs:302:13-52                 2914        1895    0.1    0.0     0.1    0.0
+              unitPropagateM.handleNewWatch.newClause   SAT.Optimisers              src/SAT/Optimisers.hs:290:13-49                 2902        1895    0.0    0.0     0.0    0.0
+              unitPropagateM.handleNewWatch.newClauseDb SAT.Optimisers              src/SAT/Optimisers.hs:296:13-60                 2907        1895    0.0    0.1     0.0    0.1
+              unitPropagateM.handleNewWatch.newWl       SAT.Optimisers              src/SAT/Optimisers.hs:304:13-131                2912        1895    0.0    0.1     0.0    0.1
+               literals                                 SAT.Monad                   src/SAT/Monad.hs:33:44-51                       2917        1895    0.0    0.0     0.0    0.0
+              getClauseDB                               SAT.Monad                   src/SAT/Monad.hs:102:1-27                       2908           0    0.0    0.0     0.0    0.0
+               clauseDB                                 SAT.Monad                   src/SAT/Monad.hs:49:5-12                        2909        1895    0.0    0.0     0.0    0.0
+              getWatchedLiterals                        SAT.Monad                   src/SAT/Monad.hs:88:1-41                        2905           0    0.0    0.0     0.0    0.0
+               watchedLiterals                          SAT.Monad                   src/SAT/Monad.hs:47:5-19                        2906        1895    0.0    0.0     0.0    0.0
+             unitPropagateM.processClause.clause        SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2900        1895    0.0    0.0     0.0    0.0
+             getClauseDB                                SAT.Monad                   src/SAT/Monad.hs:102:1-27                       2875           0    0.2    0.0     0.5    0.0
+              clauseDB                                  SAT.Monad                   src/SAT/Monad.hs:49:5-12                        2876      818582    0.3    0.0     0.3    0.0
+          getAssignment                                 SAT.Monad                   src/SAT/Monad.hs:73:1-31                        2864           0    0.0    0.0     0.0    0.0
+           assignment                                   SAT.Monad                   src/SAT/Monad.hs:44:5-14                        2865       12754    0.0    0.0     0.0    0.0
+          getPropagationStack                           SAT.Monad                   src/SAT/Monad.hs:68:1-43                        2845           0    0.0    0.0     0.0    0.0
+           propagationStack                             SAT.Monad                   src/SAT/Monad.hs:52:5-20                        2846       12755    0.0    0.0     0.0    0.0
+          getWatchedLiterals                            SAT.Monad                   src/SAT/Monad.hs:88:1-41                        2871           0    0.0    0.0     0.0    0.0
+           watchedLiterals                              SAT.Monad                   src/SAT/Monad.hs:47:5-19                        2872       12754    0.0    0.0     0.0    0.0
+      getSolutions.shouldRestart                        SAT.Solver                  src/SAT/Solver.hs:(193,5)-(197,41)              2711           1    0.0    0.0     0.0    0.0
+      initState                                         SAT.Solver                  src/SAT/Solver.hs:(72,1)-(89,37)                2724           1    0.0    0.0    43.6   71.0
+       initState.db                                     SAT.Solver                  src/SAT/Solver.hs:89:5-37                       2820           1    0.0    0.4     0.0    0.4
+       initState.watchedClauses                         SAT.Solver                  src/SAT/Solver.hs:87:5-69                       2726           1    0.3    1.2    16.5   17.3
+        initClauseWatched                               SAT.WL                      src/SAT/WL.hs:(37,1)-(49,19)                    2739      563426    0.6    1.6     1.8    1.6
+         initClauseWatched.(...)                        SAT.WL                      src/SAT/WL.hs:42:5-40                           2809      563426    0.0    0.0     0.8    0.0
+          initClauseWatched.findInitialWatched          SAT.WL                      src/SAT/WL.hs:(45,5)-(49,19)                    2810      563426    0.4    0.0     0.7    0.0
+           initClauseWatched.findInitialWatched.len     SAT.WL                      src/SAT/WL.hs:46:11-27                          2811      563426    0.3    0.0     0.3    0.0
+         initClauseWatched.a                            SAT.WL                      src/SAT/WL.hs:42:5-40                           2808      563426    0.4    0.0     0.4    0.0
+         initClauseWatched.b                            SAT.WL                      src/SAT/WL.hs:42:5-40                           2812      563426    0.1    0.0     0.1    0.0
+        unstableHashNub                                 Utils                       src/Utils.hs:36:1-51                            2727           1    0.7    1.0    14.3   14.5
+         unArray                                        Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2819      763391    0.0    0.0     0.0    0.0
+         insert                                         Data.HashMap.Internal       Data/HashMap/Internal.hs:802:1-37               2730      563426    0.1    0.0    13.6   13.5
+          hash                                          Data.HashMap.Internal       Data/HashMap/Internal.hs:183:1-28               2731      563426    0.1    0.0     2.5    1.7
+           hash                                         SAT.CNF                     src/SAT/CNF.hs:50:10-24                         2735           0    0.0    0.0     2.4    1.7
+            hash                                        Data.Hashable.Class         src/Data/Hashable/Class.hs:255:5-22             2736           0    0.3    0.0     2.4    1.7
+             defaultHash                                Data.Hashable.Class         src/Data/Hashable/Class.hs:331:1-38             2737           0    0.0    0.0     2.1    1.7
+              hashWithSalt                              SAT.CNF                     src/SAT/CNF.hs:52:3-67                          2738      563426    0.1    0.0     2.0    1.7
+               hashWithSalt                             Data.Hashable.Class         src/Data/Hashable/Class.hs:662:5-32             2751      563426    0.1    0.2     1.9    1.7
+                hashWithSalt1                           Data.Hashable.Class         src/Data/Hashable/Class.hs:302:1-45             2752      563426    0.1    0.0     1.8    1.5
+                 liftHashWithSalt                       Data.Hashable.Class         src/Data/Hashable/Class.hs:(665,5)-(668,46)     2753      563426    0.3    0.0     1.6    1.5
+                  liftHashWithSalt.step                 Data.Hashable.Class         src/Data/Hashable/Class.hs:668:9-46             2754     1140926    0.5    0.4     1.0    0.9
+                   hashWithSalt                         Data.Hashable.Class         src/Data/Hashable/Class.hs:357:5-26             2756           0    0.1    0.0     0.5    0.4
+                    hashInt                             Data.Hashable.LowLevel      src/Data/Hashable/LowLevel.hs:(64,1)-(80,31)    2757     1140926    0.3    0.4     0.3    0.4
+                  liftHashWithSalt.finalise             Data.Hashable.Class         src/Data/Hashable/Class.hs:667:9-44             2758      563426    0.1    0.4     0.3    0.6
+                   hashWithSalt                         Data.Hashable.Class         src/Data/Hashable/Class.hs:357:5-26             2759           0    0.1    0.0     0.2    0.2
+                    hashInt                             Data.Hashable.LowLevel      src/Data/Hashable/LowLevel.hs:(64,1)-(80,31)    2760      563426    0.1    0.2     0.1    0.2
+          insert'                                       Data.HashMap.Internal       Data/HashMap/Internal.hs:(806,1)-(837,76)       2761      563426    0.0    0.0    11.0   11.8
+           insert'.go                                   Data.HashMap.Internal       Data/HashMap/Internal.hs:(808,5)-(837,76)       2762     2424992    7.0    2.9    11.0   11.8
+            unMArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:158:7-14         2765     3427033    0.0    0.0     0.0    0.0
+            insert'.go.i                                Data.HashMap.Internal       Data/HashMap/Internal.hs:834:13-25              2777     1381449    0.0    0.0     0.0    0.0
+            insert'.go.st                               Data.HashMap.Internal       Data/HashMap/Internal.hs:829:13-32              2776     1381449    0.2    0.0     0.2    0.0
+             unArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2778     1381449    0.0    0.0     0.0    0.0
+            insert'.go.st'                              Data.HashMap.Internal       Data/HashMap/Internal.hs:830:13-44              2779     1381449    0.2    0.0     0.2    0.0
+            clone                                       Data.HashMap.Internal       Data/HashMap/Internal.hs:(2431,1)-(2432,34)     2780     1200694    0.6    7.7     0.6    7.7
+             unArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2784     1200694    0.0    0.0     0.0    0.0
+            insert'.go.i                                Data.HashMap.Internal       Data/HashMap/Internal.hs:827:13-31              2767      853324    0.0    0.0     0.0    0.0
+            insert'.go.m                                Data.HashMap.Internal       Data/HashMap/Internal.hs:826:13-24              2766      853324    0.0    0.0     0.0    0.0
+            unArray                                     Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2794      766694    0.0    0.0     0.0    0.0
+            insert'.go.st                               Data.HashMap.Internal       Data/HashMap/Internal.hs:821:17-36              2791      480117    0.8    0.0     0.8    0.0
+             unArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2792      480117    0.0    0.0     0.0    0.0
+            insert'.go.st'                              Data.HashMap.Internal       Data/HashMap/Internal.hs:822:17-48              2793      480117    0.0    0.0     0.0    0.0
+            insert'.go.ary'                             Data.HashMap.Internal       Data/HashMap/Internal.hs:818:17-56              2768      373207    1.3    1.2     1.6    1.2
+             copy                                       Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:(297,1)-(302,30) 2770      746414    0.1    0.0     0.3    0.0
+              copy.\                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:(301,9)-(302,30) 2771      746414    0.1    0.0     0.1    0.0
+               unArray                                  Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2772      746414    0.0    0.0     0.0    0.0
+               unMArray                                 Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:158:7-14         2773      746414    0.0    0.0     0.0    0.0
+             unArray                                    Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:126:7-13         2769      373207    0.0    0.0     0.0    0.0
+             unMArray                                   Data.HashMap.Internal.Array Data/HashMap/Internal/Array.hs:158:7-14         2774      373207    0.0    0.0     0.0    0.0
+            ==                                          SAT.CNF                     src/SAT/CNF.hs:44:19-20                         2807       62500    0.6    0.0     0.6    0.0
+         asMap                                          Data.HashSet.Internal       Data/HashSet/Internal.hs:113:7-11               2728           1    0.0    0.0     0.0    0.0
+       initVSIDS                                        SAT.VSIDS                   src/SAT/VSIDS.hs:(44,1)-(47,119)                2824           1    0.1    0.0     7.0   16.3
+        initVSIDS.updateVSIDS                           SAT.VSIDS                   src/SAT/VSIDS.hs:47:5-119                       2826      563426    3.7    0.0     6.9   16.3
+         initVSIDS.updateVSIDS.\                        SAT.VSIDS                   src/SAT/VSIDS.hs:47:74-107                      2827     1140926    3.2   16.3     3.2   16.3
+       initWatchedLiterals                              SAT.WL                      src/SAT/WL.hs:(22,1)-(34,92)                    2821           1    0.0    0.0    13.3   23.3
+        initWatchedLiterals.litMap                      SAT.WL                      src/SAT/WL.hs:34:5-92                           2822           1    2.3    4.7    13.3   23.3
+         initWatchedLiterals.accumulate                 SAT.WL                      src/SAT/WL.hs:(25,5)-(31,92)                    2823      500926   11.0   18.6    11.0   18.6
+       collectLiteralsToSet                             SAT.Optimisers              src/SAT/Optimisers.hs:72:1-56                   2829           0    1.5    9.1     6.4   13.7
+        collectLiterals                                 SAT.Optimisers              src/SAT/Optimisers.hs:(61,1)-(64,50)            2830           1    0.6    1.8     4.9    4.6
+         collectLiterals.getVars                        SAT.Optimisers              src/SAT/Optimisers.hs:64:5-50                   2831           1    4.2    2.8     4.2    2.8
+          literals                                      SAT.CNF                     src/SAT/CNF.hs:41:5-12                          2832      563426    0.0    0.0     0.0    0.0
+       initialPropagationStack                          SAT.Solver                  src/SAT/Solver.hs:(92,1)-(93,144)               2834           0    0.1    0.0     0.3    0.0
+        initialPropagationStack.\                       SAT.Solver                  src/SAT/Solver.hs:93:59-136                     2835      500926    0.1    0.0     0.1    0.0
+      getSolutions.branch                               SAT.Solver                  src/SAT/Solver.hs:154:5-33                      2927           0    0.0    0.0     6.3    5.1
+       getSolutions.try                                 SAT.Solver                  src/SAT/Solver.hs:(157,5)-(161,29)              2939         159    0.0    0.0     0.0    0.0
+        getSolutions.tryAssign                          SAT.Solver                  src/SAT/Solver.hs:(164,5)-(167,15)              2940         318    0.0    0.0     0.0    0.0
+         addDecision                                    SAT.Optimisers              src/SAT/Optimisers.hs:(391,1)-(392,87)          2950         318    0.0    0.0     0.0    0.0
+          addDecision.\                                 SAT.Optimisers              src/SAT/Optimisers.hs:392:17-87                 2951         318    0.0    0.0     0.0    0.0
+           propagationStack                             SAT.Monad                   src/SAT/Monad.hs:52:5-20                        2971         318    0.0    0.0     0.0    0.0
+         increaseDecisionLevel                          SAT.Monad                   src/SAT/Monad.hs:134:1-77                       2947           0    0.0    0.0     0.0    0.0
+          increaseDecisionLevel.\                       SAT.Monad                   src/SAT/Monad.hs:134:39-77                      2948         318    0.0    0.0     0.0    0.0
+           decisionLevel                                SAT.Monad                   src/SAT/Monad.hs:48:5-17                        2949         318    0.0    0.0     0.0    0.0
+       pickLiteralM                                     SAT.Optimisers              src/SAT/Optimisers.hs:(416,1)-(422,36)          2929           0    0.0    0.0     6.3    5.1
+        pickLiteral                                     SAT.VSIDS                   src/SAT/VSIDS.hs:(80,1)-(83,3)                  2941         159    0.0    0.0     0.3    0.6
+         pickLiteral.(...)                              SAT.VSIDS                   src/SAT/VSIDS.hs:82:7-100                       2943         159    0.1    0.0     0.1    0.0
+          pickLiteral.(...).\                           SAT.VSIDS                   src/SAT/VSIDS.hs:82:48-88                       2944      264773    0.0    0.0     0.0    0.0
+         pickLiteral.k                                  SAT.VSIDS                   src/SAT/VSIDS.hs:82:7-100                       2945         159    0.0    0.0     0.0    0.0
+         pickLiteral.lst                                SAT.VSIDS                   src/SAT/VSIDS.hs:81:7-27                        2942         159    0.2    0.6     0.2    0.6
+        pickLiteralM.vs'                                SAT.Optimisers              src/SAT/Optimisers.hs:420:9-85                  2933         159    1.1    1.2     6.0    4.5
+         pickLiteralM.vs'.\                             SAT.Optimisers              src/SAT/Optimisers.hs:420:45-81                 2936     2484375    0.1    0.0     5.0    3.3
+          literalValue                                  SAT.Assignment              src/SAT/Assignment.hs:(60,1)-(62,48)            2937     2484375    1.0    2.5     4.8    3.3
+           varValue                                     SAT.Assignment              src/SAT/Assignment.hs:49:1-32                   2938     2484375    3.9    0.8     3.9    0.8
+        getAssignment                                   SAT.Monad                   src/SAT/Monad.hs:73:1-31                        2930           0    0.0    0.0     0.0    0.0
+         assignment                                     SAT.Monad                   src/SAT/Monad.hs:44:5-14                        2931         159    0.0    0.0     0.0    0.0
+        getVSIDS                                        SAT.Monad                   src/SAT/Monad.hs:98:1-21                        2934           0    0.0    0.0     0.0    0.0
+         vsids                                          SAT.Monad                   src/SAT/Monad.hs:50:5-9                         2935         159    0.0    0.0     0.0    0.0
+      getSolutions.propagate                            SAT.Solver                  src/SAT/Solver.hs:(170,5)-(173,25)              2952           0    0.0    0.0    12.1    6.8
+       getSolutions.propagate.\                         SAT.Solver                  src/SAT/Solver.hs:173:20-25                     3021         193    0.0    0.0     0.0    0.0
+       getSolutions.propagate.\                         SAT.Solver                  src/SAT/Solver.hs:172:19-34                     3027         125    0.0    0.0     1.9    4.6
+        getSolutions.handleConflict                     SAT.Solver                  src/SAT/Solver.hs:(176,5)-(189,24)              3028         125    0.0    0.0     1.9    4.6
+         analyseConflict                                SAT.CDCL                    src/SAT/CDCL.hs:(56,1)-(100,78)                 3029         125    0.0    0.0     0.0    0.0
+          analyseConflict.decisionLevels                SAT.CDCL                    src/SAT/CDCL.hs:(91,11)-(96,23)                 3037         125    0.0    0.0     0.0    0.0
+           analyseConflict.decisionLevels.\             SAT.CDCL                    src/SAT/CDCL.hs:94:23-102                       3039         250    0.0    0.0     0.0    0.0
+            analyseConflict.decisionLevels.\.\          SAT.CDCL                    src/SAT/CDCL.hs:94:50-51                        3040         250    0.0    0.0     0.0    0.0
+           unstableIntNub                               Utils                       src/Utils.hs:39:1-48                            3038           0    0.0    0.0     0.0    0.0
+          analyseConflict.literals                      SAT.CDCL                    src/SAT/CDCL.hs:(62,11)-(67,24)                 3030         125    0.0    0.0     0.0    0.0
+           analyseConflict.literals.\                   SAT.CDCL                    src/SAT/CDCL.hs:65:25-122                       3031         250    0.0    0.0     0.0    0.0
+            analyseConflict.literals.\.\                SAT.CDCL                    src/SAT/CDCL.hs:65:53-71                        3032         250    0.0    0.0     0.0    0.0
+          analyseConflict.loop                          SAT.CDCL                    src/SAT/CDCL.hs:(70,11)-(87,30)                 3033         125    0.0    0.0     0.0    0.0
+           analyseConflict.loop.implied                 SAT.CDCL                    src/SAT/CDCL.hs:(72,17)-(76,22)                 3034         125    0.0    0.0     0.0    0.0
+            analyseConflict.loop.implied.\              SAT.CDCL                    src/SAT/CDCL.hs:74:29-126                       3035         139    0.0    0.0     0.0    0.0
+             analyseConflict.loop.implied.\.\           SAT.CDCL                    src/SAT/CDCL.hs:74:57-75                        3036         139    0.0    0.0     0.0    0.0
+         adjustScoresM                                  SAT.Optimisers              src/SAT/Optimisers.hs:(411,1)-(413,53)          3048         111    0.0    0.0     0.0    0.0
+          adjustScoresM.\                               SAT.Optimisers              src/SAT/Optimisers.hs:413:17-53                 3049         111    0.0    0.0     0.0    0.0
+           adjustScores                                 SAT.VSIDS                   src/SAT/VSIDS.hs:75:1-40                        3050         111    0.0    0.0     0.0    0.0
+            adjustScore                                 SAT.VSIDS                   src/SAT/VSIDS.hs:63:1-78                        3053         222    0.0    0.0     0.0    0.0
+          getVSIDS                                      SAT.Monad                   src/SAT/Monad.hs:98:1-21                        3051           0    0.0    0.0     0.0    0.0
+           vsids                                        SAT.Monad                   src/SAT/Monad.hs:50:5-9                         3052         111    0.0    0.0     0.0    0.0
+         learn                                          SAT.Solver                  src/SAT/Solver.hs:(97,1)-(120,33)               3056         111    0.0    0.0     0.0    0.0
+          learn.(...)                                   SAT.Solver                  src/SAT/Solver.hs:98:7-41                       3057         111    0.0    0.0     0.0    0.0
+           learn.getInitialWatched                      SAT.Solver                  src/SAT/Solver.hs:(116,5)-(120,33)              3058         111    0.0    0.0     0.0    0.0
+          learn.\                                       SAT.Solver                  src/SAT/Solver.hs:113:21-87                     3072         111    0.0    0.0     0.0    0.0
+          learn.a                                       SAT.Solver                  src/SAT/Solver.hs:98:7-41                       3064         111    0.0    0.0     0.0    0.0
+          learn.aLits                                   SAT.Solver                  src/SAT/Solver.hs:108:11-83                     3066         111    0.0    0.0     0.0    0.0
+          learn.aLits'                                  SAT.Solver                  src/SAT/Solver.hs:110:11-67                     3069         111    0.0    0.0     0.0    0.0
+          learn.b                                       SAT.Solver                  src/SAT/Solver.hs:98:7-41                       3065         111    0.0    0.0     0.0    0.0
+          learn.bLits                                   SAT.Solver                  src/SAT/Solver.hs:109:11-83                     3067         111    0.0    0.0     0.0    0.0
+          learn.bLits'                                  SAT.Solver                  src/SAT/Solver.hs:111:11-67                     3070         111    0.0    0.0     0.0    0.0
+          learn.clause                                  SAT.Solver                  src/SAT/Solver.hs:99:7-50                       3059         111    0.0    0.0     0.0    0.0
+          learn.newClauseDB                             SAT.Solver                  src/SAT/Solver.hs:107:11-46                     3068         111    0.0    0.0     0.0    0.0
+          learn.newWL                                   SAT.Solver                  src/SAT/Solver.hs:112:11-128                    3071         111    0.0    0.0     0.0    0.0
+          getClauseDB                                   SAT.Monad                   src/SAT/Monad.hs:102:1-27                       3062           0    0.0    0.0     0.0    0.0
+           clauseDB                                     SAT.Monad                   src/SAT/Monad.hs:49:5-12                        3063         111    0.0    0.0     0.0    0.0
+          getWatchedLiterals                            SAT.Monad                   src/SAT/Monad.hs:88:1-41                        3060           0    0.0    0.0     0.0    0.0
+           watchedLiterals                              SAT.Monad                   src/SAT/Monad.hs:47:5-19                        3061         111    0.0    0.0     0.0    0.0
+         decayM                                         SAT.Optimisers              src/SAT/Optimisers.hs:344:1-50                  3042           0    0.0    0.0     1.9    4.6
+          decayM.\                                      SAT.Optimisers              src/SAT/Optimisers.hs:344:24-50                 3043         111    0.0    0.0     1.9    4.6
+           vsids                                        SAT.Monad                   src/SAT/Monad.hs:50:5-9                         3047         111    0.0    0.0     0.0    0.0
+           decay                                        SAT.VSIDS                   src/SAT/VSIDS.hs:36:1-28                        3046           0    1.9    4.6     1.9    4.6
+         increaseLubyCount                              SAT.Restarts                src/SAT/Restarts.hs:25:1-64                     3074           0    0.0    0.0     0.0    0.0
+          increaseLubyCount.\                           SAT.Restarts                src/SAT/Restarts.hs:25:34-64                    3075         111    0.0    0.0     0.0    0.0
+           lubyCount                                    SAT.Monad                   src/SAT/Monad.hs:53:5-13                        3076         111    0.0    0.0     0.0    0.0
+       unitPropagateM                                   SAT.Optimisers              src/SAT/Optimisers.hs:(226,1)-(318,131)         2953           0    0.0    0.0    10.2    2.3
+        unitPropagateM.go                               SAT.Optimisers              src/SAT/Optimisers.hs:(229,7)-(243,27)          2954           0    0.1    0.0    10.2    2.3
+         addPropagation                                 SAT.Optimisers              src/SAT/Optimisers.hs:(395,1)-(400,45)          2962        3217    0.0    0.0     0.1    0.1
+          addPropagation.\                              SAT.Optimisers              src/SAT/Optimisers.hs:400:17-45                 2969        3217    0.0    0.0     0.0    0.0
+          addPropagation.graph'                         SAT.Optimisers              src/SAT/Optimisers.hs:399:7-65                  2966        3217    0.0    0.0     0.0    0.0
+          addPropagation.newNode                        SAT.Optimisers              src/SAT/Optimisers.hs:398:7-40                  2965        3217    0.0    0.0     0.0    0.0
+          getDecisionLevel                              SAT.Monad                   src/SAT/Monad.hs:93:1-37                        2963           0    0.0    0.0     0.0    0.0
+           decisionLevel                                SAT.Monad                   src/SAT/Monad.hs:48:5-17                        2964        3217    0.0    0.0     0.0    0.0
+          getImplicationGraph                           SAT.Monad                   src/SAT/Monad.hs:83:1-43                        2967           0    0.0    0.0     0.0    0.0
+           implicationGraph                             SAT.Monad                   src/SAT/Monad.hs:46:5-20                        2968        3217    0.0    0.0     0.0    0.0
+         assignM                                        SAT.Optimisers              src/SAT/Optimisers.hs:(324,1)-(328,45)          2957        3217    0.0    0.0     0.0    0.1
+          assignM.\                                     SAT.Optimisers              src/SAT/Optimisers.hs:328:17-45                 2961        3217    0.0    0.0     0.0    0.0
+          assignM.m                                     SAT.Optimisers              src/SAT/Optimisers.hs:327:7-31                  2959        3217    0.0    0.0     0.0    0.0
+           assign                                       SAT.Assignment              src/SAT/Assignment.hs:55:1-90                   2960        3217    0.0    0.0     0.0    0.0
+          assignM.t                                     SAT.Optimisers              src/SAT/Optimisers.hs:326:7-39                  2958        3217    0.0    0.0     0.0    0.0
+         unitPropagateM.go.\                            SAT.Optimisers              src/SAT/Optimisers.hs:236:27-51                 2970        3217    0.0    0.0     0.0    0.0
+         unitPropagateM.go.indices                      SAT.Optimisers              src/SAT/Optimisers.hs:239:17-113                2974        3217    0.9    0.3     0.9    0.3
+          literals                                      SAT.Monad                   src/SAT/Monad.hs:33:44-51                       2977        3217    0.0    0.0     0.0    0.0
+         unitPropagateM.processClauses                  SAT.Optimisers              src/SAT/Optimisers.hs:(246,7)-(254,31)          2975        3217    0.0    0.0     9.1    1.7
+          unitPropagateM.processClauses.go'             SAT.Optimisers              src/SAT/Optimisers.hs:(249,11)-(254,31)         2976      205694    0.1    0.4     9.1    1.7
+           unitPropagateM.processClause                 SAT.Optimisers              src/SAT/Optimisers.hs:(257,7)-(286,30)          2980      202602    2.6    0.7     8.9    1.4
+            unitPropagateM.processClause.(...)          SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2981      202602    3.4    0.0     3.4    0.0
+            unitPropagateM.processClause.a              SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2985      202602    0.0    0.0     0.0    0.0
+            unitPropagateM.processClause.b              SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2988      202602    0.0    0.0     0.0    0.0
+            unitPropagateM.processClause.first          SAT.Optimisers              src/SAT/Optimisers.hs:261:17-37                 2984      202602    0.0    0.0     0.0    0.0
+            unitPropagateM.processClause.firstValue     SAT.Optimisers              src/SAT/Optimisers.hs:264:17-58                 2992      202602    0.0    0.0     0.5    0.3
+             literalValue                               SAT.Assignment              src/SAT/Assignment.hs:(60,1)-(62,48)            2993      202602    0.0    0.2     0.5    0.3
+              varValue                                  SAT.Assignment              src/SAT/Assignment.hs:49:1-32                   2994      202602    0.4    0.1     0.4    0.1
+            unitPropagateM.processClause.literals       SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 2986      202602    0.0    0.0     0.0    0.0
+            unitPropagateM.processClause.second         SAT.Optimisers              src/SAT/Optimisers.hs:262:17-38                 2987      202602    1.4    0.0     1.4    0.0
+            unitPropagateM.processClause.secondValue    SAT.Optimisers              src/SAT/Optimisers.hs:265:17-60                 2989      202602    0.0    0.0     0.5    0.3
+             literalValue                               SAT.Assignment              src/SAT/Assignment.hs:(60,1)-(62,48)            2990      202602    0.0    0.2     0.5    0.3
+              varValue                                  SAT.Assignment              src/SAT/Assignment.hs:49:1-32                   2991      202602    0.5    0.1     0.5    0.1
+            unitPropagateM.findNewWatch                 SAT.Optimisers              src/SAT/Optimisers.hs:318:7-131                 2997        3659    0.0    0.0     0.1    0.0
+             unitPropagateM.findNewWatch.\              SAT.Optimisers              src/SAT/Optimisers.hs:318:63-130                2998       25528    0.0    0.0     0.1    0.0
+              literalValue                              SAT.Assignment              src/SAT/Assignment.hs:(60,1)-(62,48)            2999       18210    0.0    0.0     0.0    0.0
+               varValue                                 SAT.Assignment              src/SAT/Assignment.hs:49:1-32                   3000       18210    0.0    0.0     0.0    0.0
+            unitPropagateM.addProp                      SAT.Optimisers              src/SAT/Optimisers.hs:(311,7)-(314,96)          3022        2899    0.0    0.0     0.0    0.0
+             unitPropagateM.addProp.\                   SAT.Optimisers              src/SAT/Optimisers.hs:314:23-96                 3026        2899    0.0    0.0     0.0    0.0
+             unitPropagateM.addProp.l                   SAT.Optimisers              src/SAT/Optimisers.hs:312:13-33                 3023        2899    0.0    0.0     0.0    0.0
+             getPropagationStack                        SAT.Monad                   src/SAT/Monad.hs:68:1-43                        3024           0    0.0    0.0     0.0    0.0
+              propagationStack                          SAT.Monad                   src/SAT/Monad.hs:52:5-20                        3025        2899    0.0    0.0     0.0    0.0
+            unitPropagateM.processClause.clause         SAT.Optimisers              src/SAT/Optimisers.hs:259:17-96                 3002         885    0.0    0.0     0.0    0.0
+            unitPropagateM.handleNewWatch               SAT.Optimisers              src/SAT/Optimisers.hs:(289,7)-(308,22)          3003         760    0.0    0.0     0.0    0.1
+             unitPropagateM.handleNewWatch.\            SAT.Optimisers              src/SAT/Optimisers.hs:306:23-89                 3020         760    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch.aClauses     SAT.Optimisers              src/SAT/Optimisers.hs:298:13-97                 3012         760    0.0    0.0     0.0    0.0
+              literals                                  SAT.Monad                   src/SAT/Monad.hs:33:44-51                       3017         760    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch.aClauses'    SAT.Optimisers              src/SAT/Optimisers.hs:299:13-52                 3018         760    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch.l            SAT.Optimisers              src/SAT/Optimisers.hs:291:13-44                 3005         760    0.0    0.0     0.0    0.0
+              literals                                  SAT.CNF                     src/SAT/CNF.hs:41:5-12                          3006         760    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch.lClauses     SAT.Optimisers              src/SAT/Optimisers.hs:301:13-93                 3013         760    0.0    0.0     0.0    0.0
+              literals                                  SAT.Monad                   src/SAT/Monad.hs:33:44-51                       3015         760    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch.lClauses'    SAT.Optimisers              src/SAT/Optimisers.hs:302:13-52                 3016         760    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch.newClause    SAT.Optimisers              src/SAT/Optimisers.hs:290:13-49                 3004         760    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch.newClauseDb  SAT.Optimisers              src/SAT/Optimisers.hs:296:13-60                 3009         760    0.0    0.0     0.0    0.0
+             unitPropagateM.handleNewWatch.newWl        SAT.Optimisers              src/SAT/Optimisers.hs:304:13-131                3014         760    0.0    0.0     0.0    0.0
+              literals                                  SAT.Monad                   src/SAT/Monad.hs:33:44-51                       3019         760    0.0    0.0     0.0    0.0
+             getClauseDB                                SAT.Monad                   src/SAT/Monad.hs:102:1-27                       3010           0    0.0    0.0     0.0    0.0
+              clauseDB                                  SAT.Monad                   src/SAT/Monad.hs:49:5-12                        3011         760    0.0    0.0     0.0    0.0
+             getWatchedLiterals                         SAT.Monad                   src/SAT/Monad.hs:88:1-41                        3007           0    0.0    0.0     0.0    0.0
+              watchedLiterals                           SAT.Monad                   src/SAT/Monad.hs:47:5-19                        3008         760    0.0    0.0     0.0    0.0
+            getClauseDB                                 SAT.Monad                   src/SAT/Monad.hs:102:1-27                       2982           0    0.0    0.0     0.2    0.0
+             clauseDB                                   SAT.Monad                   src/SAT/Monad.hs:49:5-12                        2983      202602    0.2    0.0     0.2    0.0
+         getAssignment                                  SAT.Monad                   src/SAT/Monad.hs:73:1-31                        2972           0    0.0    0.0     0.0    0.0
+          assignment                                    SAT.Monad                   src/SAT/Monad.hs:44:5-14                        2973        3217    0.0    0.0     0.0    0.0
+         getPropagationStack                            SAT.Monad                   src/SAT/Monad.hs:68:1-43                        2955           0    0.0    0.0     0.0    0.0
+          propagationStack                              SAT.Monad                   src/SAT/Monad.hs:52:5-20                        2956        3410    0.0    0.0     0.0    0.0
+         getWatchedLiterals                             SAT.Monad                   src/SAT/Monad.hs:88:1-41                        2978           0    0.0    0.0     0.0    0.0
+          watchedLiterals                               SAT.Monad                   src/SAT/Monad.hs:47:5-19                        2979        3217    0.0    0.0     0.0    0.0
+      getSolutions.solver                               SAT.Solver                  src/SAT/Solver.hs:(150,5)-(151,60)              2922           0    0.0    0.0     0.5    0.1
+       ifM                                              SAT.Monad                   src/SAT/Monad.hs:122:1-26                       2923           0    0.0    0.0     0.5    0.1
+        allVariablesAssigned                            SAT.Solver                  src/SAT/Solver.hs:(234,1)-(236,80)              2925           0    0.0    0.0     0.5    0.1
+         allAssignments                                 SAT.Assignment              src/SAT/Assignment.hs:36:1-48                   2926         194    0.5    0.1     0.5    0.1
+        solutions                                       SAT.Solver                  src/SAT/Solver.hs:131:1-53                      3078           0    0.0    0.0     0.0    0.0
+         solutionsFromAssignment                        SAT.Assignment              src/SAT/Assignment.hs:32:1-88                   3081           1    0.0    0.0     0.0    0.0
+         getAssignment                                  SAT.Monad                   src/SAT/Monad.hs:73:1-31                        3082           0    0.0    0.0     0.0    0.0
+          assignment                                    SAT.Monad                   src/SAT/Monad.hs:44:5-14                        3083           1    0.0    0.0     0.0    0.0
+     toCNF                                              Problem                     src/Problem.hs:244:1-31                         2686           1    0.0    0.0     2.7    8.6
+      toCNF                                             SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:(108,1)-(114,83)          2689           0    0.0    0.0     1.7    4.0
+       clauses                                          SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:44:5-11                   2691           1    0.0    0.0     0.0    0.0
+       toCNF.toCNF'                                     SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:111:5-26                  2690           0    0.4    1.2     1.7    4.0
+        toCNF.toClause                                  SAT.DIMACS.CNF              src/SAT/DIMACS/CNF.hs:114:5-83                  2742      563426    0.4    0.3     1.3    2.8
+         unstableIntNub                                 Utils                       src/Utils.hs:39:1-48                            2744           0    0.9    2.5     0.9    2.5
+      toDIMACS                                          Problem                     src/Problem.hs:49:3-28                          2693           0    0.0    0.0     1.1    4.6
+       toDIMACS                                         Sudoku.Solver               src/Sudoku/Solver.hs:(179,1)-(245,33)           2694           1    0.0    0.0     1.1    4.6
+        toDIMACS.blockClauses                           Sudoku.Solver               src/Sudoku/Solver.hs:(221,5)-(231,7)            2702           1    0.3    1.3     0.5    1.6
+         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2801           0    0.0    0.2     0.1    0.2
+          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2802      202500    0.1    0.1     0.1    0.1
+           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2803      202500    0.0    0.0     0.0    0.0
+            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2805      202500    0.0    0.0     0.0    0.0
+            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2804      202500    0.0    0.0     0.0    0.0
+           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2806      202500    0.0    0.0     0.0    0.0
+        toDIMACS.blockSize'                             Sudoku.Solver               src/Sudoku/Solver.hs:193:5-40                   2696           1    0.0    0.0     0.0    0.0
+         blockSize                                      Sudoku.Solver               src/Sudoku/Solver.hs:(128,1)-(132,36)           2698           1    0.0    0.0     0.0    0.0
+         size                                           Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2697           1    0.0    0.0     0.0    0.0
+        toDIMACS.boardSize                              Sudoku.Solver               src/Sudoku/Solver.hs:189:5-38                   2699           1    0.0    0.0     0.0    0.0
+         fromEnum                                       Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2701           1    0.0    0.0     0.0    0.0
+         size                                           Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2700           1    0.0    0.0     0.0    0.0
+        toDIMACS.cellClauses                            Sudoku.Solver               src/Sudoku/Solver.hs:209:5-120                  2703           1    0.0    0.0     0.0    0.0
+         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2745           0    0.0    0.0     0.0    0.0
+          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2746       15625    0.0    0.0     0.0    0.0
+           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2747       15625    0.0    0.0     0.0    0.0
+            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2749       15625    0.0    0.0     0.0    0.0
+            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2748       15625    0.0    0.0     0.0    0.0
+           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2750       15625    0.0    0.0     0.0    0.0
+        toDIMACS.clauses                                Sudoku.Solver               src/Sudoku/Solver.hs:(197,5)-(205,9)            2709           1    0.0    0.7     0.0    0.7
+        toDIMACS.colClauses                             Sudoku.Solver               src/Sudoku/Solver.hs:217:5-185                  2705           1    0.0    0.9     0.2    1.1
+         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2795           0    0.0    0.2     0.2    0.2
+          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2796      202500    0.1    0.1     0.1    0.1
+           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2797      202500    0.0    0.0     0.0    0.0
+            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2799      202500    0.0    0.0     0.0    0.0
+            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2798      202500    0.0    0.0     0.0    0.0
+           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2800      202500    0.0    0.0     0.0    0.0
+        toDIMACS.encodeVar'                             Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2695           1    0.0    0.0     0.0    0.0
+        toDIMACS.prefilledClauses                       Sudoku.Solver               src/Sudoku/Solver.hs:(235,5)-(241,7)            2706           1    0.0    0.0     0.0    0.0
+         toDIMACS.prefilledClauses.n                    Sudoku.Solver               src/Sudoku/Solver.hs:239:15-52                  2707         625    0.0    0.0     0.0    0.0
+          board                                         Sudoku.Solver               src/Sudoku/Solver.hs:48:5-9                     2708          25    0.0    0.0     0.0    0.0
+         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2813           0    0.0    0.0     0.0    0.0
+          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2814         301    0.0    0.0     0.0    0.0
+           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2815         301    0.0    0.0     0.0    0.0
+            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2817         301    0.0    0.0     0.0    0.0
+            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2816         301    0.0    0.0     0.0    0.0
+           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2818         301    0.0    0.0     0.0    0.0
+        toDIMACS.rowClauses                             Sudoku.Solver               src/Sudoku/Solver.hs:213:5-185                  2704           1    0.1    0.9     0.3    1.1
+         toDIMACS.encodeVar'                            Sudoku.Solver               src/Sudoku/Solver.hs:245:5-33                   2785           0    0.0    0.2     0.2    0.2
+          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           2786      202500    0.1    0.1     0.1    0.1
+           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   2787      202500    0.0    0.0     0.0    0.0
+            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             2789      202500    0.0    0.0     0.0    0.0
+            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     2788      202500    0.0    0.0     0.0    0.0
+           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   2790      202500    0.0    0.0     0.0    0.0
+     decode                                             Problem                     src/Problem.hs:53:3-32                          3080           0    0.0    0.0     0.0    0.0
+      decodeSolution                                    Sudoku.Solver               src/Sudoku/Solver.hs:(152,1)-(172,39)           3084           1    0.0    0.0     0.0    0.0
+       decodeSolution.cellValue                         Sudoku.Solver               src/Sudoku/Solver.hs:(158,5)-(163,141)          3092         625    0.0    0.0     0.0    0.0
+        decodeSolution.checkVar                         Sudoku.Solver               src/Sudoku/Solver.hs:172:5-39                   3093           0    0.0    0.0     0.0    0.0
+         decodeSolution.checkValue'                     Sudoku.Solver               src/Sudoku/Solver.hs:169:5-37                   3100           0    0.0    0.0     0.0    0.0
+          checkValue                                    SAT.Assignment              src/SAT/Assignment.hs:73:1-46                   3101       15625    0.0    0.0     0.0    0.0
+         decodeSolution.encodeVar'                      Sudoku.Solver               src/Sudoku/Solver.hs:166:5-33                   3094           0    0.0    0.0     0.0    0.0
+          encodeVar                                     Sudoku.Solver               src/Sudoku/Solver.hs:(139,1)-(145,79)           3095       15625    0.0    0.0     0.0    0.0
+           encodeVar.boardSize                          Sudoku.Solver               src/Sudoku/Solver.hs:142:5-38                   3096       15625    0.0    0.0     0.0    0.0
+            fromEnum                                    Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             3098       15625    0.0    0.0     0.0    0.0
+            size                                        Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     3097       15625    0.0    0.0     0.0    0.0
+           encodeVar.var                                Sudoku.Solver               src/Sudoku/Solver.hs:145:5-79                   3099       15625    0.0    0.0     0.0    0.0
+       decodeSolution.boardSize                         Sudoku.Solver               src/Sudoku/Solver.hs:155:5-38                   3088           1    0.0    0.0     0.0    0.0
+        fromEnum                                        Sudoku.Solver               src/Sudoku/Solver.hs:(89,3)-(93,38)             3090           1    0.0    0.0     0.0    0.0
+        size                                            Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     3089           1    0.0    0.0     0.0    0.0
+       decodeSolution.checkValue'                       Sudoku.Solver               src/Sudoku/Solver.hs:169:5-37                   3085           1    0.0    0.0     0.0    0.0
+       decodeSolution.checkVar                          Sudoku.Solver               src/Sudoku/Solver.hs:172:5-39                   3087           1    0.0    0.0     0.0    0.0
+       decodeSolution.encodeVar'                        Sudoku.Solver               src/Sudoku/Solver.hs:166:5-33                   3086           1    0.0    0.0     0.0    0.0
+       size                                             Sudoku.Solver               src/Sudoku/Solver.hs:49:5-8                     3091           1    0.0    0.0     0.0    0.0
+   runSudoku.sudoku'                                    Main                        app/Main.hs:94:7-63                             2681           1    0.0    0.0     0.0    0.0
