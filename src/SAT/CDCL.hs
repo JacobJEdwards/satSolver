@@ -10,9 +10,9 @@ import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.List (partition)
 import SAT.CNF (type Literal, varOfLiteral, type Clause (Clause, literals), type DecisionLevel)
-import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, propagationStack, trail), getDecisionLevel)
+import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, propagationStack, trail))
 import Utils (unstableIntNub)
-import Debug.Trace (traceM)
+import SAT.Assignment (filterAssignment)
 
 -- | Backtracks to a given decision level.
 -- backtrack :: DecisionLevel -> SolverM ()
@@ -41,13 +41,10 @@ backtrack dl = do
   trail <- getTrail
   assignments <- getAssignment
   ig <- getImplicationGraph
-  dl' <- getDecisionLevel
-  traceM $ "Backtracking to " ++ show dl ++ " from " ++ show dl'
-
 
   let (trail', toRemove) = partition (\(_, dl', _) -> dl' <= dl) trail
       toRemoveKeys = IntSet.fromList $ fmap (\(l, _, _) -> varOfLiteral l) toRemove
-      assignments' = IntMap.filterWithKey (\k _ -> varOfLiteral k `IntSet.notMember` toRemoveKeys) assignments
+      assignments' = filterAssignment (\l _ -> varOfLiteral l `IntSet.notMember` toRemoveKeys) assignments
       ig' = IntMap.filterWithKey (\k _ -> varOfLiteral k `IntSet.notMember` toRemoveKeys) ig
 
   modify' \s -> s {trail = trail', assignment = assignments', implicationGraph = ig', decisionLevel = dl, propagationStack = mempty}

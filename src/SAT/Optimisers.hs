@@ -18,7 +18,6 @@ module SAT.Optimisers
     collectLiterals,
     collectLiteralsToSet,
     eliminateLiterals,
-    assign,
     pickVariableM,
     literalPolarities,
     decayM,
@@ -38,7 +37,6 @@ module SAT.Optimisers
   )
 where
 
-import Control.Monad (foldM, when)
 import Control.Monad.State.Strict (get, modify')
 import Data.IntMap.Strict (type IntMap)
 import Data.IntMap.Strict qualified as IntMap
@@ -46,15 +44,14 @@ import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Kind (type Type)
 import Data.List (find, findIndex)
-import Data.List qualified
 import Data.Maybe (isNothing)
 import Data.Sequence qualified as Seq
-import SAT.CNF (type Clause (Clause, literals, watched), literalValue, varOfLiteral, type Assignment, type CNF (CNF), type DecisionLevel, type Literal)
+import SAT.CNF (type Clause (Clause, literals, watched), varOfLiteral, type CNF (CNF), type DecisionLevel, type Literal)
 import SAT.DIMACS.CNF (invert)
-import SAT.Monad (type Reason, type ClauseDB, type WatchedLiterals (WatchedLiterals, literals), getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPropagationStack, getVSIDS, getWatchedLiterals, type SolverM, type SolverState (clauseDB, propagationStack, watchedLiterals, decisionLevel, assignment, trail, SolverState, implicationGraph, vsids))
+import SAT.Monad (type WatchedLiterals (WatchedLiterals, literals), getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPropagationStack, getVSIDS, getWatchedLiterals, type SolverM, type SolverState (clauseDB, propagationStack, watchedLiterals, decisionLevel, assignment, trail, SolverState, implicationGraph, vsids))
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable, VSIDS (VSIDS))
-import Debug.Trace (traceM)
+import SAT.Assignment (assign, literalValue, Assignment)
 
 -- | Collects all literals in a CNF.
 --
@@ -125,7 +122,7 @@ eliminateLiterals cnf solutions = (solutions', cnf')
     getClauses :: IntMap Polarity -> CNF -> Assignment -> (CNF, Assignment)
     getClauses pols expr sols = case IntMap.minViewWithKey pols of
       Nothing -> (expr, sols)
-      Just ((c, p), pols') -> getClauses pols' (substitute c value expr) $ IntMap.insert c value sols
+      Just ((c, p), pols') -> getClauses pols' (substitute c value expr) $ assign sols c value
         where
           value :: Bool
           value = p == Positive
@@ -274,22 +271,22 @@ unitPropagateM = go
               (Nothing, Just False) -> do
                 case findNewWatch first second assignment literals of
                   Just i -> do
-                    handleNewWatch i index clause b a second
+                    handleNewWatch i index clause a second
                   Nothing -> do
                     addProp a literals
                     return Nothing
               (Just False, Nothing) -> do
                 case findNewWatch first second assignment literals of
                   Just i -> do
-                    handleNewWatch i index clause a b first
+                    handleNewWatch i index clause b first
                   Nothing -> do
                     addProp b literals
                     return Nothing
               (Nothing, Nothing) -> do
                 return Nothing
       
-      handleNewWatch :: Int -> Int -> Clause -> Int -> Int -> Literal -> SolverM (Maybe Clause)
-      handleNewWatch i index clause a b first = do 
+      handleNewWatch :: Int -> Int -> Clause -> Int -> Literal -> SolverM (Maybe Clause)
+      handleNewWatch i index clause b first = do 
         let newClause = clause {watched = (i, b)}
         let l = SAT.CNF.literals clause !! i
 
@@ -320,52 +317,9 @@ unitPropagateM = go
       findNewWatch :: Literal -> Literal -> Assignment -> [Literal] -> Maybe Int
       findNewWatch first second assignment = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False)
 
-      shiftWatch :: Int -> Clause -> Int -> Int -> Literal -> Literal -> SolverM (Maybe Clause)
-      shiftWatch index clause a b first second = do
-        assignment <- getAssignment
-        let newWatch = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False) (SAT.CNF.literals clause)
-        case newWatch of
-          Just i -> updateWatch index clause a b i
-          Nothing -> do
-            let l = SAT.CNF.literals clause !! a
-            propagationStack <- getPropagationStack
-            modify' \s -> s {propagationStack = (varOfLiteral l, l > 0, Just clause) : propagationStack}
-            return Nothing
-      
-      updateWatch :: Int -> Clause -> Int -> Int -> Int -> SolverM (Maybe Clause)
-      updateWatch index clause oldIndex newIndex newWatch = do
-        clauses <- getClauseDB
-        let newClause = clause {watched = (newIndex, newWatch)}
-        let l = SAT.CNF.literals clause !! newWatch
-
-        wl <- getWatchedLiterals
-
-        let newClauseDb = Seq.update index newClause clauses
-
-        let oldClauses = IntMap.findWithDefault mempty (varOfLiteral $ SAT.CNF.literals clause !! oldIndex) $ SAT.Monad.literals wl
-        let oldClauses' = IntSet.delete index oldClauses
-
-        let lClauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
-        let lClauses' = IntSet.insert index lClauses
-
-        let newWl = IntMap.insert (varOfLiteral $ SAT.CNF.literals clause !! oldIndex) oldClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
-
-        modify' \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
-
-        return Nothing
-        
-
-
--- https://buffered.io/posts/a-better-nub/
 
 -- | Assigns a value to a literal.
 --
--- >>> assign IntMap.empty 1 True 0
--- fromList [(1,True)]
-assign :: Assignment -> Literal -> Bool -> Assignment
-assign m c v = IntMap.insertWith (const id) (varOfLiteral c) v m
-{-# INLINEABLE assign #-}
-
 assignM :: Literal -> Bool -> SolverM ()
 assignM c v = do
   SolverState {assignment, trail, decisionLevel} <- get

@@ -25,18 +25,14 @@ module SAT.Expr
     ors,
     ands,
     toVar,
-    type Solutions,
   )
 where
 
 import Control.Parallel.Strategies (type NFData)
 import Data.Data (type Data)
-import Data.IntSet (type IntSet)
 import Data.Kind (type Type)
-import GHC.Generics (Generic)
+import GHC.Generics (type Generic)
 
--- | The solutions type.
-type Solutions = IntSet
 
 -- | The 'Expr' type.
 type Expr :: Type -> Type

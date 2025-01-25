@@ -11,6 +11,7 @@ module SAT
     module SAT.CNF,
     module SAT.Optimisers,
     module SAT.Preprocessing,
+    module SAT.Assignment,
   )
 where
 
@@ -20,3 +21,4 @@ import SAT.Optimisers
 import SAT.Parser
 import SAT.Preprocessing
 import SAT.Solver
+import SAT.Assignment

@@ -25,7 +25,7 @@ import Data.Text (type Text)
 import GHC.Generics (Generic)
 import SAT.CNF (varOfLiteral, type CNF (CNF))
 import SAT.CNF qualified as CNF
-import SAT.Expr (type Expr (And, Implies, Not, Or, Var))
+import SAT.Expr (type Expr (And, Not, Or, Var))
 import Utils (unstableIntNub)
 
 -- | The literal type.

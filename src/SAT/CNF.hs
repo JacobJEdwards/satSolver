@@ -8,27 +8,20 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE PolyKinds #-}
 
 -- |
 -- Module      : SAT.CNF
 -- Description : Exports the CNF module.
-module SAT.CNF (applyLaws, toCNF, type CNF (CNF), fromDNF, type Clause (Clause, literals, watched), type Literal, addClause, type Assignment, type DecisionLevel, isNegative, varOfLiteral, varValue, literalValue, negateLiteral, initAssignment) where
+module SAT.CNF (applyLaws, toCNF, type CNF (CNF), fromDNF, type Clause (Clause, literals, watched), type Literal, addClause, type DecisionLevel, isNegative, varOfLiteral, negateLiteral) where
 
 import Control.Parallel.Strategies (type NFData)
-import Data.IntMap.Strict ((!?), type IntMap)
-import Data.IntSet (type IntSet)
 import GHC.Generics (type Generic)
 import SAT.Expr (type Expr (And, Implies, NAnd, NOr, Not, Or, Val, Var, XNor, XOr))
 import Data.Hashable (type Hashable (hashWithSalt))
 
 
 type DecisionLevel = Int
-
-type Assignment = IntMap Bool
--- type Assignment = Vector Bool
-
-initAssignment :: IntSet -> Assignment
-initAssignment = mempty
 
 -- data cnf is list of clauses
 
@@ -72,17 +65,6 @@ varOfLiteral :: Literal -> Int
 varOfLiteral = abs
 {-# INLINE varOfLiteral #-}
 
--- | Returns the value of a variable in an assignment.
-varValue :: Assignment -> Int -> Maybe Bool
-varValue = (!?)
-{-# INLINEABLE varValue #-}
-
--- | Returns the value of a literal in an assignment.
-literalValue :: Assignment -> Literal -> Maybe Bool
-literalValue assignment l = do
-  val <- varValue assignment $ varOfLiteral l
-  return $ if isNegative l then not val else val
-{-# INLINEABLE literalValue #-}
 
 negateLiteral :: Literal -> Literal
 negateLiteral = negate

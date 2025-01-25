@@ -40,7 +40,6 @@
 module SAT.Solver
   ( satisfiable,
     type Solutions,
-    checkValue,
     findFreeVariable,
     getSolutions,
     satisfied,
@@ -52,15 +51,14 @@ import Control.Monad (guard)
 import Control.Monad.RWS.Strict (get, modify')
 import Control.Monad.RWS.Strict qualified as RWST
 import Data.IntMap.Strict qualified as IntMap
-import Data.IntSet (type IntSet)
 import Data.IntSet qualified as IntSet
 import Data.List (foldl')
 import Data.Maybe (isJust, listToMaybe)
 import Data.Sequence qualified as Seq
 import Debug.Trace (traceM)
 import SAT.CDCL (analyseConflict, backtrack)
-import SAT.CNF (initAssignment, literalValue, varOfLiteral, type Assignment, type CNF (CNF), type Clause (Clause, literals, watched), type Literal)
-import SAT.Expr (type Solutions)
+import SAT.CNF (varOfLiteral, type CNF (CNF), type Clause (Clause, literals, watched), type Literal)
+import SAT.Assignment (type Assignment, allAssignments, literalValue, type Solutions, solutionsFromAssignment, initAssignment)
 import SAT.Monad (Reason, getAssignment, getClauseDB, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), type WatchedLiterals (WatchedLiterals))
 import SAT.Optimisers (addDecision, adjustScoresM,collectLiterals, collectLiteralsToSet, decayM, pickLiteralM, unitPropagateM)
 import SAT.Preprocessing (preprocess)
@@ -127,18 +125,7 @@ findFreeVariable :: CNF -> Maybe Literal
 findFreeVariable = listToMaybe . collectLiterals
 {-# INLINEABLE findFreeVariable #-}
 
--- | Checks if a value is in the solutions.
---
--- >>> checkValue (IntSet.fromList [1, 2, 3]) 2
--- True
-checkValue :: Solutions -> Literal -> Bool
-checkValue = flip IntSet.member
-{-# INLINEABLE checkValue #-}
 
--- | Converts an assignment to a set of solutions.
-solutionsFromAssignment :: Assignment -> Solutions
-solutionsFromAssignment = IntMap.keysSet . IntMap.filter id
-{-# INLINEABLE solutionsFromAssignment #-}
 
 solutions :: SolverM Solutions
 solutions = solutionsFromAssignment <$> getAssignment
@@ -232,9 +219,6 @@ satisfiable :: CNF -> Bool
 satisfiable = isJust . getSolutions
 {-# INLINEABLE satisfiable #-}
 
-allAssignments :: Assignment -> IntSet
-allAssignments = IntMap.keysSet
-{-# INLINEABLE allAssignments #-}
 
 -- allVariablesAssigned :: SolverM Bool
 -- allVariablesAssigned = do

@@ -35,10 +35,9 @@ where
 import Control.Parallel.Strategies (type NFData)
 import Data.Kind (type Type)
 import GHC.Generics (type Generic)
-import SAT (ands, applyLaws, checkValue, ors, toVar, type Expr, type Solutions, fromDNF)
+import SAT (checkValue, type Solutions, fromDNF)
 import SAT.DIMACS qualified as DIMACS
 import Utils (intNub)
-import Debug.Trace (trace)
 
 imap :: (Int -> a -> b) -> [a] -> [b]
 imap = flip zipWith [0 ..]
@@ -185,7 +184,7 @@ toDIMACS !puzzle =
   DIMACS.DIMACS
     { DIMACS.numVars = fromIntegral $ rowSize * colSize * 2,
       DIMACS.numClauses = fromIntegral $ length clauses,
-      DIMACS.clauses = trace (show clauses) $ clauses,
+      DIMACS.clauses = clauses,
       DIMACS.comments = ["Nonogram"]
     }
   where

@@ -16,8 +16,9 @@ import Data.IntMap.Strict (type IntMap)
 import Data.IntSet (type IntSet)
 import Data.Sequence (type Seq)
 import GHC.Generics (type Generic)
-import SAT.CNF (type Assignment, type CNF, type Clause, type DecisionLevel, type Literal)
+import SAT.CNF (type CNF, type Clause, type DecisionLevel, type Literal)
 import SAT.VSIDS (type VSIDS)
+import SAT.Assignment (type Assignment)
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]

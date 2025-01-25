@@ -7,7 +7,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE Strict #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 -- |
 -- Module      : SAT.VSIDS
@@ -19,7 +18,6 @@ import Data.IntMap.Strict (type IntMap)
 import Data.IntMap.Strict qualified as IntMap
 import Data.List (foldl')
 import SAT.CNF (varOfLiteral, type CNF (CNF), type Clause (Clause, literals), type Literal)
-import GHC.Generics (type Generic)
 
 -- | The VSIDS type.
 newtype (Num a) => VSIDS a = VSIDS (IntMap a) deriving newtype (Show, Eq, Ord, Semigroup, Monoid, NFData, Functor, Foldable)
@@ -81,6 +79,6 @@ adjustScores = foldl' (flip adjustScore)
 pickLiteral :: (Num a, Ord a) => VSIDS a -> Literal
 pickLiteral (VSIDS !v) = do 
   let lst = IntMap.toList v
-  let (k, _) = foldl' (\(k, v) (k', v') -> if v' > v then (k', v') else (k, v)) (0, 0) lst
+  let (k, _) = foldl' (\(k'', v'') (k', v') -> if v' > v'' then (k', v') else (k'', v'')) (0, 0) lst
   k
 {-# INLINEABLE pickLiteral #-}
