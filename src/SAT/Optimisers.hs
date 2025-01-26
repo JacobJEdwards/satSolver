@@ -241,6 +241,7 @@ unitPropagateM = go
             case clause of
               Just c -> return $ Just c
               Nothing -> go
+      {-# INLINEABLE go #-}
 
       processClauses ::  Assignment -> [Int] -> SolverM (Maybe Clause)
       processClauses assignment = go'
@@ -252,6 +253,7 @@ unitPropagateM = go
             case clause of
               Just _ -> return clause
               Nothing -> go' is
+      {-# INLINEABLE processClauses #-}
 
       processClause :: Assignment -> Int -> SolverM (Maybe Clause) -- (newWatch, maybe conflict clause)
       processClause assignment index = do
@@ -284,6 +286,7 @@ unitPropagateM = go
                     return Nothing
               (Nothing, Nothing) -> do
                 return Nothing
+      {-# INLINEABLE processClause #-}
       
       handleNewWatch :: Int -> Int -> Clause -> Int -> Literal -> SolverM (Maybe Clause)
       handleNewWatch i index clause b first = do 
@@ -306,16 +309,19 @@ unitPropagateM = go
         modify' \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
 
         return Nothing
+      {-# INLINEABLE handleNewWatch #-}
 
       addProp :: Int -> [Literal] -> SolverM ()
       addProp index literals = do 
         let l = literals !! index
         propagationStack <- getPropagationStack
         modify' \s -> s {propagationStack = (varOfLiteral l, l > 0, Nothing) : propagationStack}
+      {-# INLINE addProp #-}
 
       
       findNewWatch :: Literal -> Literal -> Assignment -> [Literal] -> Maybe Int
       findNewWatch first second assignment = findIndex (\l -> l /= first && l /= second && literalValue assignment l /= Just False)
+      {-# INLINE findNewWatch #-}
 
 
 -- | Assigns a value to a literal.

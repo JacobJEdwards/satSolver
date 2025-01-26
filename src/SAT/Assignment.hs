@@ -23,9 +23,11 @@ deriving anyclass instance NFData Assignment
 
 initAssignment :: IntSet -> Assignment
 initAssignment _ = Assignment mempty
+{-# INLINEABLE initAssignment #-}
 
 filterAssignment :: (Int -> Bool -> Bool) -> Assignment -> Assignment
 filterAssignment f (Assignment m) = Assignment $ IntMap.filterWithKey f m
+{-# INLINEABLE filterAssignment #-}
 
 -- | Converts an assignment to a set of solutions.
 solutionsFromAssignment :: Assignment -> Solutions
@@ -39,10 +41,12 @@ allAssignments (Assignment m) = IntMap.keysSet m
 instance Semigroup Assignment where
   (<>) :: Assignment -> Assignment -> Assignment
   Assignment a <> Assignment b = Assignment $ a <> b
+  {-# INLINEABLE (<>) #-}
 
 instance Monoid Assignment where
   mempty :: Assignment
   mempty = Assignment mempty
+  {-# INLINEABLE mempty #-}
 
 -- | Returns the value of a variable in an assignment.
 varValue :: Assignment -> Int -> Maybe Bool

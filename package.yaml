@@ -52,6 +52,7 @@ ghc-options:
 - -Wmissing-import-lists
 - -Wredundant-constraints
 - -Wnoncanonical-monad-instances
+- -O0
 
 library:
   source-dirs: src
@@ -64,7 +65,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -O1
     dependencies:
     - satSolver
     - haskeline
