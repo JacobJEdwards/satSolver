@@ -16,7 +16,7 @@ import Data.String (fromString)
 import Data.Text (type Text)
 import Nonogram (type Nonogram)
 import Options (parseArgs, type Flag (Demo, File, Interactive, Nonogram, RunImmediate, Sudoku))
-import Problem (example, parse, parseFile, solve)
+import Problem (example, parse, parseFile, solve, Problem (toDIMACS))
 import SAT (type Expr (And, Not, Or, Var))
 import SAT qualified
 import SAT.CNF qualified
@@ -24,6 +24,7 @@ import SAT.DIMACS qualified as DIMACS
 import Sudoku (type Sudoku)
 import System.Console.Haskeline (defaultSettings, getInputLine, outputStrLn, runInputT, type InputT)
 import System.Environment (getArgs)
+import SAT.DIMACS (DIMACS(clauses))
 
 -- | Show the result of parsing an expression.
 -- If the expression is invalid, print an error message.
@@ -94,6 +95,8 @@ runSudoku file = do
   let sudoku' = fromMaybe (error "Invalid sudoku") sudokuResult
   putStrLn "Parsed sudoku:"
   print sudoku'
+  let dimacs = Problem.toDIMACS sudoku'
+  writeFile "sudoku.dimacs" $ show $ clauses dimacs
   let solution = solve sudoku'
   maybe (putStrLn "No solution found") print solution
 

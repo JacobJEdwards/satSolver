@@ -5,10 +5,10 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module SAT.Monad (type SolverM, getPropagationStack, type SolverState (..), type SolverLog, type Trail, type Reason, type ClauseDB, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, increaseDecisionLevel, getClauseDB) where
+module SAT.Monad (type SolverM, getPropagationStack, savePhase, nextPhase, type SolverState (..), type SolverLog, type Trail, type Reason, type ClauseDB, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, increaseDecisionLevel, getClauseDB) where
 
 import Control.Monad (guard, type MonadPlus)
-import Control.Monad.RWS.Strict (modify', tell, type RWST)
+import Control.Monad.RWS.Strict (modify', tell, type RWST, MonadState (get))
 import Control.Monad.State.Strict (gets)
 import Control.Parallel.Strategies (type NFData)
 import Data.Bool (bool)
@@ -16,9 +16,10 @@ import Data.IntMap.Strict (type IntMap)
 import Data.IntSet (type IntSet)
 import Data.Sequence (type Seq)
 import GHC.Generics (type Generic)
-import SAT.CNF (type CNF, type Clause, type DecisionLevel, type Literal)
+import SAT.CNF (type CNF, type Clause, type DecisionLevel, type Literal, varOfLiteral)
 import SAT.VSIDS (type VSIDS)
 import SAT.Assignment (type Assignment)
+import qualified Data.IntMap.Strict as IntMap
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]
@@ -38,6 +39,8 @@ deriving anyclass instance NFData WatchedLiterals
 -- | The clause database.
 type ClauseDB = Seq Clause
 
+type SavedPhases = IntMap Bool
+
 -- | The solver state.
 -- Contains information for solving and any optimisations.
 data SolverState = SolverState
@@ -51,9 +54,10 @@ data SolverState = SolverState
     variables :: !IntSet,
     propagationStack :: ![(Literal, Bool, Maybe Reason)],
     lubyCount :: !Int,
-    lubyThreshold :: !Int
+    lubyThreshold :: !Int,
+    savedPhases :: !SavedPhases
   }
-  deriving stock (Show)
+  deriving stock (Show, Eq, Ord, Generic)
 
 -- | The solver log.
 type SolverLog = [String]
@@ -101,6 +105,17 @@ getVSIDS = gets vsids
 getClauseDB :: SolverM ClauseDB
 getClauseDB = gets clauseDB
 {-# INLINEABLE getClauseDB #-}
+
+getSavedPhases :: SolverM SavedPhases
+getSavedPhases = gets savedPhases
+{-# INLINEABLE getSavedPhases #-}
+
+savePhase :: Literal -> Bool -> SolverM ()
+savePhase lit phase = modify' \s -> s {savedPhases = IntMap.insert (varOfLiteral lit) phase $ savedPhases s}
+
+nextPhase :: Literal -> SolverM Bool
+nextPhase lit = do
+  not . IntMap.findWithDefault False (varOfLiteral lit) <$> getSavedPhases
 
 {-
 def add_learnt_clause(formula, clause, assignments, lit2clauses, clause2lits):

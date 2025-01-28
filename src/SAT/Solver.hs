@@ -59,7 +59,7 @@ import Debug.Trace (traceM)
 import SAT.CDCL (analyseConflict, backtrack)
 import SAT.CNF (varOfLiteral, type CNF (CNF), type Clause (Clause, literals, watched), type Literal)
 import SAT.Assignment (type Assignment, allAssignments, literalValue, type Solutions, solutionsFromAssignment, initAssignment)
-import SAT.Monad (Reason, getAssignment, getClauseDB, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), type WatchedLiterals (WatchedLiterals))
+import SAT.Monad (Reason, getAssignment, getClauseDB, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), type WatchedLiterals (WatchedLiterals), savedPhases, nextPhase, savePhase)
 import SAT.Optimisers (addDecision, adjustScoresM,collectLiterals, collectLiteralsToSet, decayM, pickLiteralM, unitPropagateM)
 import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
@@ -81,7 +81,8 @@ initState cnf@(CNF clauses) =
       variables = collectLiteralsToSet cnf,
       propagationStack = initialPropagationStack watchedClauses,
       lubyCount = 0,
-      lubyThreshold = 1
+      lubyThreshold = 1,
+      savedPhases = mempty
     }
   where
     !watchedClauses = unstableHashNub $ map initClauseWatched clauses
@@ -126,7 +127,6 @@ findFreeVariable = listToMaybe . collectLiterals
 {-# INLINEABLE findFreeVariable #-}
 
 
-
 solutions :: SolverM Solutions
 solutions = solutionsFromAssignment <$> getAssignment
 
@@ -142,35 +142,30 @@ getSolutions !cnf' = do
       guard $ not $ null clauseDb
       guard $ not $ any (null . literals) clauseDb
 
-      preprocess >>= \case
-        Just _ -> return Nothing
-        Nothing -> solver
+      solver
 
     solver :: SolverM (Maybe Solutions)
     solver = do
-      ifM allVariablesAssigned (return <$> solutions) branch
+      conflict <- unitPropagateM
+      case conflict of
+        Just c -> handleConflict c
+        Nothing -> do
+          ifM allVariablesAssigned (return <$> solutions) branch
 
     branch :: SolverM (Maybe Solutions)
     branch = pickLiteralM >>= try
 
     try :: Literal -> SolverM (Maybe Solutions)
     try c = do
-      true <- tryAssign c False
-      false <- tryAssign c True
-
-      return $ true <|> false
+      phase <- nextPhase c
+      savePhase c phase
+      tryAssign c phase
 
     tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
     tryAssign c val = do
       increaseDecisionLevel
       addDecision c val
-      propagate
-
-    propagate :: SolverM (Maybe Solutions)
-    propagate = do
-      unitPropagateM >>= \case
-        Just c -> handleConflict c
-        Nothing -> solver
+      solver
 
     handleConflict :: Clause -> SolverM (Maybe Solutions)
     handleConflict !c = do
@@ -179,15 +174,13 @@ getSolutions !cnf' = do
         then do 
           return Nothing
         else do
-          -- something is wrong with backtracking !
           decayM
           adjustScoresM clause
           learn clause
           increaseLubyCount
           -- ifM shouldRestart restart do
-          -- backtrack dl
-          return Nothing
-          -- solver
+          backtrack dl
+          solver
 
     shouldRestart :: SolverM Bool
     shouldRestart = do

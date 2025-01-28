@@ -37,6 +37,8 @@ import Data.Kind (type Type)
 import GHC.Generics (type Generic)
 import SAT (checkValue, type Solutions)
 import SAT.DIMACS qualified as DIMACS
+import Debug.Trace (traceShow)
+import GHC.IO (unsafePerformIO)
 
 -- | The Sudoku board
 type Board :: Type
@@ -180,8 +182,8 @@ toDIMACS puzzle =
   DIMACS.DIMACS
     { DIMACS.numVars = fromIntegral $ boardSize * boardSize * boardSize,
       DIMACS.numClauses = fromIntegral $ length clauses,
-      DIMACS.clauses = clauses,
-      DIMACS.comments = ["Sudoku"]
+      DIMACS.comments = ["Sudoku"],
+      DIMACS.clauses = clauses
     }
   where
     -- \| The size of the board
@@ -194,15 +196,7 @@ toDIMACS puzzle =
 
     -- \| The clauses of the Sudoku
     clauses :: [DIMACS.Clause]
-    clauses =
-      -- uniqueOnly $
-      concat
-        [ cellClauses,
-          rowClauses,
-          colClauses,
-          blockClauses,
-          prefilledClauses
-        ]
+    clauses = concat [ cellClauses, rowClauses, colClauses, blockClauses, prefilledClauses ]
 
     -- \| The cell clauses
     cellClauses :: [DIMACS.Clause]
