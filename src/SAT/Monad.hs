@@ -4,6 +4,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 module SAT.Monad (type SolverM, getPropagationStack, savePhase, nextPhase, type SolverState (..), type SolverLog, type Trail, type Reason, type ClauseDB, type ImplicationGraph, type WatchedLiterals (..), getAssignment, getTrail, getImplicationGraph, getWatchedLiterals, getDecisionLevel, getVSIDS, logM, ifM, guardM, notM, increaseDecisionLevel, getClauseDB) where
 
@@ -19,7 +20,10 @@ import GHC.Generics (type Generic)
 import SAT.CNF (type CNF, type Clause, type DecisionLevel, type Literal, varOfLiteral)
 import SAT.VSIDS (type VSIDS)
 import SAT.Assignment (type Assignment)
-import qualified Data.IntMap.Strict as IntMap
+import Data.IntMap.Strict qualified as IntMap
+import Data.Vector.Unboxed qualified as VU
+import Data.Vector.Storable qualified as VS
+import Data.Vector qualified as V
 
 -- | The trail type (the previous assignments).
 type Trail = [(Literal, DecisionLevel, Bool)]
@@ -31,8 +35,8 @@ type Reason = Clause
 type ImplicationGraph = IntMap (Literal, Maybe Reason, DecisionLevel)
 
 -- | Watched literals (literals in clauses that are being watched).
-newtype WatchedLiterals = WatchedLiterals {literals :: IntMap IntSet} -- map of lits to index of wathced clause
-  deriving stock (Show, Eq, Ord, Generic)
+newtype WatchedLiterals = WatchedLiterals (V.Vector IntSet)
+  deriving stock (Generic)
 
 deriving anyclass instance NFData WatchedLiterals
 
@@ -57,7 +61,7 @@ data SolverState = SolverState
     lubyThreshold :: !Int,
     savedPhases :: !SavedPhases
   }
-  deriving stock (Show, Eq, Ord, Generic)
+  deriving stock (Generic)
 
 -- | The solver log.
 type SolverLog = [String]

@@ -2,7 +2,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Strict #-}
@@ -50,7 +49,6 @@ import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Control.Monad.RWS.Strict (get, modify')
 import Control.Monad.RWS.Strict qualified as RWST
-import Data.IntMap.Strict qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.List (foldl')
 import Data.Maybe (isJust, listToMaybe)
@@ -59,39 +57,42 @@ import Debug.Trace (traceM)
 import SAT.CDCL (analyseConflict, backtrack)
 import SAT.CNF (varOfLiteral, type CNF (CNF), type Clause (Clause, literals, watched), type Literal)
 import SAT.Assignment (type Assignment, allAssignments, literalValue, type Solutions, solutionsFromAssignment, initAssignment)
-import SAT.Monad (Reason, getAssignment, getClauseDB, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), type WatchedLiterals (WatchedLiterals), savedPhases, nextPhase, savePhase, getDecisionLevel)
+import SAT.Monad (Reason, getAssignment, getClauseDB, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), type WatchedLiterals (WatchedLiterals), savedPhases, nextPhase, savePhase)
 import SAT.Optimisers (addDecision, adjustScoresM,collectLiterals, collectLiteralsToSet, decayM, pickLiteralM, unitPropagateM)
-import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
 import SAT.VSIDS (initVSIDS)
 import SAT.WL (initClauseWatched, initWatchedLiterals)
 import Utils (unstableHashNub)
+import Data.Vector.Unboxed qualified as VU
+import Data.Vector qualified as V
 
 -- | Initializes the solver state.
 initState :: CNF -> SolverState
 initState cnf@(CNF clauses) =
   SolverState
-    { assignment = initAssignment $ collectLiteralsToSet cnf,
+    { assignment = initAssignment allLits,
       trail = mempty,
       implicationGraph = mempty,
-      watchedLiterals = initWatchedLiterals db,
+      watchedLiterals = initWatchedLiterals db allLits,
       decisionLevel = 0,
       vsids = initVSIDS cnf,
       clauseDB = db,
-      variables = collectLiteralsToSet cnf,
+      variables = allLits,
       propagationStack = initialPropagationStack watchedClauses,
       lubyCount = 0,
       lubyThreshold = 1,
       savedPhases = mempty
     }
   where
+    !allLits = collectLiteralsToSet cnf
+
     !watchedClauses = unstableHashNub $ map initClauseWatched clauses
 
     !db = Seq.fromList watchedClauses
 
 initialPropagationStack :: [Clause] -> [(Literal, Bool, Maybe Reason)]
 initialPropagationStack =
-  foldl' (\acc c@(Clause {literals, watched = (a, b)}) -> if a == b then (abs $ literals !! a, literals !! a > 0, Just c) : acc else acc) mempty
+  foldl' (\acc c@(Clause {literals}) -> if null literals then (abs $ head literals, head literals > 0, Just c) : acc else acc) mempty
 {-# INLINEABLE initialPropagationStack #-}
 
 learn :: [Literal] -> SolverM ()
@@ -104,13 +105,17 @@ learn literals = do
 
   if a == b
     then modify' \s -> s {propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
-    else do 
+    else do
       let newClauseDB = clauseDB Seq.|> clause
-      let aLits = IntMap.findWithDefault mempty (varOfLiteral $ literals !! a) lits
-      let bLits = IntMap.findWithDefault mempty (varOfLiteral $ literals !! b) lits
+
+      let aLits = lits V.! varOfLiteral (literals !! a)
+      let bLits = lits V.! varOfLiteral (literals !! b)
+
       let aLits' = IntSet.insert (Seq.length newClauseDB - 1) aLits
       let bLits' = IntSet.insert (Seq.length newClauseDB - 1) bLits
-      let newWL = IntMap.insert (varOfLiteral $ literals !! a) aLits' $ IntMap.insert (varOfLiteral $ literals !! b) bLits' lits
+
+      let newWL = lits V.// [(varOfLiteral $ literals !! a, aLits'), (varOfLiteral $ literals !! b, bLits')]
+
       modify' \s -> s {clauseDB = newClauseDB, watchedLiterals = WatchedLiterals newWL}
   where
     getInitialWatched :: [Literal] -> (Literal, Literal)
@@ -148,7 +153,7 @@ getSolutions !cnf' = do
     solver = do
       conflict <- unitPropagateM
       case conflict of
-        Just c -> do 
+        Just c -> do
           handleConflict c
         Nothing -> do
           ifM allVariablesAssigned (return <$> solutions) branch
@@ -172,13 +177,13 @@ getSolutions !cnf' = do
     handleConflict !c = do
       (clause, dl) <- analyseConflict c
       if dl < 0
-        then do 
+        then do
           traceM "Unsatisfiable"
           return Nothing
         else do
           decayM
           adjustScoresM clause
-          learn clause
+          -- learn clause
           increaseLubyCount
           -- ifM shouldRestart restart do
           backtrack dl

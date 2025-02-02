@@ -12,7 +12,6 @@ import Data.List (partition)
 import SAT.CNF (type Literal, varOfLiteral, type Clause (Clause, literals), type DecisionLevel)
 import SAT.Monad (getAssignment, getImplicationGraph, getTrail, type SolverM, type SolverState (SolverState, assignment, decisionLevel, implicationGraph, propagationStack, trail))
 import Utils (unstableIntNub)
-import SAT.Assignment (filterAssignment)
 
 -- | Backtracks to a given decision level.
 -- backtrack :: DecisionLevel -> SolverM ()
@@ -44,10 +43,11 @@ backtrack dl = do
 
   let (trail', toRemove) = partition (\(_, dl', _) -> dl' <= dl) trail
       toRemoveKeys = IntSet.fromList $ fmap (\(l, _, _) -> varOfLiteral l) toRemove
-      assignments' = filterAssignment (\l _ -> varOfLiteral l `IntSet.notMember` toRemoveKeys) assignments
+      -- assignments' = filterAssignment (\l _ -> varOfLiteral l `IntSet.notMember` toRemoveKeys) assignments
+      -- TODO: readd the assignments
       ig' = IntMap.filterWithKey (\k _ -> varOfLiteral k `IntSet.notMember` toRemoveKeys) ig
 
-  modify' \s -> s {trail = trail', assignment = assignments', implicationGraph = ig', decisionLevel = dl, propagationStack = mempty}
+  modify' \s -> s {trail = trail', assignment = assignments, implicationGraph = ig', decisionLevel = dl, propagationStack = mempty}
 
 resolve :: [Literal] -> [Literal] -> Int -> [Literal]
 resolve a b x = IntSet.toList $ IntSet.fromList (a <> b) IntSet.\\ IntSet.fromList [x, -x]

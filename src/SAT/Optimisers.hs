@@ -48,10 +48,13 @@ import Data.Maybe (isNothing)
 import Data.Sequence qualified as Seq
 import SAT.CNF (type Clause (Clause, literals, watched), varOfLiteral, type CNF (CNF), type DecisionLevel, type Literal)
 import SAT.DIMACS.CNF (invert)
-import SAT.Monad (type WatchedLiterals (WatchedLiterals, literals), getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPropagationStack, getVSIDS, getWatchedLiterals, type SolverM, type SolverState (clauseDB, propagationStack, watchedLiterals, decisionLevel, assignment, trail, SolverState, implicationGraph, vsids))
+import SAT.Monad (type WatchedLiterals (WatchedLiterals), getAssignment, getClauseDB, getDecisionLevel, getImplicationGraph, getPropagationStack, getVSIDS, getWatchedLiterals, type SolverM, type SolverState (clauseDB, propagationStack, watchedLiterals, decisionLevel, assignment, trail, SolverState, implicationGraph, vsids))
 import SAT.Polarity (type Polarity (Mixed, Negative, Positive))
 import SAT.VSIDS (adjustScores, decay, pickLiteral, pickVariable, VSIDS (VSIDS))
 import SAT.Assignment (assign, literalValue, Assignment)
+import Data.Vector.Unboxed qualified as VU
+import Data.Vector qualified as V
+import Debug.Trace (traceM)
 
 -- | Collects all literals in a CNF.
 --
@@ -235,24 +238,24 @@ unitPropagateM = go
             addPropagation (varOfLiteral l) r
             modify' \s -> s {propagationStack = ls}
             assignment <- getAssignment
-            wl <- getWatchedLiterals
-            let !indices = IntSet.toList $ IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
-            clause <- processClauses assignment indices
+            WatchedLiterals lits <- getWatchedLiterals
+            let !indices = lits V.! varOfLiteral l
+            clause <- processClauses assignment $ IntSet.toList indices
             case clause of
               Just c -> return $ Just c
               Nothing -> go
       {-# INLINEABLE go #-}
 
       processClauses ::  Assignment -> [Int] -> SolverM (Maybe Clause)
-      processClauses assignment = go'
+      processClauses assignment = go
         where
-          go' :: [Int] -> SolverM (Maybe Clause)
-          go' [] = return Nothing
-          go' (i : is) = do
+          go :: [Int] -> SolverM (Maybe Clause)
+          go [] = return Nothing
+          go (i : is) = do
             clause <- processClause assignment i
             case clause of
               Just _ -> return clause
-              Nothing -> go' is
+              Nothing -> go is
       {-# INLINEABLE processClauses #-}
 
       processClause :: Assignment -> Int -> SolverM (Maybe Clause) -- (newWatch, maybe conflict clause)
@@ -293,20 +296,20 @@ unitPropagateM = go
         let newClause = clause {watched = (i, b)}
         let l = SAT.CNF.literals clause !! i
 
-        wl <- getWatchedLiterals
+        WatchedLiterals lits <- getWatchedLiterals
         clauses <- getClauseDB
 
         let newClauseDb = Seq.update index newClause clauses
 
-        let aClauses = IntMap.findWithDefault mempty (varOfLiteral first) $ SAT.Monad.literals wl
+        let aClauses = lits V.! varOfLiteral first
         let aClauses' = IntSet.delete index aClauses
 
-        let lClauses = IntMap.findWithDefault mempty (varOfLiteral l) $ SAT.Monad.literals wl
+        let lClauses = lits V.! varOfLiteral l
         let lClauses' = IntSet.insert index lClauses
 
-        let newWl = IntMap.insert (varOfLiteral first) aClauses' $ IntMap.insert (varOfLiteral l) lClauses' $ SAT.Monad.literals wl
+        let newWL = lits V.// [(varOfLiteral first, aClauses'), (varOfLiteral l, lClauses')]
 
-        modify' \s -> s {watchedLiterals = WatchedLiterals newWl, clauseDB = newClauseDb}
+        modify' \s -> s {watchedLiterals = WatchedLiterals newWL, clauseDB = newClauseDb}
 
         return Nothing
       {-# INLINEABLE handleNewWatch #-}

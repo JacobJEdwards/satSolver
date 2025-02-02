@@ -58,8 +58,8 @@ instance Problem Sudoku where
   {-# INLINEABLE parse #-}
 
   example :: Sudoku
-  example = Sudoku.sudokuNine
-  -- example = Sudoku.sudokuSixteen
+  -- example = Sudoku.sudokuNine
+  example = Sudoku.sudokuSixteen
   -- example = Sudoku.sudokuTwentyfive
   {-# INLINEABLE example #-}
 
