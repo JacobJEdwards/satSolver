@@ -59,7 +59,7 @@ import Debug.Trace (traceM)
 import SAT.CDCL (analyseConflict, backtrack)
 import SAT.CNF (varOfLiteral, type CNF (CNF), type Clause (Clause, literals, watched), type Literal)
 import SAT.Assignment (type Assignment, allAssignments, literalValue, type Solutions, solutionsFromAssignment, initAssignment)
-import SAT.Monad (Reason, getAssignment, getClauseDB, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), type WatchedLiterals (WatchedLiterals), savedPhases, nextPhase, savePhase)
+import SAT.Monad (Reason, getAssignment, getClauseDB, getWatchedLiterals, ifM, increaseDecisionLevel, type SolverM, type SolverState (SolverState, assignment, clauseDB, decisionLevel, implicationGraph, lubyCount, lubyThreshold, propagationStack, trail, variables, vsids, watchedLiterals), type WatchedLiterals (WatchedLiterals), savedPhases, nextPhase, savePhase, getDecisionLevel)
 import SAT.Optimisers (addDecision, adjustScoresM,collectLiterals, collectLiteralsToSet, decayM, pickLiteralM, unitPropagateM)
 import SAT.Preprocessing (preprocess)
 import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
@@ -148,7 +148,8 @@ getSolutions !cnf' = do
     solver = do
       conflict <- unitPropagateM
       case conflict of
-        Just c -> handleConflict c
+        Just c -> do 
+          handleConflict c
         Nothing -> do
           ifM allVariablesAssigned (return <$> solutions) branch
 
@@ -159,7 +160,7 @@ getSolutions !cnf' = do
     try c = do
       phase <- nextPhase c
       savePhase c phase
-      tryAssign c phase
+      tryAssign c phase <|> tryAssign c (not phase)
 
     tryAssign :: Literal -> Bool -> SolverM (Maybe Solutions)
     tryAssign c val = do
@@ -172,6 +173,7 @@ getSolutions !cnf' = do
       (clause, dl) <- analyseConflict c
       if dl < 0
         then do 
+          traceM "Unsatisfiable"
           return Nothing
         else do
           decayM
