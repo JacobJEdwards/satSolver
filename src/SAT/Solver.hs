@@ -63,7 +63,6 @@ import SAT.Restarts (computeNextLubyThreshold, increaseLubyCount)
 import SAT.VSIDS (initVSIDS)
 import SAT.WL (initClauseWatched, initWatchedLiterals)
 import Utils (unstableHashNub)
-import Data.Vector.Unboxed qualified as VU
 import Data.Vector qualified as V
 
 -- | Initializes the solver state.
@@ -103,7 +102,7 @@ learn literals = do
   WatchedLiterals lits <- getWatchedLiterals
   clauseDB <- getClauseDB
 
-  if a == b
+  if length literals == 1
     then modify' \s -> s {propagationStack = (varOfLiteral $ literals !! a, literals !! a > 0, Just clause) : propagationStack s} -- unit clause
     else do
       let newClauseDB = clauseDB Seq.|> clause
@@ -183,7 +182,7 @@ getSolutions !cnf' = do
         else do
           decayM
           adjustScoresM clause
-          -- learn clause
+          learn clause
           increaseLubyCount
           -- ifM shouldRestart restart do
           backtrack dl
