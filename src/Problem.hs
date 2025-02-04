@@ -6,6 +6,7 @@
 {-# LANGUAGE Strict #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- |
 -- Module      : Problem
@@ -22,7 +23,6 @@ import SAT (getSolutions, type CNF, type Expr, type Solutions)
 import SAT qualified
 import SAT.DIMACS.CNF qualified as DIMACS
 import SAT.DIMACS.Parser qualified as DIMACS
-import SAT.Encode (type Encodable (encode, type Code))
 import Sudoku qualified
 import Sudoku.Solver (type Sudoku)
 
@@ -100,21 +100,21 @@ instance Problem DIMACS.DIMACS where
   {-# INLINEABLE example #-}
 
 -- | SAT problem.
-instance (Read a, Encodable a, Num a, Integral (Code a)) => Problem (Expr a) where
-  toDIMACS :: Expr a -> DIMACS.DIMACS
-  toDIMACS = DIMACS.fromExpr . SAT.applyLaws . fmap (fromIntegral . encode)
+instance Problem (Expr Int) where
+  toDIMACS :: Expr Int -> DIMACS.DIMACS
+  toDIMACS = DIMACS.fromExpr . SAT.applyLaws
   {-# INLINEABLE toDIMACS #-}
 
-  decode :: Expr a -> Solutions -> Expr a
+  decode :: Expr Int -> Solutions -> Expr Int
   decode = const
   {-# INLINEABLE decode #-}
 
-  parse :: Text -> Maybe (Expr a)
+  parse :: Text -> Maybe (Expr Int)
   parse = SAT.parse
   {-# INLINEABLE parse #-}
 
-  example :: Expr a
-  example = SAT.And (SAT.Var 1) (SAT.Var 2)
+  example :: Expr Int
+  example = [SAT.expr|1 and 2 or 3|]
   {-# INLINEABLE example #-}
 
 -- | CNF problem.

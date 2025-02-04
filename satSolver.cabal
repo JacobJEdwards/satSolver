@@ -39,11 +39,13 @@ library
       SAT.DIMACS.Parser
       SAT.Encode
       SAT.Expr
+      SAT.Expr.Internal
+      SAT.Expr.Parser
+      SAT.Expr.Quoter
       SAT.Monad
       SAT.Old.Optimisers
       SAT.Old.Solver
       SAT.Optimisers
-      SAT.Parser
       SAT.Polarity
       SAT.Preprocessing
       SAT.Restarts

@@ -5,13 +5,13 @@
 -- |
 -- Module      : SAT.Parser
 -- Description : Exports the SAT parser module.
-module SAT.Parser (parse) where
+module SAT.Expr.Parser (parse) where
 
 import Control.Applicative ((<|>))
 import Data.Functor (($>))
 import Data.Text (type Text)
 import Parser (anySymbol, chainl1, digit, parens, runParser, some, type Parser, type Result (Errors, Result))
-import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
+import SAT.Expr.Internal (type Expr (And, Implies, Not, Or, Val, Var))
 
 -- | Parses an expression from a string.
 -- Returns 'Nothing' if the input is invalid.
@@ -19,7 +19,7 @@ import SAT.Expr (type Expr (And, Implies, Not, Or, Val, Var))
 --
 -- >>> parse "1 and 2 or 3"
 -- Just (1 `And` (2 `Or` 3))
-parse :: (Read a) => Text -> Maybe (Expr a)
+parse :: Text -> Maybe (Expr Int)
 parse input = case parseExpr input of
   Result (_, expr') -> Just expr'
   Errors _ -> Nothing
