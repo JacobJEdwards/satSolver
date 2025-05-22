@@ -33,7 +33,7 @@ It can parse logical expressions directly, read DIMACS CNF files, and solve Sudo
 
 1.  **Clone the repository (if applicable):**
     ```bash
-    git clone [<your-repository-url>](https://github.com/JacobJEdwards/satSolver)
+    git clone https://github.com/JacobJEdwards/satSolver
     cd satSolver
     ```
 
