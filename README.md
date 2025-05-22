@@ -100,7 +100,7 @@ The main executable can be run using `stack exec satSolver-exe -- [OPTIONS]`.
     ```
     Example:
     ```bash
-    stack exec satSolver-exe -- -f examples/simple.cnf
+    stack exec satSolver-exe -- -f examples/dimacs.cnf
     ```
 
 5.  **Sudoku Solver:**
