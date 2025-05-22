@@ -33,21 +33,19 @@ It can parse logical expressions directly, read DIMACS CNF files, and solve Sudo
 
 1.  **Clone the repository (if applicable):**
     ```bash
-    git clone <your-repository-url>
-    cd <repository-directory>
+    git clone [<your-repository-url>](https://github.com/JacobJEdwards/satSolver)
+    cd satSolver
     ```
 
 2.  **Build the project:**
     ```bash
     stack build
     ```
-    This will compile the project and install dependencies. The executable will typically be placed in `.stack-work/install/.../bin/sat-solver-exe` (the exact name `sat-solver-exe` depends on your `package.yaml` `executables` section).
+    This will compile the project and install dependencies. The executable will typically be placed in `.stack-work/install/.../bin/satSolver-exe`.
 
 ## Usage
 
-The main executable can be run using `stack exec sat-solver-exe -- [OPTIONS]`.
-
-Replace `sat-solver-exe` with the actual executable name defined in your `package.yaml` if it's different.
+The main executable can be run using `stack exec satSolver-exe -- [OPTIONS]`.
 
 ### Common Options
 
@@ -58,9 +56,9 @@ Replace `sat-solver-exe` with the actual executable name defined in your `packag
 1.  **Interactive Mode:**
     Launch an interactive session to enter logical expressions.
     ```bash
-    stack exec sat-solver-exe -- --interactive
+    stack exec satSolver-exe -- --interactive
     # or
-    stack exec sat-solver-exe -- -i
+    stack exec satSolver-exe -- -i
     ```
     Inside the interactive mode:
     *   Enter logical expressions (e.g., `(1 | 2) & ~3`).
@@ -79,59 +77,59 @@ Replace `sat-solver-exe` with the actual executable name defined in your `packag
 2.  **Demo Mode:**
     Runs a predefined demo expression and shows its analysis.
     ```bash
-    stack exec sat-solver-exe -- --demo
+    stack exec satSolver-exe -- --demo
     # or
-    stack exec sat-solver-exe -- -d
+    stack exec satSolver-exe -- -d
     ```
 
 3.  **Run Immediate Expression:**
     Parse and evaluate a logical expression provided directly as an argument.
     ```bash
-    stack exec sat-solver-exe -- --expr "(1 & ~2) | 3"
+    stack exec satSolver-exe -- --expr "(1 & ~2) | 3"
     # or
-    stack exec sat-solver-exe -- -e "(1 & ~2) | 3"
+    stack exec satSolver-exe -- -e "(1 & ~2) | 3"
     ```
     The expression should be quoted to prevent shell interpretation.
 
 4.  **File Mode (DIMACS CNF):**
     Parse and solve a problem from a DIMACS CNF file.
     ```bash
-    stack exec sat-solver-exe -- --file path/to/your/problem.cnf
+    stack exec satSolver-exe -- --file path/to/your/problem.cnf
     # or
-    stack exec sat-solver-exe -- -f path/to/your/problem.cnf
+    stack exec satSolver-exe -- -f path/to/your/problem.cnf
     ```
     Example:
     ```bash
-    stack exec sat-solver-exe -- -f examples/simple.cnf
+    stack exec satSolver-exe -- -f examples/simple.cnf
     ```
 
 5.  **Sudoku Solver:**
     *   Solve the default Sudoku:
         ```bash
-        stack exec sat-solver-exe -- --sudoku
+        stack exec satSolver-exe -- --sudoku
         # or
-        stack exec sat-solver-exe -- -s
+        stack exec satSolver-exe -- -s
         ```
     *   Solve a Sudoku from a file:
         ```bash
-        stack exec sat-solver-exe -- --sudoku path/to/your/sudoku.txt
+        stack exec satSolver-exe -- --sudoku path/to/your/sudoku.txt
         # or
-        stack exec sat-solver-exe -- -s path/to/your/sudoku.txt
+        stack exec satSolver-exe -- -s path/to/your/sudoku.txt
         ```
     This will print the parsed Sudoku, the solution if found, and also write the DIMACS representation of the Sudoku puzzle to `sudoku.dimacs` in the current directory. The format of the Sudoku input file should be compatible with the `Problem.parseFile` function for Sudoku.
 
 6.  **Nonogram Solver:**
     *   Solve the default Nonogram:
         ```bash
-        stack exec sat-solver-exe -- --nonogram
+        stack exec satSolver-exe -- --nonogram
         # or
         stack exec sat-solver-exe -- -n
         ```
     *   Solve a Nonogram from a file:
         ```bash
-        stack exec sat-solver-exe -- --nonogram path/to/your/nonogram.txt
+        stack exec satSolver-exe -- --nonogram path/to/your/nonogram.txt
         # or
-        stack exec sat-solver-exe -- -n path/to/your/nonogram.txt
+        stack exec satSolver-exe -- -n path/to/your/nonogram.txt
         ```
     This will print the parsed Nonogram and the solution if found. The format of the Nonogram input file should be compatible with the `Problem.parseFile` function for Nonogram.
 
